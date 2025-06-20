@@ -8,14 +8,19 @@ from pathlib import Path
 from typing import Any
 from warnings import warn
 
+from pydantic import StrictStr
+
 from opi.execution.core import Runner
+from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.grepper.recipes import has_terminated_normally
+from opi.output.models.base.strict_types import StrictFiniteFloat
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.property.property_results import (
     PropertyResults,
 )
 from opi.utils.misc import check_minimal_version, lowercase
 from opi.utils.orca_version import OrcaVersion
+from opi.utils.units import au_to_angst
 
 
 class Output:
@@ -314,3 +319,55 @@ class Output:
             return has_terminated_normally(outfile)
         except FileNotFoundError:
             return False
+
+    def _get_cartesians(
+        self, index: int
+    ) -> list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None:
+        """Returns cartesian coordinates from the output object for a specified index"""
+        rp = self.results_properties
+        if rp is None:
+            return None
+        geos = rp.geometries
+        if geos is None or index >= len(geos):
+            return None
+        g = geos[index].geometry
+        if g is None:
+            return None
+        coords = g.coordinates
+        if coords is None:
+            return None
+        return coords.cartesians
+
+    def get_structure(self, *, index: int = -1) -> Structure:
+        """
+        Returns structure from ORCA job as Structure object. By default, the final structure is returned.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            index of geometry to return (default: last in list)
+        """
+
+        atoms: list[Atom] = []
+        # > Get Cartesian coordinates
+        cartesians = self._get_cartesians(index)
+
+        if cartesians:
+            for entry in cartesians:
+                # > Get element symbol
+                elem = entry[0]
+                # > Get coordinates and convert to Angström
+                x = entry[1] * au_to_angst
+                y = entry[2] * au_to_angst
+                z = entry[3] * au_to_angst
+                # > Generate atom and append to list
+                atom = Atom(element=elem, coordinates=Coordinates((x, y, z)))
+                atoms.append(atom)
+
+            structure = Structure(atoms)
+            return structure
+
+        else:
+            raise ValueError(
+                f"Requested Cartesian coordinates for geometry with index {index} are not available."
+            )
