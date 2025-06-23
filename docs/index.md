@@ -41,6 +41,7 @@ regarding individual and known issues with ORCA itself.
 :caption: Documentation
 :maxdepth: 2
 
+contents/versions
 contents/install
 contents/api/index
 ```
