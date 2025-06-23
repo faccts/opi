@@ -25,8 +25,8 @@ class Molecule(GetItem):
     charge: StrictInt
         charge of the molecule
     hftyp: StrictSrt
-        used type of HF in the calculation
-    origin: tuple[StrictFloat,StrictFloat,StrictFloat]
+        Used shell-type (e.g., UHF/RHF) in the calculation
+    origin: tuple[StrictFloat, StrictFloat, StrictFloat]
         Origin of the molecule
     s_matrix: list[list[StrictFloat]]
         Overlap matrix
