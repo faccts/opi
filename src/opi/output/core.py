@@ -20,7 +20,7 @@ from opi.output.models.json.property.property_results import (
 )
 from opi.utils.misc import check_minimal_version, lowercase
 from opi.utils.orca_version import OrcaVersion
-from opi.utils.units import au_to_angst
+from opi.utils.units import AU_TO_ANGST
 
 
 class Output:
@@ -322,26 +322,31 @@ class Output:
 
     def _safe_get(self, *attrs: str | int) -> Any | None:
         """
-        Safely access a nested chain of attributes or list indices to access results from the output object.
+        Safely access a nested chain of attributes or list indices on the output object.
 
-        This function walks through a sequence of attributes (str) or indices (int),
+        This method walks through a sequence of attributes (str) or indices (int),
         returning the nested value if all lookups succeed and none of the intermediate
-        objects are None. If any step fails (due to missing attribute, invalid index,
-        or None in the chain), it returns None instead of raising an exception.
+        objects are None. If any step fails—due to a missing attribute, invalid index,
+        or None encountered in the chain—it returns None instead of raising an exception.
 
-        Parameters:
-            *attrs: A sequence of strings (attribute names) and/or integers (list indices)
-                    that define the path to follow.
+        Parameters
+        ----------
+        *attrs : str | int
+            A sequence of strings (attribute names) and/or integers (list or indexable
+            container indices) that define the path to follow.
 
-        Returns:
+        Returns
+        -------
+        Any | None
             The resolved value at the end of the access path if all steps succeed;
-            otherwise, None.
+            otherwise, None. Should be cast into the correct type for usage.
 
-        Example:
-            safe_get("results_properties", "geometries", index, "geometry")
+        Examples
+        --------
+            self._safe_get("results_properties", "geometries", index, "geometry")
             is equivalent to:
             self.results_properties.geometries[index].geometry
-            but returns None if any part of the chain is missing or None in a mypy friendly way.
+            but returns None if any part of the chain is missing or None, in a mypy-friendly way.
         """
         current = self
         for attr in attrs:
@@ -362,7 +367,17 @@ class Output:
         self, index: int
     ) -> list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None:
         """
-        Returns cartesian coordinates from the output object for a specified index
+        Returns cartesian coordinates from the output object for a specified index.
+
+        Parameters
+        ----------
+        index : int
+            index of geometry to return.
+
+        Returns
+        ----------
+        cartesians: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None
+            List containing the cartesian coordinates or None.
         """
         # > Safely get the cartesian coordinates
         cartesians = self._safe_get(
@@ -385,6 +400,16 @@ class Output:
         ----------
         index : int, default: -1
             index of geometry to return (default: last in list)
+
+        Returns
+        ----------
+        structure: Structure
+            Returns structure object generated from the output for the given index.
+
+        Raises
+        ----------
+        ValueError
+            If no geometry with the requested index is available.
         """
 
         atoms: list[Atom] = []
@@ -396,9 +421,9 @@ class Output:
                 # > Get element symbol
                 elem = entry[0]
                 # > Get coordinates and convert to Angström
-                x = entry[1] * au_to_angst
-                y = entry[2] * au_to_angst
-                z = entry[3] * au_to_angst
+                x = entry[1] * AU_TO_ANGST
+                y = entry[2] * AU_TO_ANGST
+                z = entry[3] * AU_TO_ANGST
                 # > Generate atom and append to list
                 atom = Atom(element=elem, coordinates=Coordinates((x, y, z)))
                 atoms.append(atom)
