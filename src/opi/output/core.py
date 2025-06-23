@@ -5,7 +5,7 @@ It's mostly based on the ORCA's two JSONs files.
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from warnings import warn
 
 from pydantic import StrictStr
@@ -320,23 +320,62 @@ class Output:
         except FileNotFoundError:
             return False
 
+    def _safe_get(self, *attrs: str | int) -> Any | None:
+        """
+        Safely access a nested chain of attributes or list indices to access results from the output object.
+
+        This function walks through a sequence of attributes (str) or indices (int),
+        returning the nested value if all lookups succeed and none of the intermediate
+        objects are None. If any step fails (due to missing attribute, invalid index,
+        or None in the chain), it returns None instead of raising an exception.
+
+        Parameters:
+            *attrs: A sequence of strings (attribute names) and/or integers (list indices)
+                    that define the path to follow.
+
+        Returns:
+            The resolved value at the end of the access path if all steps succeed;
+            otherwise, None.
+
+        Example:
+            safe_get("results_properties", "geometries", index, "geometry")
+            is equivalent to:
+            self.results_properties.geometries[index].geometry
+            but returns None if any part of the chain is missing or None in a mypy friendly way.
+        """
+        current = self
+        for attr in attrs:
+            if current is None:
+                return None
+            try:
+                if isinstance(attr, int) and isinstance(current, list):
+                    current = current[attr]
+                elif isinstance(attr, str):
+                    current = getattr(current, attr)
+                else:
+                    raise TypeError
+            except (AttributeError, IndexError, TypeError):
+                return None
+        return current
+
     def _get_cartesians(
         self, index: int
     ) -> list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None:
-        """Returns cartesian coordinates from the output object for a specified index"""
-        rp = self.results_properties
-        if rp is None:
-            return None
-        geos = rp.geometries
-        if geos is None or index >= len(geos):
-            return None
-        g = geos[index].geometry
-        if g is None:
-            return None
-        coords = g.coordinates
-        if coords is None:
-            return None
-        return coords.cartesians
+        """
+        Returns cartesian coordinates from the output object for a specified index
+        """
+        # > Safely get the cartesian coordinates
+        cartesians = self._safe_get(
+            "results_properties", "geometries", index, "geometry", "coordinates", "cartesians"
+        )
+        # > Cast them into the correct type
+        if cartesians is not None:
+            cartesians = cast(
+                list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]],
+                cartesians,
+            )
+
+        return cartesians
 
     def get_structure(self, *, index: int = -1) -> Structure:
         """
