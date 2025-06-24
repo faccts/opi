@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     calc = Calculator(basename="job", working_dir=wd)
     calc.structure = Structure.from_xyz("inp.xyz")
-    calc.input.add_simple_keywords(Scf.NOAUTOSTART, Dft.WB97X3C, BasisSet.DEF2_TZVP, Task.OPT)
+    calc.input.add_simple_keywords(Scf.NOAUTOSTART, Dft.WB97X3C, Task.OPT)
     calc.input.ncores = 4
 
     calc.write_input()
@@ -52,3 +52,7 @@ if __name__ == "__main__":
         except TypeError:
             charges = "n/a"
         print(f"{igeom})", charges)
+
+    # > Now we print the final structure as xyz file
+    optimized = output.get_structure()
+    print(optimized.to_xyz_block())

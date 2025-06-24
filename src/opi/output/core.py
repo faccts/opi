@@ -5,17 +5,22 @@ It's mostly based on the ORCA's two JSONs files.
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from warnings import warn
 
+from pydantic import StrictStr
+
 from opi.execution.core import Runner
+from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.grepper.recipes import has_terminated_normally
+from opi.output.models.base.strict_types import StrictFiniteFloat
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.property.property_results import (
     PropertyResults,
 )
 from opi.utils.misc import check_minimal_version, lowercase
 from opi.utils.orca_version import OrcaVersion
+from opi.utils.units import AU_TO_ANGST
 
 
 class Output:
@@ -314,3 +319,119 @@ class Output:
             return has_terminated_normally(outfile)
         except FileNotFoundError:
             return False
+
+    def _safe_get(self, *attrs: str | int) -> Any | None:
+        """
+        Safely access a nested chain of attributes or list indices on the output object.
+
+        This method walks through a sequence of attributes (str) or indices (int),
+        returning the nested value if all lookups succeed and none of the intermediate
+        objects are None. If any step fails—due to a missing attribute, invalid index,
+        or None encountered in the chain—it returns None instead of raising an exception.
+
+        Parameters
+        ----------
+        *attrs : str | int
+            A sequence of strings (attribute names) and/or integers (list or indexable
+            container indices) that define the path to follow.
+
+        Returns
+        -------
+        Any | None
+            The resolved value at the end of the access path if all steps succeed;
+            otherwise, None. Should be cast into the correct type for usage.
+
+        Examples
+        --------
+            self._safe_get("results_properties", "geometries", index, "geometry")
+            is equivalent to:
+            self.results_properties.geometries[index].geometry
+            but returns None if any part of the chain is missing or None, in a mypy-friendly way.
+        """
+        current = self
+        for attr in attrs:
+            if current is None:
+                return None
+            try:
+                if isinstance(attr, int) and isinstance(current, list):
+                    current = current[attr]
+                elif isinstance(attr, str):
+                    current = getattr(current, attr)
+                else:
+                    raise TypeError
+            except (AttributeError, IndexError, TypeError):
+                return None
+        return current
+
+    def _get_cartesians(
+        self, index: int
+    ) -> list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None:
+        """
+        Returns cartesian coordinates from the output object for a specified index.
+
+        Parameters
+        ----------
+        index : int
+            index of geometry to return.
+
+        Returns
+        ----------
+        cartesians: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None
+            List containing the cartesian coordinates or None.
+        """
+        # > Safely get the cartesian coordinates
+        cartesians = self._safe_get(
+            "results_properties", "geometries", index, "geometry", "coordinates", "cartesians"
+        )
+        # > Cast them into the correct type
+        if cartesians is not None:
+            cartesians = cast(
+                list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]],
+                cartesians,
+            )
+
+        return cartesians
+
+    def get_structure(self, *, index: int = -1) -> Structure:
+        """
+        Returns structure from ORCA job as Structure object. By default, the final structure is returned.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            index of geometry to return (default: last in list)
+
+        Returns
+        ----------
+        structure: Structure
+            Returns structure object generated from the output for the given index.
+
+        Raises
+        ----------
+        ValueError
+            If no geometry with the requested index is available.
+        """
+
+        atoms: list[Atom] = []
+        # > Get Cartesian coordinates
+        cartesians = self._get_cartesians(index)
+
+        if cartesians:
+            for entry in cartesians:
+                # > Get element symbol
+                elem = entry[0]
+                # > Get coordinates and convert to Angström
+                x = entry[1] * AU_TO_ANGST
+                y = entry[2] * AU_TO_ANGST
+                z = entry[3] * AU_TO_ANGST
+                # > Generate atom and append to list
+                atom = Atom(element=elem, coordinates=Coordinates((x, y, z)))
+                atoms.append(atom)
+
+            structure = Structure(atoms)
+            return structure
+
+        else:
+            raise ValueError(
+                f"Requested Cartesian coordinates for geometry with index {index} are not available."
+            )

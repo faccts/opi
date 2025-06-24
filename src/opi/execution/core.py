@@ -417,7 +417,7 @@ class Runner:
         if config := get_config():
             mpi_path_config = config.get("MPI_PATH")
 
-        # > Case 1: Path given via function parameters
+        # > Case 1: Path given via function parameter
         if mpi_path is not None:
             if not isinstance(mpi_path, Path):
                 raise TypeError(f"'mpi_path' parameter is not a Path, but: {type(mpi_path)}")
@@ -431,15 +431,12 @@ class Runner:
         elif mpi_path_config:
             mpi_path = Path(mpi_path_config)
 
-        # > Case 4: MPI is already in the $PATH.
+        # > Case 4: MPI is already in the $PATH
         # >         Then we don't need to do anything.
         # >         Assumes that $LD_LIBRARY_PATH is also properly configured.
-        elif shutil.which("mpirun"):
-            pass
-
-        # > NOT FOUND
-        else:
-            raise RuntimeError("Could not find Open MPI.")
+        # > Case 5: Not configured/installed at all.
+        #           In this case, ORCA can only be executed with a single core.
+        # <<< END OF IF-BLOCK
 
         # > Now determine the bin/ and lib/ folder
         if mpi_path:
