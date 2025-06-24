@@ -14,6 +14,11 @@ from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.grepper.recipes import has_terminated_normally
 from opi.output.models.base.strict_types import StrictFiniteFloat
+from opi.output.grepper.recipes import (
+    has_geometry_optimization_converged,
+    has_scf_converged,
+    has_terminated_normally,
+)
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.property.property_results import (
     PropertyResults,
@@ -313,10 +318,49 @@ class Output:
         """
         Determine if ORCA terminated normally, by looking for "ORCA TERMINATED NORMALLY" in the ".out" file.
         If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if "ORCA TERMINATED NORMALLY" is found in ".out" file else False
         """
         outfile = self.get_outfile()
         try:
             return has_terminated_normally(outfile)
+        except FileNotFoundError:
+            return False
+
+    def scf_converged(self) -> bool:
+        """
+        Determine if ORCA SCF converged, by looking for "SUCCESS" in the ".out" file.
+        Check only if ORCA SCF was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if "SUCCESS" is found in ".out" file else False
+        """
+        outfile = self.get_outfile()
+        try:
+            return has_scf_converged(outfile)
+        except FileNotFoundError:
+            return False
+
+    def geometry_optimization_converged(self) -> bool:
+        """
+        Determine if ORCA geometry optimization converged, by looking for "HURRAY" in the ".out" file.
+        Check only if ORCA geometry optimization was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if "HURRAY" is found in ".out" file else False
+        """
+        outfile = self.get_outfile()
+        try:
+            return has_geometry_optimization_converged(outfile)
         except FileNotFoundError:
             return False
 
