@@ -208,7 +208,7 @@ class InjectNotebookButtons(SphinxTransform):
         html = ""
         if docname.startswith("contents/notebooks/"):
             ipynb_file = f"_static/{docname}.ipynb"
-            github_url = f"https://github.com/faccts/opi/blob/main/{docname}.ipynb"
+            github_url = f"https://github.com/faccts/opi/blob/main/docs/{docname}.ipynb"
             html = f"""
             <div class="button-row">
                 <a href="{github_url}" class="orca-btn">View on GitHub <i class="fab fa-github"></i></a>
