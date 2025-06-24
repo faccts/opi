@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import shutil
+import sys
 from pathlib import Path
 
 from opi.core import Calculator
@@ -40,7 +41,7 @@ if __name__ == "__main__":
     output = calc.get_output()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
-        exit(1)
+        sys.exit(1)
     # << END OF IF
 
     # > Parse JSON files
@@ -51,7 +52,7 @@ if __name__ == "__main__":
         print("SCF CONVERGED")
     else:
         print("SCF DID NOT CONVERGE")
-        exit()
+        sys.exit(1)
 
     print("FINAL SINGLE POINT ENERGY")
     print(output.results_properties.geometries[0].single_point_data.finalenergy)

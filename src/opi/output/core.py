@@ -12,13 +12,12 @@ from pydantic import StrictStr
 
 from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
-from opi.output.grepper.recipes import has_terminated_normally
-from opi.output.models.base.strict_types import StrictFiniteFloat
 from opi.output.grepper.recipes import (
     has_geometry_optimization_converged,
     has_scf_converged,
     has_terminated_normally,
 )
+from opi.output.models.base.strict_types import StrictFiniteFloat
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.property.property_results import (
     PropertyResults,
