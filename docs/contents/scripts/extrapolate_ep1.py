@@ -21,45 +21,55 @@ def check_and_parse_output(output: Output)-> None:
         print("ORCA terminated normally and the SCF converged")
     else:
         raise RuntimeError("SCF DID NOT CONVERGE")
-
+    
 if __name__ == "__main__":
-    # > Create a working directory for calculations if it doesn't already exist
+    # > Create a working directory and XYZ file
+    # > You can replace everything up to the next comment with your own directory or file
     working_dir = Path("RUN")
     working_dir.mkdir(exist_ok=True)
-
-    # > Define the molecule's Cartesian coordinates in Angstroem as python string
+    
     xyz_data = """\
     3
 
     O         -3.56626        1.77639        0.00000
     H         -2.59626        1.77639        0.00000
-    H         -3.88959        1.36040       -0.81444\n
+    H         -3.88959        1.36040       -0.81444
     """
-
-    # > Save the XYZ structure to a file
-    with open(working_dir / "struc.xyz","w") as f:
+    xyz_file = working_dir / "struc.xyz"
+    with open(xyz_file, "w") as f:
         f.write(xyz_data)
 
-    xyz_file = Path("./RUN/struc.xyz")
-    structure = Structure.from_xyz(xyz_file)
+    # > Define a basename for the calculation files
+    basename = "extrapolate_ep1"
 
-    # Task 1
-    calc = Calculator(basename=f"extrapolate_ep1_1", working_dir=working_dir)
+    # > Task 1
+    # > Create a Calculator object for ORCA input generation and execution
+    calc = Calculator(basename=f"{basename}_1", working_dir=working_dir)
+
+    # > Load the molecular structure from XYZ file
+    structure = Structure.from_xyz(xyz_file)
     calc.structure = structure
     calc.structure.charge = 0
     calc.structure.multiplicity = 1
+
+    # > Add calculation keywords
     calc.input.add_simple_keywords(
         Wft.CCSD_T,
         Scf.VERYTIGHTSCF,
         BasisSet.CC_PVDZ
         )
+    
+    # > Write the ORCA input file
     calc.write_input()
+    # > Run the ORCA calculation
     calc.run()
+    # > Get the output object
     output_1 = calc.get_output()
     check_and_parse_output(output_1)
 
-    # Task 2
-    calc = Calculator(basename=f"extrapolate_ep1_2", working_dir=working_dir)
+    # > Task 2
+    calc = Calculator(basename=f"{basename}_2", working_dir=working_dir)
+    structure = Structure.from_xyz(xyz_file)
     calc.structure = structure
     calc.structure.charge = 0
     calc.structure.multiplicity = 1
