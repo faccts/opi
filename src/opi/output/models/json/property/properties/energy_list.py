@@ -47,8 +47,5 @@ class EnergyList(RootModel[list[EnergyTypes]]):
     def __getitem__(self, index: int) -> EnergyTypes:
         return self.root[index]
 
-    # def __iter__(self) -> Iterator[EnergyTypes]:
-    #    return iter(self.root)
-
     def __len__(self) -> int:
         return len(self.root)
