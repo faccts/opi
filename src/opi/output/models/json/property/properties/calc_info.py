@@ -43,7 +43,7 @@ class CalcInfo(GetItem):
     numofelectrons: StrictNonNegativeInt | None = None
     numoffcelectrons: StrictNonNegativeInt | None = None
     numofcorrelectrons: StrictNonNegativeInt | None = None
-    numofbasisfuncts: StrictPositiveInt | None = None
+    numofbasisfuncts: StrictNonNegativeInt | None = None
     numofauxcbasisfuncts: StrictNonNegativeInt | None = None
     numofauxjbasisfuncts: StrictNonNegativeInt | None = None
     numofauxjkbasisfuncts: StrictNonNegativeInt | None = None

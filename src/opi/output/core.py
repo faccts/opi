@@ -122,12 +122,19 @@ class Output:
         if parse:
             self.parse()
 
-    def parse(self) -> None:
+    def parse(self, read_prop_json: bool = True, read_gbw_json: bool = True) -> None:
         """
         Create property- and gbw-JSON file (according to `do_create_property_json` and `self.do_create_gbw_json`)
         and parse them.
-        """
+        Skips the parsing for the gbw or prop json file when the respective bool is false. It defaults to true
 
+        Parameters
+        ----------
+        read_prop_json: bool
+            Whether or not to read the property JSON file
+        read_gbw_json: bool
+            Whether or not to read the gbw JSON file
+        """
         # // Create JSONs files
         if self.do_create_gbw_json:
             self.create_gbw_json()
@@ -135,17 +142,18 @@ class Output:
             self.create_property_json()
 
         # // PARSE JSONS
-        self.gbw_json_data = self._process_json_file(self.gbw_json_file)
-        self.property_json_data = self._process_json_file(self.property_json_file)
-
-        # > `property_json_data` needs to be set
-        if self.do_version_check:
-            self.check_version()
-
         # // Property JSON
-        self.results_properties = PropertyResults(**self.property_json_data)
+        if read_prop_json:
+            self.property_json_data = self._process_json_file(self.property_json_file)
+            # > Check in property json whether version fits:
+            if self.do_version_check:
+                self.check_version()
+            self.results_properties = PropertyResults(**self.property_json_data)
+
         # // GBW JSON file
-        self.results_gbw = GbwResults(**self.gbw_json_data)
+        if read_gbw_json:
+            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
+            self.results_gbw = GbwResults(**self.gbw_json_data)        
 
         # > Redump JSON files
         if self.do_redump_jsons:
