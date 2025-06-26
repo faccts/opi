@@ -23,6 +23,7 @@ from opi.input.blocks.block_docker import BlockDocker
 from opi.input.blocks.block_eda import BlockEda
 from opi.input.blocks.block_elprop import BlockElprop
 from opi.input.blocks.block_eprnmr import BlockEprnmr, NmrEquiv, NmrGroup, Nuclei, NucleiFlag
+from opi.input.blocks.block_external_tools import BlockExternalTools
 from opi.input.blocks.block_frag import BlockFrag, FragDefinition
 from opi.input.blocks.block_freq import BlockFreq, HessList
 from opi.input.blocks.block_geom import (
@@ -87,6 +88,7 @@ __all__ = [
     "NmrGroup",
     "NmrEquiv",
     "BlockEprnmr",
+    "BlockExternalTools",
     "FragDefinition",
     "BlockFrag",
     "HessList",

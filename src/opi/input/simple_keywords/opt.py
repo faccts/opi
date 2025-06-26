@@ -21,9 +21,6 @@ class Opt(SimpleKeywordBox):
     COPT = SimpleKeyword("copt")  # Perform geometry optimization (cartesian coordinates)
     L_OPT = SimpleKeyword("l-opt")  # Perform geometry optimization
     L_OPTH = SimpleKeyword("l-opth")  # Optimize only hydrogen atoms
-    EXTOPT = SimpleKeyword(
-        "extopt"
-    )  # Use only the geometry optimizer from orca with external energy/gradient
     OPTTS = SimpleKeyword("optts")  # optimize transition state
     OPTTS_GMF = SimpleKeyword("optts(gmf)")  # optimize transition state
     QMMMOPT = SimpleKeyword("qmmmopt")  # Optimize the geometry with qmmm

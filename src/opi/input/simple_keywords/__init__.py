@@ -15,6 +15,7 @@ from opi.input.simple_keywords.dlpno import Dlpno
 from opi.input.simple_keywords.docker import Docker
 from opi.input.simple_keywords.ecp import Ecp
 from opi.input.simple_keywords.esd import Esd
+from opi.input.simple_keywords.external_tools import ExternalTools
 from opi.input.simple_keywords.force_field import ForceField
 from opi.input.simple_keywords.gcp import Gcp
 from opi.input.simple_keywords.goat import Goat
@@ -51,6 +52,7 @@ __all__ = [
     "Docker",
     "Ecp",
     "Esd",
+    "ExternalTools",
     "ForceField",
     "Gcp",
     "Goat",
