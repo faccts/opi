@@ -38,3 +38,20 @@ if __name__ == "__main__":
 
     # > Parse JSON files
     output.parse()
+
+    # > Obtain the structure and write a new input file with the same fragment IDs
+    new_structure = output.get_structure()
+    new_calc = Calculator(basename="new_job", working_dir=wd)
+    new_calc.structure = new_structure
+    new_calc.input.add_simple_keywords(
+        Wft.DLPNO_CCSD_T,
+        BasisSet.CC_PVDZ,
+        AuxBasisSet.CC_PVDZ_C,
+        AuxBasisSet.CC_PVTZ_JK,
+        Dlpno.TIGHTPNO,
+        Scf.TIGHTSCF,
+        Approximation.RIJK,
+        Dlpno.LED,
+    )
+
+    new_calc.write_input()
