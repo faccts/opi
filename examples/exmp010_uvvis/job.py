@@ -33,3 +33,9 @@ if __name__ == "__main__":
 
     # > Parse JSON files
     output.parse()
+
+    # > Now we print the available energy types for this calculation
+    energies = output.get_energies()
+    print("The following energies can be obtained from this calculation:")
+    for key in energies:
+        print(f"Energy of type {energies[key].method}")
