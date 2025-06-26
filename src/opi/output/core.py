@@ -17,7 +17,7 @@ from opi.output.grepper.recipes import (
     has_scf_converged,
     has_terminated_normally,
 )
-from opi.output.models.base.strict_types import StrictFiniteFloat
+from opi.output.models.base.strict_types import StrictFiniteFloat, StrictPositiveInt
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.property.properties.energy import Energy
 from opi.output.models.json.property.properties.energy_list import EnergyList
@@ -448,14 +448,43 @@ class Output:
 
         return cartesians
 
-    def get_structure(self, *, index: int = -1) -> Structure:
+    def _get_fragments(self, index: int) -> list[list[StrictPositiveInt]] | None:
         """
-        Returns structure from ORCA job as Structure object. By default, the final structure is returned.
+        Returns fragment ids from the output object for a specified geometry index.
+
+        Parameters
+        ----------
+        index : int
+            index of geometry to return.
+
+        Returns
+        ----------
+        fragments: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None
+            List containing the cartesian coordinates or None.
+        """
+        # > Safely get the fragment IDs
+        fragments = self._safe_get(
+            "results_properties", "geometries", index, "geometry", "fragments"
+        )
+        # > Cast them into the correct type
+        if fragments is not None:
+            fragments = cast(
+                list[list[StrictPositiveInt]],
+                fragments,
+            )
+
+        return fragments
+
+    def get_structure(self, *, index: int = -1, with_fragments = True) -> Structure:
+        """
+        Returns structure from ORCA job as Structure object (by default the final structure).
 
         Parameters
         ----------
         index : int, default: -1
-            index of geometry to return (default: final)
+            index of geometry to return. The default -1 refers to the final geometry.
+        with_fragments : bool, default: True
+            whether the fragment IDs should be added as well to the structure (if available)
 
         Returns
         ----------
@@ -472,27 +501,33 @@ class Output:
         # > Get Cartesian coordinates
         cartesians = self._get_cartesians(index)
 
-        if cartesians:
-            for entry in cartesians:
-                # > Get element symbol
-                elem = entry[0]
-                # > Get coordinates and convert to angstrom
-                x = entry[1] * AU_TO_ANGST
-                y = entry[2] * AU_TO_ANGST
-                z = entry[3] * AU_TO_ANGST
-                # > Generate atom and append to list
-                atom = Atom(element=elem, coordinates=Coordinates((x, y, z)))
-                atoms.append(atom)
-
-            structure = Structure(atoms)
-            return structure
-
-        else:
+        if not cartesians:
             raise ValueError(
                 f"Requested Cartesian coordinates for geometry with index {index} are not available."
             )
 
-    def get_final_energy(self) -> StrictFiniteFloat | None:
+        for line in cartesians:
+            elem, x_au, y_au, z_au = line
+            # > Get coordinates and convert to angstrom
+            x = x_au * AU_TO_ANGST
+            y = y_au * AU_TO_ANGST
+            z = z_au * AU_TO_ANGST
+            # > Generate atom and append to list
+            atom = Atom(element=elem, coordinates=Coordinates((x, y, z)))
+            atoms.append(atom)
+
+        if with_fragments:
+            # > Get fragment IDs
+            fragments = self._get_fragments(index)
+
+            if fragments:
+                for atom, frag in zip(atoms, fragments):
+                    atom.fragment_id = frag[0]
+
+        structure = Structure(atoms)
+        return structure
+
+    def get_final_energy(self) -> StrictFiniteFloat:
         """
         Easy access to the final single point energy.
 
