@@ -19,6 +19,8 @@ from opi.output.grepper.recipes import (
 )
 from opi.output.models.base.strict_types import StrictFiniteFloat
 from opi.output.models.json.gbw.gbw_results import GbwResults
+from opi.output.models.json.property.properties.energy import Energy
+from opi.output.models.json.property.properties.energy_list import EnergyList
 from opi.output.models.json.property.property_results import (
     PropertyResults,
 )
@@ -453,7 +455,7 @@ class Output:
         Parameters
         ----------
         index : int, default: -1
-            index of geometry to return (default: last in list)
+            index of geometry to return (default: final)
 
         Returns
         ----------
@@ -474,7 +476,7 @@ class Output:
             for entry in cartesians:
                 # > Get element symbol
                 elem = entry[0]
-                # > Get coordinates and convert to Angström
+                # > Get coordinates and convert to angstrom
                 x = entry[1] * AU_TO_ANGST
                 y = entry[2] * AU_TO_ANGST
                 z = entry[3] * AU_TO_ANGST
@@ -489,3 +491,81 @@ class Output:
             raise ValueError(
                 f"Requested Cartesian coordinates for geometry with index {index} are not available."
             )
+
+    def get_final_energy(self) -> StrictFiniteFloat:
+        """
+        Easy access to the final single point energy
+
+        Returns
+        ----------
+        final_energy: StrictFiniteFloat
+            Returns the final energy of the ORCA calculation
+
+        Raises
+        ----------
+        ValueError
+            If no final energy is available.
+        """
+
+        # > Get the final energy
+        final_energy = self._safe_get("results_properties", "single_point_data", "finalenergy")
+
+        if isinstance(final_energy, StrictFiniteFloat):
+            return final_energy
+        else:
+            raise ValueError("No final energy is available.")
+
+    def get_energies(self, *, index: int = -1) -> dict[str, Energy]:
+        """
+        Return a dictionary with different energy types for the geometry at a given index.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the energy should be returned. The default -1 refers to the final geometry.
+
+        Returns
+        -------
+        energy_dict : dict[str, Energy]
+            Dictionary where keys identify the energy type. If multiple energies of the same type are present, an index is
+            appended after the first one, e.g., SCF, SCF_1, SCF_2, etc.
+
+        Raises
+        ----------
+        ValueError
+            If no energy for geometry with the requested index is available.
+
+        Notes
+        -----
+        Common keys include: **Unknown** - No information about the energy is provided,
+        **SCF** - SCF energy from HF, DFT, or SQM methods, **MDCI(SD)** - Typically the (DLPNO-)CCSD energy,
+        **MDCI(SD(T))** - Typically the (DLPNO-)CCSD(T) energy, **CASSCF** - CASSCF energy,
+        **MP2** - MP2 energy, **TDA/CIS** - TDA-TD-DFT or CIS energy.
+        """
+
+        # > Energy dict to populate & return
+        energy_dict: dict[str, Energy] = {}
+
+        # > Get the list of energies to be converted to a dictionary
+        energy_list = self._safe_get("results_properties", "geometries", index, "energy")
+
+        if energy_list:
+            energy_list = cast(EnergyList, energy_list)
+        else:
+            raise ValueError(
+                f"Requested energies for geometry with index {index} are not available."
+            )
+
+        for energy in energy_list:
+            if not energy.method:
+                key = "Unknown"
+            else:
+                key = energy.method
+            # > Add index at the end if multiple energies of the same type are present
+            index = 1
+            while key in energy_dict:
+                key = f"{key}_{index}"
+                index += 1
+            energy_dict[key] = energy
+
+        return energy_dict
