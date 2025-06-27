@@ -130,9 +130,9 @@ class Output:
 
         Parameters
         ----------
-        read_prop_json: bool
+        read_prop_json: bool, default: True
             Whether or not to read the property JSON file
-        read_gbw_json: bool
+        read_gbw_json: bool, default: True
             Whether or not to read the gbw JSON file
         """
         # // Create JSONs files
@@ -149,6 +149,9 @@ class Output:
             if self.do_version_check:
                 self.check_version()
             self.results_properties = PropertyResults(**self.property_json_data)
+        else:
+            if self.do_version_check:
+                warn("No version check possible.")
 
         # // GBW JSON file
         if read_gbw_json:
