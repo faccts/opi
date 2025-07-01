@@ -7,7 +7,987 @@ __all__ = ("BasisSet",)
 
 
 class BasisSet(SimpleKeywordBox):
-    """Enum to store all simple keywords of type BasisSet"""
+    """Enum to store all simple keywords of type BasisSet.
+
+    Attributes
+    ----------
+    G3_21G : SimpleKeyword
+        BasisSet
+    G3_21GSP : SimpleKeyword
+        BasisSet
+    G4_22GSP : SimpleKeyword
+        BasisSet
+    G6_31PLUSPLUSG_2D_2P : SimpleKeyword
+        BasisSet
+    G6_31PLUSPLUSG_2D_P : SimpleKeyword
+        BasisSet
+    G6_31PLUSPLUSG_2DF_2P : SimpleKeyword
+        BasisSet
+    G6_31PLUSPLUSG_2DF_2PD : SimpleKeyword
+        BasisSet
+    G6_31PLUSPLUSG_D_P : SimpleKeyword
+        BasisSet
+    G6_31PLUSPLUSGSTARSTAR : SimpleKeyword
+        BasisSet
+    G6_31PLUSG_2D_2P : SimpleKeyword
+        BasisSet
+    G6_31PLUSG_2D_P : SimpleKeyword
+        BasisSet
+    G6_31PLUSG_2D : SimpleKeyword
+        BasisSet
+    G6_31PLUSG_2DF_2P : SimpleKeyword
+        BasisSet
+    G6_31PLUSG_2DF_2PD : SimpleKeyword
+        BasisSet
+    G6_31PLUSG_2DF : SimpleKeyword
+        BasisSet
+    G6_31PLUSG_D_P : SimpleKeyword
+        BasisSet
+    G6_31PLUSG_D : SimpleKeyword
+        BasisSet
+    G6_31PLUSGSTAR : SimpleKeyword
+        BasisSet
+    G6_31PLUSGSTARSTAR : SimpleKeyword
+        BasisSet
+    G6_311PLUSPLUSG_2D_2P : SimpleKeyword
+        BasisSet
+    G6_311PLUSPLUSG_2D_P : SimpleKeyword
+        BasisSet
+    G6_311PLUSPLUSG_2DF_2P : SimpleKeyword
+        BasisSet
+    G6_311PLUSPLUSG_2DF_2PD : SimpleKeyword
+        BasisSet
+    G6_311PLUSPLUSG_3DF_3PD : SimpleKeyword
+        BasisSet
+    G6_311PLUSPLUSG_D_P : SimpleKeyword
+        BasisSet
+    G6_311PLUSPLUSGSTARSTAR : SimpleKeyword
+        BasisSet
+    G6_311PLUSG_2D_2P : SimpleKeyword
+        BasisSet
+    G6_311PLUSG_2D_P : SimpleKeyword
+        BasisSet
+    G6_311PLUSG_2D : SimpleKeyword
+        BasisSet
+    G6_311PLUSG_2DF_2P : SimpleKeyword
+        BasisSet
+    G6_311PLUSG_2DF_2PD : SimpleKeyword
+        BasisSet
+    G6_311PLUSG_2DF : SimpleKeyword
+        BasisSet
+    G6_311PLUSG_3DF_2P : SimpleKeyword
+        BasisSet
+    G6_311PLUSG_3DF_3PD : SimpleKeyword
+        BasisSet
+    G6_311PLUSG_3DF : SimpleKeyword
+        BasisSet
+    G6_311PLUSG_D_P : SimpleKeyword
+        BasisSet
+    G6_311PLUSG_D : SimpleKeyword
+        BasisSet
+    G6_311PLUSGSTAR : SimpleKeyword
+        BasisSet
+    G6_311PLUSGSTARSTAR : SimpleKeyword
+        BasisSet
+    G6_311G : SimpleKeyword
+        BasisSet
+    G6_311G_2D_2P : SimpleKeyword
+        BasisSet
+    G6_311G_2D_P : SimpleKeyword
+        BasisSet
+    G6_311G_2D : SimpleKeyword
+        BasisSet
+    G6_311G_2DF_2P : SimpleKeyword
+        BasisSet
+    G6_311G_2DF_2PD : SimpleKeyword
+        BasisSet
+    G6_311G_2DF : SimpleKeyword
+        BasisSet
+    G6_311G_3DF_3PD : SimpleKeyword
+        BasisSet
+    G6_311G_3DF : SimpleKeyword
+        BasisSet
+    G6_311G_D_P : SimpleKeyword
+        BasisSet
+    G6_311G_D : SimpleKeyword
+        BasisSet
+    G6_311GSTAR : SimpleKeyword
+        BasisSet
+    G6_311GSTARSTAR : SimpleKeyword
+        BasisSet
+    G6_31G : SimpleKeyword
+        BasisSet
+    G6_31G_2D_2P : SimpleKeyword
+        BasisSet
+    G6_31G_2D_P : SimpleKeyword
+        BasisSet
+    G6_31G_2D : SimpleKeyword
+        BasisSet
+    G6_31G_2DF_2P : SimpleKeyword
+        BasisSet
+    G6_31G_2DF_2PD : SimpleKeyword
+        BasisSet
+    G6_31G_2DF : SimpleKeyword
+        BasisSet
+    G6_31G_D_P : SimpleKeyword
+        BasisSet
+    G6_31G_D : SimpleKeyword
+        BasisSet
+    G6_31GSTAR : SimpleKeyword
+        BasisSet
+    G6_31GSTARSTAR : SimpleKeyword
+        BasisSet
+    AHGBS_5 : SimpleKeyword
+        BasisSet
+    AHGBS_7 : SimpleKeyword
+        BasisSet
+    AHGBS_9 : SimpleKeyword
+        BasisSet
+    AHGBSP1_5 : SimpleKeyword
+        BasisSet
+    AHGBSP1_7 : SimpleKeyword
+        BasisSet
+    AHGBSP1_9 : SimpleKeyword
+        BasisSet
+    AHGBSP2_5 : SimpleKeyword
+        BasisSet
+    AHGBSP2_7 : SimpleKeyword
+        BasisSet
+    AHGBSP2_9 : SimpleKeyword
+        BasisSet
+    AHGBSP3_5 : SimpleKeyword
+        BasisSet
+    AHGBSP3_7 : SimpleKeyword
+        BasisSet
+    AHGBSP3_9 : SimpleKeyword
+        BasisSet
+    ANO_PC_0 : SimpleKeyword
+        BasisSet
+    ANO_PC_0_POL : SimpleKeyword
+        BasisSet
+    ANO_PV5Z : SimpleKeyword
+        BasisSet
+    ANO_PV6Z : SimpleKeyword
+        BasisSet
+    ANO_PVDZ : SimpleKeyword
+        BasisSet
+    ANO_PVQZ : SimpleKeyword
+        BasisSet
+    ANO_PVTZ : SimpleKeyword
+        BasisSet
+    ANO_RCC_DZP : SimpleKeyword
+        BasisSet
+    ANO_RCC_FULL : SimpleKeyword
+        BasisSet
+    ANO_RCC_MB : SimpleKeyword
+        BasisSet
+    ANO_RCC_QZP : SimpleKeyword
+        BasisSet
+    ANO_RCC_TZP : SimpleKeyword
+        BasisSet
+    ANO_SZ : SimpleKeyword
+        BasisSet
+    ANO_SZ_DKH_SMALL : SimpleKeyword
+        BasisSet
+    APR_CC_PV_QPLUSD_Z : SimpleKeyword
+        BasisSet
+    AUG_ANO_PV5Z : SimpleKeyword
+        BasisSet
+    AUG_ANO_PVDZ : SimpleKeyword
+        BasisSet
+    AUG_ANO_PVQZ : SimpleKeyword
+        BasisSet
+    AUG_ANO_PVTZ : SimpleKeyword
+        BasisSet
+    AUG_CC_PCV5Z : SimpleKeyword
+        BasisSet
+    AUG_CC_PCV5Z_PP : SimpleKeyword
+        BasisSet
+    AUG_CC_PCV6Z : SimpleKeyword
+        BasisSet
+    AUG_CC_PCVDZ : SimpleKeyword
+        BasisSet
+    AUG_CC_PCVDZ_PP : SimpleKeyword
+        BasisSet
+    AUG_CC_PCVQZ : SimpleKeyword
+        BasisSet
+    AUG_CC_PCVQZ_PP : SimpleKeyword
+        BasisSet
+    AUG_CC_PCVTZ : SimpleKeyword
+        BasisSet
+    AUG_CC_PCVTZ_PP : SimpleKeyword
+        BasisSet
+    AUG_CC_PV5_PLUSD_Z : SimpleKeyword
+        BasisSet
+    AUG_CC_PV5Z : SimpleKeyword
+        BasisSet
+    AUG_CC_PV5Z_DK : SimpleKeyword
+        BasisSet
+    AUG_CC_PV5Z_PP : SimpleKeyword
+        BasisSet
+    AUG_CC_PV5Z_PP_OPTRI : SimpleKeyword
+        BasisSet
+    AUG_CC_PV6_PLUSD_Z : SimpleKeyword
+        BasisSet
+    AUG_CC_PV6Z : SimpleKeyword
+        BasisSet
+    AUG_CC_PV7Z : SimpleKeyword
+        BasisSet
+    AUG_CC_PVD_PLUSD_Z : SimpleKeyword
+        BasisSet
+    AUG_CC_PVDZ : SimpleKeyword
+        BasisSet
+    AUG_CC_PVDZ_DK : SimpleKeyword
+        BasisSet
+    AUG_CC_PVDZ_PP : SimpleKeyword
+        BasisSet
+    AUG_CC_PVDZ_PP_OPTRI : SimpleKeyword
+        BasisSet
+    AUG_CC_PVQ_PLUSD_Z : SimpleKeyword
+        BasisSet
+    AUG_CC_PVQZ : SimpleKeyword
+        BasisSet
+    AUG_CC_PVQZ_DK : SimpleKeyword
+        BasisSet
+    AUG_CC_PVQZ_PP : SimpleKeyword
+        BasisSet
+    AUG_CC_PVQZ_PP_OPTRI : SimpleKeyword
+        BasisSet
+    AUG_CC_PVT_PLUSD_Z : SimpleKeyword
+        BasisSet
+    AUG_CC_PVTZ : SimpleKeyword
+        BasisSet
+    AUG_CC_PVTZ_DK : SimpleKeyword
+        BasisSet
+    AUG_CC_PVTZ_J : SimpleKeyword
+        BasisSet
+    AUG_CC_PVTZ_PP : SimpleKeyword
+        BasisSet
+    AUG_CC_PVTZ_PP_OPTRI : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCV5Z : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCV5Z_DK : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCV5Z_PP : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCV5Z_PP_OPTRI : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCVDZ : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCVDZ_DK : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCVDZ_PP : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCVDZ_PP_OPTRI : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCVQZ : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCVQZ_DK : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCVQZ_PP : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCVQZ_PP_OPTRI : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCVTZ : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCVTZ_DK : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCVTZ_PP : SimpleKeyword
+        BasisSet
+    AUG_CC_PWCVTZ_PP_OPTRI : SimpleKeyword
+        BasisSet
+    AUG_PC_0 : SimpleKeyword
+        BasisSet
+    AUG_PC_1 : SimpleKeyword
+        BasisSet
+    AUG_PC_2 : SimpleKeyword
+        BasisSet
+    AUG_PC_3 : SimpleKeyword
+        BasisSet
+    AUG_PC_4 : SimpleKeyword
+        BasisSet
+    AUG_PCH_1 : SimpleKeyword
+        BasisSet
+    AUG_PCH_2 : SimpleKeyword
+        BasisSet
+    AUG_PCH_3 : SimpleKeyword
+        BasisSet
+    AUG_PCH_4 : SimpleKeyword
+        BasisSet
+    AUG_PCJ_0 : SimpleKeyword
+        BasisSet
+    AUG_PCJ_1 : SimpleKeyword
+        BasisSet
+    AUG_PCJ_2 : SimpleKeyword
+        BasisSet
+    AUG_PCJ_3 : SimpleKeyword
+        BasisSet
+    AUG_PCJ_4 : SimpleKeyword
+        BasisSet
+    AUG_PCSEG_0 : SimpleKeyword
+        BasisSet
+    AUG_PCSEG_1 : SimpleKeyword
+        BasisSet
+    AUG_PCSEG_2 : SimpleKeyword
+        BasisSet
+    AUG_PCSEG_3 : SimpleKeyword
+        BasisSet
+    AUG_PCSEG_4 : SimpleKeyword
+        BasisSet
+    AUG_PCSSEG_0 : SimpleKeyword
+        BasisSet
+    AUG_PCSSEG_1 : SimpleKeyword
+        BasisSet
+    AUG_PCSSEG_2 : SimpleKeyword
+        BasisSet
+    AUG_PCSSEG_3 : SimpleKeyword
+        BasisSet
+    AUG_PCSSEG_4 : SimpleKeyword
+        BasisSet
+    AUG_PCX_1 : SimpleKeyword
+        BasisSet
+    AUG_PCX_2 : SimpleKeyword
+        BasisSet
+    AUG_PCX_3 : SimpleKeyword
+        BasisSet
+    AUG_PCX_4 : SimpleKeyword
+        BasisSet
+    CC_PCV5Z : SimpleKeyword
+        BasisSet
+    CC_PCV5Z_PP : SimpleKeyword
+        BasisSet
+    CC_PCV6Z : SimpleKeyword
+        BasisSet
+    CC_PCVDZ : SimpleKeyword
+        BasisSet
+    CC_PCVDZ_F12 : SimpleKeyword
+        BasisSet
+    CC_PCVDZ_F12_OPTRI : SimpleKeyword
+        BasisSet
+    CC_PCVDZ_PP : SimpleKeyword
+        BasisSet
+    CC_PCVQZ : SimpleKeyword
+        BasisSet
+    CC_PCVQZ_F12 : SimpleKeyword
+        BasisSet
+    CC_PCVQZ_F12_OPTRI : SimpleKeyword
+        BasisSet
+    CC_PCVQZ_PP : SimpleKeyword
+        BasisSet
+    CC_PCVTZ : SimpleKeyword
+        BasisSet
+    CC_PCVTZ_F12 : SimpleKeyword
+        BasisSet
+    CC_PCVTZ_F12_OPTRI : SimpleKeyword
+        BasisSet
+    CC_PCVTZ_PP : SimpleKeyword
+        BasisSet
+    CC_PV5_PLUSD_Z : SimpleKeyword
+        BasisSet
+    CC_PV5Z : SimpleKeyword
+        BasisSet
+    CC_PV5Z_DK : SimpleKeyword
+        BasisSet
+    CC_PV5Z_PP : SimpleKeyword
+        BasisSet
+    CC_PV6Z : SimpleKeyword
+        BasisSet
+    CC_PV7Z : SimpleKeyword
+        BasisSet
+    CC_PV8Z : SimpleKeyword
+        BasisSet
+    CC_PVD_PLUSD_Z : SimpleKeyword
+        BasisSet
+    CC_PVDZ : SimpleKeyword
+        BasisSet
+    CC_PVDZ_DK : SimpleKeyword
+        BasisSet
+    CC_PVDZ_DK3 : SimpleKeyword
+        BasisSet
+    CC_PVDZ_F12 : SimpleKeyword
+        BasisSet
+    CC_PVDZ_F12_CABS : SimpleKeyword
+        BasisSet
+    CC_PVDZ_F12_OPTRI : SimpleKeyword
+        BasisSet
+    CC_PVDZ_PP : SimpleKeyword
+        BasisSet
+    CC_PVDZ_PP_F12 : SimpleKeyword
+        BasisSet
+    CC_PVDZ_PP_F12_OPTRI : SimpleKeyword
+        BasisSet
+    CC_PVQ_PLUSD_Z : SimpleKeyword
+        BasisSet
+    CC_PVQZ : SimpleKeyword
+        BasisSet
+    CC_PVQZ_DK : SimpleKeyword
+        BasisSet
+    CC_PVQZ_DK3 : SimpleKeyword
+        BasisSet
+    CC_PVQZ_F12 : SimpleKeyword
+        BasisSet
+    CC_PVQZ_F12_CABS : SimpleKeyword
+        BasisSet
+    CC_PVQZ_F12_OPTRI : SimpleKeyword
+        BasisSet
+    CC_PVQZ_PP : SimpleKeyword
+        BasisSet
+    CC_PVQZ_PP_F12 : SimpleKeyword
+        BasisSet
+    CC_PVQZ_PP_F12_OPTRI : SimpleKeyword
+        BasisSet
+    CC_PVT_PLUSD_Z : SimpleKeyword
+        BasisSet
+    CC_PVTZ : SimpleKeyword
+        BasisSet
+    CC_PVTZ_DK : SimpleKeyword
+        BasisSet
+    CC_PVTZ_DK3 : SimpleKeyword
+        BasisSet
+    CC_PVTZ_F12 : SimpleKeyword
+        BasisSet
+    CC_PVTZ_F12_CABS : SimpleKeyword
+        BasisSet
+    CC_PVTZ_F12_OPTRI : SimpleKeyword
+        BasisSet
+    CC_PVTZ_PP : SimpleKeyword
+        BasisSet
+    CC_PVTZ_PP_F12 : SimpleKeyword
+        BasisSet
+    CC_PVTZ_PP_F12_OPTRI : SimpleKeyword
+        BasisSet
+    CC_PWCV5Z : SimpleKeyword
+        BasisSet
+    CC_PWCV5Z_DK : SimpleKeyword
+        BasisSet
+    CC_PWCV5Z_PP : SimpleKeyword
+        BasisSet
+    CC_PWCVDZ : SimpleKeyword
+        BasisSet
+    CC_PWCVDZ_DK : SimpleKeyword
+        BasisSet
+    CC_PWCVDZ_DK3 : SimpleKeyword
+        BasisSet
+    CC_PWCVDZ_PP : SimpleKeyword
+        BasisSet
+    CC_PWCVQZ : SimpleKeyword
+        BasisSet
+    CC_PWCVQZ_DK : SimpleKeyword
+        BasisSet
+    CC_PWCVQZ_DK3 : SimpleKeyword
+        BasisSet
+    CC_PWCVQZ_PP : SimpleKeyword
+        BasisSet
+    CC_PWCVTZ : SimpleKeyword
+        BasisSet
+    CC_PWCVTZ_DK : SimpleKeyword
+        BasisSet
+    CC_PWCVTZ_DK3 : SimpleKeyword
+        BasisSet
+    CC_PWCVTZ_PP : SimpleKeyword
+        BasisSet
+    CP : SimpleKeyword
+        BasisSet
+    CP_PPP : SimpleKeyword
+        BasisSet
+    CRENBL : SimpleKeyword
+        BasisSet
+    D95 : SimpleKeyword
+        BasisSet
+    D95P : SimpleKeyword
+        BasisSet
+    DEF_SV_P : SimpleKeyword
+        BasisSet
+    DEF_SVP : SimpleKeyword
+        BasisSet
+    DEF_TZVP : SimpleKeyword
+        BasisSet
+    DEF_TZVPP : SimpleKeyword
+        BasisSet
+    DEF2_MSVP : SimpleKeyword
+        BasisSet
+    DEF2_MTZVP : SimpleKeyword
+        BasisSet
+    DEF2_MTZVPP : SimpleKeyword
+        BasisSet
+    DEF2_QZVP : SimpleKeyword
+        BasisSet
+    DEF2_QZVPD : SimpleKeyword
+        BasisSet
+    DEF2_QZVPP : SimpleKeyword
+        BasisSet
+    DEF2_QZVPPD : SimpleKeyword
+        BasisSet
+    DEF2_SV_P : SimpleKeyword
+        BasisSet
+    DEF2_SVP : SimpleKeyword
+        BasisSet
+    DEF2_SVPD : SimpleKeyword
+        BasisSet
+    DEF2_TZVP : SimpleKeyword
+        BasisSet
+    DEF2_TZVP_F : SimpleKeyword
+        BasisSet
+    DEF2_TZVPD : SimpleKeyword
+        BasisSet
+    DEF2_TZVPP : SimpleKeyword
+        BasisSet
+    DEF2_TZVPPD : SimpleKeyword
+        BasisSet
+    DHF_QZVP : SimpleKeyword
+        BasisSet
+    DHF_QZVP_2C : SimpleKeyword
+        BasisSet
+    DHF_QZVPP : SimpleKeyword
+        BasisSet
+    DHF_QZVPP_2C : SimpleKeyword
+        BasisSet
+    DHF_SV_P : SimpleKeyword
+        BasisSet
+    DHF_SV_P_2C : SimpleKeyword
+        BasisSet
+    DHF_SVP : SimpleKeyword
+        BasisSet
+    DHF_SVP_2C : SimpleKeyword
+        BasisSet
+    DHF_TZVP : SimpleKeyword
+        BasisSet
+    DHF_TZVP_2C : SimpleKeyword
+        BasisSet
+    DHF_TZVPP : SimpleKeyword
+        BasisSet
+    DHF_TZVPP_2C : SimpleKeyword
+        BasisSet
+    DKH_DEF2_QZVPP : SimpleKeyword
+        BasisSet
+    DKH_DEF2_SV_P : SimpleKeyword
+        BasisSet
+    DKH_DEF2_SVP : SimpleKeyword
+        BasisSet
+    DKH_DEF2_TZVP : SimpleKeyword
+        BasisSet
+    DKH_DEF2_TZVP_F : SimpleKeyword
+        BasisSet
+    DKH_DEF2_TZVPP : SimpleKeyword
+        BasisSet
+    DKH_MA_DEF2_QZVPP : SimpleKeyword
+        BasisSet
+    DKH_MA_DEF2_SV_P : SimpleKeyword
+        BasisSet
+    DKH_MA_DEF2_SVP : SimpleKeyword
+        BasisSet
+    DKH_MA_DEF2_TZVP : SimpleKeyword
+        BasisSet
+    DKH_MA_DEF2_TZVP_F : SimpleKeyword
+        BasisSet
+    DKH_MA_DEF2_TZVPP : SimpleKeyword
+        BasisSet
+    DKH_QZVP : SimpleKeyword
+        BasisSet
+    DKH_QZVPP : SimpleKeyword
+        BasisSet
+    DKH_SV_P : SimpleKeyword
+        BasisSet
+    DKH_SVP : SimpleKeyword
+        BasisSet
+    DKH_TZV_P : SimpleKeyword
+        BasisSet
+    DKH_TZVP : SimpleKeyword
+        BasisSet
+    DKH_TZVPP : SimpleKeyword
+        BasisSet
+    EPR_II : SimpleKeyword
+        BasisSet
+    EPR_III : SimpleKeyword
+        BasisSet
+    GFN1BASIS : SimpleKeyword
+        BasisSet
+    GFN2BASIS : SimpleKeyword
+        BasisSet
+    HAV_5PLUSD_Z : SimpleKeyword
+        BasisSet
+    HAV_QPLUSD_Z : SimpleKeyword
+        BasisSet
+    HAV_TPLUSD_Z : SimpleKeyword
+        BasisSet
+    HAV5Z_PLUSD : SimpleKeyword
+        BasisSet
+    HAVQZ_PLUSD : SimpleKeyword
+        BasisSet
+    HAVTZ_PLUSD : SimpleKeyword
+        BasisSet
+    HGBS_5 : SimpleKeyword
+        BasisSet
+    HGBS_7 : SimpleKeyword
+        BasisSet
+    HGBS_9 : SimpleKeyword
+        BasisSet
+    HGBSP1_5 : SimpleKeyword
+        BasisSet
+    HGBSP1_7 : SimpleKeyword
+        BasisSet
+    HGBSP1_9 : SimpleKeyword
+        BasisSet
+    HGBSP2_5 : SimpleKeyword
+        BasisSet
+    HGBSP2_7 : SimpleKeyword
+        BasisSet
+    HGBSP2_9 : SimpleKeyword
+        BasisSet
+    HGBSP3_5 : SimpleKeyword
+        BasisSet
+    HGBSP3_7 : SimpleKeyword
+        BasisSet
+    HGBSP3_9 : SimpleKeyword
+        BasisSet
+    IGLO_II : SimpleKeyword
+        BasisSet
+    IGLO_III : SimpleKeyword
+        BasisSet
+    JUL_CC_PV_DPLUSD_Z : SimpleKeyword
+        BasisSet
+    JUL_CC_PV_QPLUSD_Z : SimpleKeyword
+        BasisSet
+    JUL_CC_PV_TPLUSD_Z : SimpleKeyword
+        BasisSet
+    JUN_CC_PV_DPLUSD_Z : SimpleKeyword
+        BasisSet
+    JUN_CC_PV_QPLUSD_Z : SimpleKeyword
+        BasisSet
+    JUN_CC_PV_TPLUSD_Z : SimpleKeyword
+        BasisSet
+    LANL08 : SimpleKeyword
+        BasisSet
+    LANL08_F : SimpleKeyword
+        BasisSet
+    LANL2DZ : SimpleKeyword
+        BasisSet
+    LANL2TZ : SimpleKeyword
+        BasisSet
+    LANL2TZ_F : SimpleKeyword
+        BasisSet
+    M6_31G : SimpleKeyword
+        BasisSet
+    M6_31GSTAR : SimpleKeyword
+        BasisSet
+    MA_DEF_TZVP : SimpleKeyword
+        BasisSet
+    MA_DEF2_MSVP : SimpleKeyword
+        BasisSet
+    MA_DEF2_QZVP : SimpleKeyword
+        BasisSet
+    MA_DEF2_QZVPP : SimpleKeyword
+        BasisSet
+    MA_DEF2_SV_P : SimpleKeyword
+        BasisSet
+    MA_DEF2_SVP : SimpleKeyword
+        BasisSet
+    MA_DEF2_TZVP : SimpleKeyword
+        BasisSet
+    MA_DEF2_TZVP_F : SimpleKeyword
+        BasisSet
+    MA_DEF2_TZVPP : SimpleKeyword
+        BasisSet
+    MA_DKH_DEF2_QZVPP : SimpleKeyword
+        BasisSet
+    MA_DKH_DEF2_SV_P : SimpleKeyword
+        BasisSet
+    MA_DKH_DEF2_SVP : SimpleKeyword
+        BasisSet
+    MA_DKH_DEF2_TZVP : SimpleKeyword
+        BasisSet
+    MA_DKH_DEF2_TZVP_F : SimpleKeyword
+        BasisSet
+    MA_DKH_DEF2_TZVPP : SimpleKeyword
+        BasisSet
+    MA_ZORA_DEF2_QZVPP : SimpleKeyword
+        BasisSet
+    MA_ZORA_DEF2_SV_P : SimpleKeyword
+        BasisSet
+    MA_ZORA_DEF2_SVP : SimpleKeyword
+        BasisSet
+    MA_ZORA_DEF2_TZVP : SimpleKeyword
+        BasisSet
+    MA_ZORA_DEF2_TZVP_F : SimpleKeyword
+        BasisSet
+    MA_ZORA_DEF2_TZVPP : SimpleKeyword
+        BasisSet
+    MAUG_CC_PV_DPLUSD_Z : SimpleKeyword
+        BasisSet
+    MAUG_CC_PV_QPLUSD_Z : SimpleKeyword
+        BasisSet
+    MAUG_CC_PV_TPLUSD_Z : SimpleKeyword
+        BasisSet
+    MAY_CC_PV_QPLUSD_Z : SimpleKeyword
+        BasisSet
+    MAY_CC_PV_TPLUSD_Z : SimpleKeyword
+        BasisSet
+    MIDI : SimpleKeyword
+        BasisSet
+    MINAO : SimpleKeyword
+        BasisSet
+    MINAO_AUTO_PP : SimpleKeyword
+        BasisSet
+    MINI : SimpleKeyword
+        BasisSet
+    MINIS : SimpleKeyword
+        BasisSet
+    MINIX : SimpleKeyword
+        BasisSet
+    OLD_DKH_SV_P : SimpleKeyword
+        BasisSet
+    OLD_DKH_SVP : SimpleKeyword
+        BasisSet
+    OLD_DKH_TZV_P : SimpleKeyword
+        BasisSet
+    OLD_DKH_TZVP : SimpleKeyword
+        BasisSet
+    OLD_DKH_TZVPP : SimpleKeyword
+        BasisSet
+    OLD_SV : SimpleKeyword
+        BasisSet
+    OLD_SV_P : SimpleKeyword
+        BasisSet
+    OLD_SVP : SimpleKeyword
+        BasisSet
+    OLD_TZV : SimpleKeyword
+        BasisSet
+    OLD_TZV_P : SimpleKeyword
+        BasisSet
+    OLD_TZVP : SimpleKeyword
+        BasisSet
+    OLD_TZVPP : SimpleKeyword
+        BasisSet
+    OLD_ZORA_SV_P : SimpleKeyword
+        BasisSet
+    OLD_ZORA_SVP : SimpleKeyword
+        BasisSet
+    OLD_ZORA_TZV_P : SimpleKeyword
+        BasisSet
+    OLD_ZORA_TZVP : SimpleKeyword
+        BasisSet
+    OLD_ZORA_TZVPP : SimpleKeyword
+        BasisSet
+    PARTRIDGE_1 : SimpleKeyword
+        BasisSet
+    PARTRIDGE_2 : SimpleKeyword
+        BasisSet
+    PARTRIDGE_3 : SimpleKeyword
+        BasisSet
+    PARTRIDGE_4 : SimpleKeyword
+        BasisSet
+    PC_0 : SimpleKeyword
+        BasisSet
+    PC_1 : SimpleKeyword
+        BasisSet
+    PC_2 : SimpleKeyword
+        BasisSet
+    PC_3 : SimpleKeyword
+        BasisSet
+    PC_4 : SimpleKeyword
+        BasisSet
+    PCH_1 : SimpleKeyword
+        BasisSet
+    PCH_2 : SimpleKeyword
+        BasisSet
+    PCH_3 : SimpleKeyword
+        BasisSet
+    PCH_4 : SimpleKeyword
+        BasisSet
+    PCJ_0 : SimpleKeyword
+        BasisSet
+    PCJ_1 : SimpleKeyword
+        BasisSet
+    PCJ_2 : SimpleKeyword
+        BasisSet
+    PCJ_3 : SimpleKeyword
+        BasisSet
+    PCJ_4 : SimpleKeyword
+        BasisSet
+    PCSEG_0 : SimpleKeyword
+        BasisSet
+    PCSEG_1 : SimpleKeyword
+        BasisSet
+    PCSEG_2 : SimpleKeyword
+        BasisSet
+    PCSEG_3 : SimpleKeyword
+        BasisSet
+    PCSEG_4 : SimpleKeyword
+        BasisSet
+    PCSSEG_0 : SimpleKeyword
+        BasisSet
+    PCSSEG_1 : SimpleKeyword
+        BasisSet
+    PCSSEG_2 : SimpleKeyword
+        BasisSet
+    PCSSEG_3 : SimpleKeyword
+        BasisSet
+    PCSSEG_4 : SimpleKeyword
+        BasisSet
+    PCX_1 : SimpleKeyword
+        BasisSet
+    PCX_2 : SimpleKeyword
+        BasisSet
+    PCX_3 : SimpleKeyword
+        BasisSet
+    PCX_4 : SimpleKeyword
+        BasisSet
+    QZVP : SimpleKeyword
+        BasisSet
+    QZVPP : SimpleKeyword
+        BasisSet
+    SAPPORO_DKH3_DZP_2012 : SimpleKeyword
+        BasisSet
+    SAPPORO_DKH3_QZP_2012 : SimpleKeyword
+        BasisSet
+    SAPPORO_DKH3_TZP_2012 : SimpleKeyword
+        BasisSet
+    SAPPORO_DZP_2012 : SimpleKeyword
+        BasisSet
+    SAPPORO_QZP_2012 : SimpleKeyword
+        BasisSet
+    SAPPORO_TZP_2012 : SimpleKeyword
+        BasisSet
+    SARC_DKH_SVP : SimpleKeyword
+        BasisSet
+    SARC_DKH_TZVP : SimpleKeyword
+        BasisSet
+    SARC_DKH_TZVPP : SimpleKeyword
+        BasisSet
+    SARC_ZORA_SVP : SimpleKeyword
+        BasisSet
+    SARC_ZORA_TZVP : SimpleKeyword
+        BasisSet
+    SARC_ZORA_TZVPP : SimpleKeyword
+        BasisSet
+    SARC2_DKH_QZV : SimpleKeyword
+        BasisSet
+    SARC2_DKH_QZVP : SimpleKeyword
+        BasisSet
+    SARC2_ZORA_QZV : SimpleKeyword
+        BasisSet
+    SARC2_ZORA_QZVP : SimpleKeyword
+        BasisSet
+    SAUG_ANO_PV5Z : SimpleKeyword
+        BasisSet
+    SAUG_ANO_PVDZ : SimpleKeyword
+        BasisSet
+    SAUG_ANO_PVQZ : SimpleKeyword
+        BasisSet
+    SAUG_ANO_PVTZ : SimpleKeyword
+        BasisSet
+    STO_3G : SimpleKeyword
+        BasisSet
+    SV : SimpleKeyword
+        BasisSet
+    SV_P : SimpleKeyword
+        BasisSet
+    SVP : SimpleKeyword
+        BasisSet
+    TZV : SimpleKeyword
+        BasisSet
+    TZV_P : SimpleKeyword
+        BasisSet
+    TZVP : SimpleKeyword
+        BasisSet
+    TZVPP : SimpleKeyword
+        BasisSet
+    UGBS : SimpleKeyword
+        BasisSet
+    VDZP : SimpleKeyword
+        BasisSet
+    W1_DZ : SimpleKeyword
+        BasisSet
+    W1_MTSMALL : SimpleKeyword
+        BasisSet
+    W1_OPT : SimpleKeyword
+        BasisSet
+    W1_QZ : SimpleKeyword
+        BasisSet
+    W1_TZ : SimpleKeyword
+        BasisSet
+    WACHTERSPLUSF : SimpleKeyword
+        BasisSet
+    X2C_QZVPALL : SimpleKeyword
+        BasisSet
+    X2C_QZVPALL_2C : SimpleKeyword
+        BasisSet
+    X2C_QZVPALL_2C_S : SimpleKeyword
+        BasisSet
+    X2C_QZVPALL_S : SimpleKeyword
+        BasisSet
+    X2C_QZVPPALL : SimpleKeyword
+        BasisSet
+    X2C_QZVPPALL_2C : SimpleKeyword
+        BasisSet
+    X2C_QZVPPALL_2C_S : SimpleKeyword
+        BasisSet
+    X2C_QZVPPALL_S : SimpleKeyword
+        BasisSet
+    X2C_SV_P_ALL : SimpleKeyword
+        BasisSet
+    X2C_SV_P_ALL_2C : SimpleKeyword
+        BasisSet
+    X2C_SV_P_ALL_S : SimpleKeyword
+        BasisSet
+    X2C_SVPALL : SimpleKeyword
+        BasisSet
+    X2C_SVPALL_2C : SimpleKeyword
+        BasisSet
+    X2C_SVPALL_S : SimpleKeyword
+        BasisSet
+    X2C_TZVPALL : SimpleKeyword
+        BasisSet
+    X2C_TZVPALL_2C : SimpleKeyword
+        BasisSet
+    X2C_TZVPALL_S : SimpleKeyword
+        BasisSet
+    X2C_TZVPPALL : SimpleKeyword
+        BasisSet
+    X2C_TZVPPALL_2C : SimpleKeyword
+        BasisSet
+    X2C_TZVPPALL_S : SimpleKeyword
+        BasisSet
+    ZORA_DEF2_QZVPP : SimpleKeyword
+        BasisSet
+    ZORA_DEF2_SV_P : SimpleKeyword
+        BasisSet
+    ZORA_DEF2_SVP : SimpleKeyword
+        BasisSet
+    ZORA_DEF2_TZVP : SimpleKeyword
+        BasisSet
+    ZORA_DEF2_TZVP_F : SimpleKeyword
+        BasisSet
+    ZORA_DEF2_TZVPP : SimpleKeyword
+        BasisSet
+    ZORA_MA_DEF2_QZVPP : SimpleKeyword
+        BasisSet
+    ZORA_MA_DEF2_SV_P : SimpleKeyword
+        BasisSet
+    ZORA_MA_DEF2_SVP : SimpleKeyword
+        BasisSet
+    ZORA_MA_DEF2_TZVP : SimpleKeyword
+        BasisSet
+    ZORA_MA_DEF2_TZVP_F : SimpleKeyword
+        BasisSet
+    ZORA_MA_DEF2_TZVPP : SimpleKeyword
+        BasisSet
+    ZORA_QZVP : SimpleKeyword
+        BasisSet
+    ZORA_QZVPP : SimpleKeyword
+        BasisSet
+    ZORA_SV_P : SimpleKeyword
+        BasisSet
+    ZORA_SVP : SimpleKeyword
+        BasisSet
+    ZORA_TZV_P : SimpleKeyword
+        BasisSet
+    ZORA_TZVP : SimpleKeyword
+        BasisSet
+    ZORA_TZVPP : SimpleKeyword
+        BasisSet
+    """
 
     G3_21G = SimpleKeyword("3-21g")
     G3_21GSP = SimpleKeyword("3-21gsp")

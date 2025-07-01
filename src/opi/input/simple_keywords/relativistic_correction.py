@@ -7,7 +7,71 @@ __all__ = ("RelativisticCorrection",)
 
 
 class RelativisticCorrection(SimpleKeywordBox):
-    """Enum to store all simple keywords of type RelativisticCorrection"""
+    """Enum to store all simple keywords of type RelativisticCorrection.
+
+    Attributes
+    ----------
+    AMFI : SimpleKeyword
+        RelativisticCorrection
+    DBOC : SimpleKeyword
+        RelativisticCorrection
+    DKH : SimpleKeyword
+        RelativisticCorrection
+    DKH1 : SimpleKeyword
+        RelativisticCorrection
+    DKH2 : SimpleKeyword
+        RelativisticCorrection
+    DLU_X2C : SimpleKeyword
+        RelativisticCorrection
+    IORA : SimpleKeyword
+        RelativisticCorrection
+    IORA_RI : SimpleKeyword
+        RelativisticCorrection
+    IORAMM_RI : SimpleKeyword
+        RelativisticCorrection
+    NESC : SimpleKeyword
+        RelativisticCorrection
+    NODBOC : SimpleKeyword
+        RelativisticCorrection
+    NOSOCENERGY : SimpleKeyword
+        RelativisticCorrection
+    REL1C : SimpleKeyword
+        RelativisticCorrection
+    RELDLU : SimpleKeyword
+        RelativisticCorrection
+    RELFULL : SimpleKeyword
+        RelativisticCorrection
+    RI_SOMF : SimpleKeyword
+        RelativisticCorrection
+    RI_SOMF_1X : SimpleKeyword
+        RelativisticCorrection
+    RI_SOMF_4X : SimpleKeyword
+        RelativisticCorrection
+    RI_SOMF_4XS : SimpleKeyword
+        RelativisticCorrection
+    SOCENERGY : SimpleKeyword
+        RelativisticCorrection
+    SOMF : SimpleKeyword
+        RelativisticCorrection
+    SOMF_1X : SimpleKeyword
+        RelativisticCorrection
+    SOMF_4X : SimpleKeyword
+        RelativisticCorrection
+    SOMF_4XS : SimpleKeyword
+        RelativisticCorrection
+    VEFF_SOC : SimpleKeyword
+        RelativisticCorrection
+    VEFF_2X_SOC : SimpleKeyword
+        RelativisticCorrection
+    X2C : SimpleKeyword
+        RelativisticCorrection
+    ZEFF_SOC : SimpleKeyword
+        RelativisticCorrection
+    ZORA : SimpleKeyword
+        RelativisticCorrection
+    ZORA_RI : SimpleKeyword
+        RelativisticCorrection
+    """
 
     AMFI = SimpleKeyword("amfi")
     DBOC = SimpleKeyword("dboc")

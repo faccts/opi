@@ -7,35 +7,99 @@ __all__ = ("BasisOption",)
 
 
 class BasisOption(SimpleKeywordBox):
-    """Enum to store all simple keywords of type BasisOption"""
+    """Enum to store all simple keywords of type BasisOption.
 
-    ANOBASIS = SimpleKeyword("anobasis")  # Modifies a selected basis
-    DECONTRACT = SimpleKeyword("decontract")  # Modifies a selected basis
-    DECONTRACTAUX = SimpleKeyword("decontractaux")  # Modifies a selected basis
-    DECONTRACTAUXC = SimpleKeyword("decontractauxc")  # Modifies a selected basis
-    DECONTRACTAUXJ = SimpleKeyword("decontractauxj")  # Modifies a selected basis
-    DECONTRACTAUXJK = SimpleKeyword("decontractauxjk")  # Modifies a selected basis
-    DECONTRACTBAS = SimpleKeyword("decontractbas")  # Modifies a selected basis
-    DECONTRACTCABS = SimpleKeyword("decontractcabs")  # Modifies a selected basis
-    NOANOBASIS = SimpleKeyword("noanobasis")  # Modifies a selected basis
-    NODECONTRACT = SimpleKeyword("nodecontract")  # Modifies a selected basis
-    NODECONTRACTAUX = SimpleKeyword("nodecontractaux")  # Modifies a selected basis
-    NODECONTRACTAUXC = SimpleKeyword("nodecontractauxc")  # Modifies a selected basis
-    NODECONTRACTAUXJ = SimpleKeyword("nodecontractauxj")  # Modifies a selected basis
-    NODECONTRACTAUXJK = SimpleKeyword("nodecontractauxjk")  # Modifies a selected basis
-    NODECONTRACTBAS = SimpleKeyword("nodecontractbas")  # Modifies a selected basis
-    NODECONTRACTCABS = SimpleKeyword("nodecontractcabs")  # Modifies a selected basis
-    NOUNCONTRACT = SimpleKeyword("nouncontract")  # Modifies a selected basis
-    NOUNCONTRACTAUX = SimpleKeyword("nouncontractaux")  # Modifies a selected basis
-    NOUNCONTRACTAUXC = SimpleKeyword("nouncontractauxc")  # Modifies a selected basis
-    NOUNCONTRACTAUXJ = SimpleKeyword("nouncontractauxj")  # Modifies a selected basis
-    NOUNCONTRACTAUXJK = SimpleKeyword("nouncontractauxjk")  # Modifies a selected basis
-    NOUNCONTRACTBAS = SimpleKeyword("nouncontractbas")  # Modifies a selected basis
-    NOUNCONTRACTCABS = SimpleKeyword("nouncontractcabs")  # Modifies a selected basis
-    UNCONTRACT = SimpleKeyword("uncontract")  # Modifies a selected basis
-    UNCONTRACTAUX = SimpleKeyword("uncontractaux")  # Modifies a selected basis
-    UNCONTRACTAUXC = SimpleKeyword("uncontractauxc")  # Modifies a selected basis
-    UNCONTRACTAUXJ = SimpleKeyword("uncontractauxj")  # Modifies a selected basis
-    UNCONTRACTAUXJK = SimpleKeyword("uncontractauxjk")  # Modifies a selected basis
-    UNCONTRACTBAS = SimpleKeyword("uncontractbas")  # Modifies a selected basis
-    UNCONTRACTCABS = SimpleKeyword("uncontractcabs")  # Modifies a selected basis
+    Attributes
+    ----------
+    ANOBASIS : SimpleKeyword
+        Modifies a selected basis
+    DECONTRACT : SimpleKeyword
+        Modifies a selected basis
+    DECONTRACTAUX : SimpleKeyword
+        Modifies a selected basis
+    DECONTRACTAUXC : SimpleKeyword
+        Modifies a selected basis
+    DECONTRACTAUXJ : SimpleKeyword
+        Modifies a selected basis
+    DECONTRACTAUXJK : SimpleKeyword
+        Modifies a selected basis
+    DECONTRACTBAS : SimpleKeyword
+        Modifies a selected basis
+    DECONTRACTCABS : SimpleKeyword
+        Modifies a selected basis
+    NOANOBASIS : SimpleKeyword
+        Modifies a selected basis
+    NODECONTRACT : SimpleKeyword
+        Modifies a selected basis
+    NODECONTRACTAUX : SimpleKeyword
+        Modifies a selected basis
+    NODECONTRACTAUXC : SimpleKeyword
+        Modifies a selected basis
+    NODECONTRACTAUXJ : SimpleKeyword
+        Modifies a selected basis
+    NODECONTRACTAUXJK : SimpleKeyword
+        Modifies a selected basis
+    NODECONTRACTBAS : SimpleKeyword
+        Modifies a selected basis
+    NODECONTRACTCABS : SimpleKeyword
+        Modifies a selected basis
+    NOUNCONTRACT : SimpleKeyword
+        Modifies a selected basis
+    NOUNCONTRACTAUX : SimpleKeyword
+        Modifies a selected basis
+    NOUNCONTRACTAUXC : SimpleKeyword
+        Modifies a selected basis
+    NOUNCONTRACTAUXJ : SimpleKeyword
+        Modifies a selected basis
+    NOUNCONTRACTAUXJK : SimpleKeyword
+        Modifies a selected basis
+    NOUNCONTRACTBAS : SimpleKeyword
+        Modifies a selected basis
+    NOUNCONTRACTCABS : SimpleKeyword
+        Modifies a selected basis
+    UNCONTRACT : SimpleKeyword
+        Modifies a selected basis
+    UNCONTRACTAUX : SimpleKeyword
+        Modifies a selected basis
+    UNCONTRACTAUXC : SimpleKeyword
+        Modifies a selected basis
+    UNCONTRACTAUXJ : SimpleKeyword
+        Modifies a selected basis
+    UNCONTRACTAUXJK : SimpleKeyword
+        Modifies a selected basis
+    UNCONTRACTBAS : SimpleKeyword
+        Modifies a selected basis
+    UNCONTRACTCABS : SimpleKeyword
+        Modifies a selected basis
+    """
+
+    ANOBASIS = SimpleKeyword("anobasis")
+    DECONTRACT = SimpleKeyword("decontract")
+    DECONTRACTAUX = SimpleKeyword("decontractaux")
+    DECONTRACTAUXC = SimpleKeyword("decontractauxc")
+    DECONTRACTAUXJ = SimpleKeyword("decontractauxj")
+    DECONTRACTAUXJK = SimpleKeyword("decontractauxjk")
+    DECONTRACTBAS = SimpleKeyword("decontractbas")
+    DECONTRACTCABS = SimpleKeyword("decontractcabs")
+    NOANOBASIS = SimpleKeyword("noanobasis")
+    NODECONTRACT = SimpleKeyword("nodecontract")
+    NODECONTRACTAUX = SimpleKeyword("nodecontractaux")
+    NODECONTRACTAUXC = SimpleKeyword("nodecontractauxc")
+    NODECONTRACTAUXJ = SimpleKeyword("nodecontractauxj")
+    NODECONTRACTAUXJK = SimpleKeyword("nodecontractauxjk")
+    NODECONTRACTBAS = SimpleKeyword("nodecontractbas")
+    NODECONTRACTCABS = SimpleKeyword("nodecontractcabs")
+    NOUNCONTRACT = SimpleKeyword("nouncontract")
+    NOUNCONTRACTAUX = SimpleKeyword("nouncontractaux")
+    NOUNCONTRACTAUXC = SimpleKeyword("nouncontractauxc")
+    NOUNCONTRACTAUXJ = SimpleKeyword("nouncontractauxj")
+    NOUNCONTRACTAUXJK = SimpleKeyword("nouncontractauxjk")
+    NOUNCONTRACTBAS = SimpleKeyword("nouncontractbas")
+    NOUNCONTRACTCABS = SimpleKeyword("nouncontractcabs")
+    UNCONTRACT = SimpleKeyword("uncontract")
+    UNCONTRACTAUX = SimpleKeyword("uncontractaux")
+    UNCONTRACTAUXC = SimpleKeyword("uncontractauxc")
+    UNCONTRACTAUXJ = SimpleKeyword("uncontractauxj")
+    UNCONTRACTAUXJK = SimpleKeyword("uncontractauxjk")
+    UNCONTRACTBAS = SimpleKeyword("uncontractbas")
+    UNCONTRACTCABS = SimpleKeyword("uncontractcabs")

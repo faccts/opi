@@ -7,10 +7,30 @@ __all__ = ("Property",)
 
 
 class Property(SimpleKeywordBox):
-    """Enum to store all simple keywords of type Property"""
+    """Enum to store all simple keywords of type Property.
 
-    NMR = SimpleKeyword("nmr")  # Calculate NMR parameters
-    G_TENSOR = SimpleKeyword("g-tensor")  # Calculate EPR parameters
+    Attributes
+    ----------
+    NMR : SimpleKeyword
+        Calculate NMR parameters
+    G_TENSOR : SimpleKeyword
+        Calculate EPR parameters
+    UCO : SimpleKeyword
+        Property
+    NOUCO : SimpleKeyword
+        Property
+    UNO : SimpleKeyword
+        Property
+    NOUNO : SimpleKeyword
+        Property
+    NBO : SimpleKeyword
+        Property
+    NONBO : SimpleKeyword
+        Property
+    """
+
+    NMR = SimpleKeyword("nmr")
+    G_TENSOR = SimpleKeyword("g-tensor")
     UCO = SimpleKeyword("uco")
     NOUCO = SimpleKeyword("nouco")
     UNO = SimpleKeyword("uno")

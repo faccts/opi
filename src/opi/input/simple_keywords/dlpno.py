@@ -7,14 +7,30 @@ __all__ = ("Dlpno",)
 
 
 class Dlpno(SimpleKeywordBox):
-    """Enum to store all simple keywords of type Dlpno"""
+    """Enum to store all simple keywords of type Dlpno.
 
-    HFLD = SimpleKeyword(
-        "hfld"
-    )  # HF + Dispersion energy decomposition  as cheaper alternative to DLPNO-CCSD(T) LED
-    LED = SimpleKeyword("led")  # Energy decomposition for DLPNO-CCSD(T)
-    LOOSEPNO = SimpleKeyword("loosepno")  # loose PNO settings
-    NORMALPNO = SimpleKeyword("normalpno")  # normal PNO settings
-    TIGHTPNO = SimpleKeyword("tightpno")  # Tight PNO settings
+    Attributes
+    ----------
+    HFLD : SimpleKeyword
+        HF + Dispersion energy decomposition  as cheaper alternative to DLPNO-CCSD(T) LED
+    LED : SimpleKeyword
+        Energy decomposition for DLPNO-CCSD(T)
+    LOOSEPNO : SimpleKeyword
+        loose PNO settings
+    NORMALPNO : SimpleKeyword
+        normal PNO settings
+    TIGHTPNO : SimpleKeyword
+        Tight PNO settings
+    ADLD : SimpleKeyword
+        Dlpno
+    PNOEXTRAPOLATION : SimpleKeyword
+        automatic extrapolation of PNO space
+    """
+
+    HFLD = SimpleKeyword("hfld")
+    LED = SimpleKeyword("led")
+    LOOSEPNO = SimpleKeyword("loosepno")
+    NORMALPNO = SimpleKeyword("normalpno")
+    TIGHTPNO = SimpleKeyword("tightpno")
     ADLD = SimpleKeyword("adld")
-    PNOEXTRAPOLATION = SimpleKeyword("pnoextrapolation")  # automatic extrapolation of PNO space
+    PNOEXTRAPOLATION = SimpleKeyword("pnoextrapolation")

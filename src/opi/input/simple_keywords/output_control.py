@@ -7,7 +7,37 @@ __all__ = ("OutputControl",)
 
 
 class OutputControl(SimpleKeywordBox):
-    """Enum to store all simple keywords of type OutputControl"""
+    """Enum to store all simple keywords of type OutputControl.
+
+    Attributes
+    ----------
+    MINIPRINT : SimpleKeyword
+        OutputControl
+    SMALLPRINT : SimpleKeyword
+        OutputControl
+    NORMALPRINT : SimpleKeyword
+        OutputControl
+    LARGEPRINT : SimpleKeyword
+        OutputControl
+    SCFSOLVERTIME : SimpleKeyword
+        OutputControl
+    PRINTGAP : SimpleKeyword
+        OutputControl
+    PRINTMOS : SimpleKeyword
+        OutputControl
+    PRINTBASIS : SimpleKeyword
+        printbas
+    GRIDPRINT : SimpleKeyword
+        Print grid information
+    WRITEONLYINITIALPROPFILE : SimpleKeyword
+        Only write property file for first geometry
+    NOMOPRINT : SimpleKeyword
+        OutputControl
+    NOPROPFILE : SimpleKeyword
+        Write no property file
+    NOPRINTMOS : SimpleKeyword
+        OutputControl
+    """
 
     MINIPRINT = SimpleKeyword("miniprint")
     SMALLPRINT = SimpleKeyword("smallprint")
@@ -16,11 +46,9 @@ class OutputControl(SimpleKeywordBox):
     SCFSOLVERTIME = SimpleKeyword("scfsolvertime")
     PRINTGAP = SimpleKeyword("printgap")
     PRINTMOS = SimpleKeyword("printmos")
-    PRINTBASIS = SimpleKeyword("printbasis")  # printbas
-    GRIDPRINT = SimpleKeyword("gridprint")  # Print grid information
-    WRITEONLYINITIALPROPFILE = SimpleKeyword(
-        "writeonlyinitialpropfile"
-    )  # Only write property file for first geometry
+    PRINTBASIS = SimpleKeyword("printbasis")
+    GRIDPRINT = SimpleKeyword("gridprint")
+    WRITEONLYINITIALPROPFILE = SimpleKeyword("writeonlyinitialpropfile")
     NOMOPRINT = SimpleKeyword("nomoprint")
-    NOPROPFILE = SimpleKeyword("nopropfile")  # Write no property file
+    NOPROPFILE = SimpleKeyword("nopropfile")
     NOPRINTMOS = SimpleKeyword("noprintmos")

@@ -7,10 +7,158 @@ __all__ = ("AuxBasisSet",)
 
 
 class AuxBasisSet(SimpleKeywordBox):
-    """Enum to store all simple keywords of type AuxBasisSet"""
+    """Enum to store all simple keywords of type AuxBasisSet.
 
-    AUTOAUX = SimpleKeyword("autoaux")  # Can be used as replacement for any AuxBasisSet
-    AUTOAUXTRIM = SimpleKeyword("autoauxtrim")  # trims the autoaux basis
+    Attributes
+    ----------
+    AUTOAUX : SimpleKeyword
+        Can be used as replacement for any AuxBasisSet
+    AUTOAUXTRIM : SimpleKeyword
+        trims the autoaux basis
+    AUG_CC_PV5Z_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PV5Z_JK : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PV6Z_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PVDZ_PP_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PVDZ_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PVQZ_PP_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PVQZ_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PVQZ_JK : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PVTZ_PP_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PVTZ_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PVTZ_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PVTZ_JK : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PWCV5Z_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PWCVDZ_PP_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PWCVDZ_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PWCVQZ_PP_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PWCVQZ_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PWCVTZ_PP_C : SimpleKeyword
+        AuxBasisSet
+    AUG_CC_PWCVTZ_C : SimpleKeyword
+        AuxBasisSet
+    CC_PCVDZ_F12_MP2FIT : SimpleKeyword
+        AuxBasisSet
+    CC_PCVQZ_F12_MP2FIT : SimpleKeyword
+        AuxBasisSet
+    CC_PCVTZ_F12_MP2FIT : SimpleKeyword
+        AuxBasisSet
+    CC_PV5Z_C : SimpleKeyword
+        AuxBasisSet
+    CC_PV5Z_JK : SimpleKeyword
+        AuxBasisSet
+    CC_PV6Z_C : SimpleKeyword
+        AuxBasisSet
+    CC_PVDZ_F12_MP2FIT : SimpleKeyword
+        AuxBasisSet
+    CC_PVDZ_PP_F12_MP2FIT : SimpleKeyword
+        AuxBasisSet
+    CC_PVDZ_PP_C : SimpleKeyword
+        AuxBasisSet
+    CC_PVDZ_C : SimpleKeyword
+        AuxBasisSet
+    CC_PVQZ_F12_MP2FIT : SimpleKeyword
+        AuxBasisSet
+    CC_PVQZ_PP_F12_MP2FIT : SimpleKeyword
+        AuxBasisSet
+    CC_PVQZ_PP_C : SimpleKeyword
+        AuxBasisSet
+    CC_PVQZ_C : SimpleKeyword
+        AuxBasisSet
+    CC_PVQZ_JK : SimpleKeyword
+        AuxBasisSet
+    CC_PVTZ_F12_MP2FIT : SimpleKeyword
+        AuxBasisSet
+    CC_PVTZ_PP_F12_MP2FIT : SimpleKeyword
+        AuxBasisSet
+    CC_PVTZ_PP_C : SimpleKeyword
+        AuxBasisSet
+    CC_PVTZ_C : SimpleKeyword
+        AuxBasisSet
+    CC_PVTZ_JK : SimpleKeyword
+        AuxBasisSet
+    CC_PWCV5Z_C : SimpleKeyword
+        AuxBasisSet
+    CC_PWCVDZ_PP_C : SimpleKeyword
+        AuxBasisSet
+    CC_PWCVDZ_C : SimpleKeyword
+        AuxBasisSet
+    CC_PWCVQZ_PP_C : SimpleKeyword
+        AuxBasisSet
+    CC_PWCVQZ_C : SimpleKeyword
+        AuxBasisSet
+    CC_PWCVTZ_PP_C : SimpleKeyword
+        AuxBasisSet
+    CC_PWCVTZ_C : SimpleKeyword
+        AuxBasisSet
+    DEF_J : SimpleKeyword
+        AuxBasisSet
+    DEF2_MSVP_J : SimpleKeyword
+        AuxBasisSet
+    DEF2_MTZVP_J : SimpleKeyword
+        AuxBasisSet
+    DEF2_MTZVPP_J : SimpleKeyword
+        AuxBasisSet
+    DEF2_QZVPP_C : SimpleKeyword
+        AuxBasisSet
+    DEF2_QZVPPD_C : SimpleKeyword
+        AuxBasisSet
+    DEF2_SVP_C : SimpleKeyword
+        AuxBasisSet
+    DEF2_SVPD_C : SimpleKeyword
+        AuxBasisSet
+    DEF2_TZVP_C : SimpleKeyword
+        AuxBasisSet
+    DEF2_TZVPD_C : SimpleKeyword
+        AuxBasisSet
+    DEF2_TZVPP_C : SimpleKeyword
+        AuxBasisSet
+    DEF2_TZVPPD_C : SimpleKeyword
+        AuxBasisSet
+    DEF2_J : SimpleKeyword
+        AuxBasisSet
+    DEF2_JK : SimpleKeyword
+        AuxBasisSet
+    DEF2_JKSMALL : SimpleKeyword
+        AuxBasisSet
+    DGAUSS_A1_J : SimpleKeyword
+        AuxBasisSet
+    DGAUSS_A2_J : SimpleKeyword
+        AuxBasisSet
+    MIN_J : SimpleKeyword
+        AuxBasisSet
+    SARC_J : SimpleKeyword
+        AuxBasisSet
+    SARC2_DKH_QZV_JK : SimpleKeyword
+        AuxBasisSet
+    SARC2_DKH_QZVP_JK : SimpleKeyword
+        AuxBasisSet
+    SARC2_ZORA_QZV_JK : SimpleKeyword
+        AuxBasisSet
+    SARC2_ZORA_QZVP_JK : SimpleKeyword
+        AuxBasisSet
+    X2C_J : SimpleKeyword
+        AuxBasisSet
+    """
+
+    AUTOAUX = SimpleKeyword("autoaux")
+    AUTOAUXTRIM = SimpleKeyword("autoauxtrim")
     AUG_CC_PV5Z_C = SimpleKeyword("aug-cc-pv5z/c")
     AUG_CC_PV5Z_JK = SimpleKeyword("aug-cc-pv5z/jk")
     AUG_CC_PV6Z_C = SimpleKeyword("aug-cc-pv6z/c")
