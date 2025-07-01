@@ -18,13 +18,13 @@ class Sqm(SimpleKeywordBox):
     GFN1_XTB : SimpleKeyword
         GFN1-xTB also known as GFN-xTB or XTB1
     GFN2_XTB : SimpleKeyword
-        GFN1-xTB also known as XTB or XTB2
+        GFN2-xTB also known as XTB or XTB2
     MNDO : SimpleKeyword
         SQM: Semiempirical quantum mechanical methods
     NATIVE_GFN1_XTB : SimpleKeyword
-        SQM: Semiempirical quantum mechanical methods
+        Native GFN1-xTB also known as GFN-xTB or XTB1
     NATIVE_GFN2_XTB : SimpleKeyword
-        SQM: Semiempirical quantum mechanical methods
+        Native GFN2-xTB also known as XTB or XTB2
     NDDO_1 : SimpleKeyword
         SQM: Semiempirical quantum mechanical methods
     NDDO_2 : SimpleKeyword

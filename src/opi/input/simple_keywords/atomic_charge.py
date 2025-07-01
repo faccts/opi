@@ -12,55 +12,51 @@ class AtomicCharge(SimpleKeywordBox):
     Attributes
     ----------
     AIM : SimpleKeyword
-        AtomicCharge
+        Produce a WFN file for usage in AIM analysis.
     ALLPOP : SimpleKeyword
-        AtomicCharge
+        Turns on all population analyses.
     CHELPG : SimpleKeyword
-        AtomicCharge
+        Calculate CHELPG charges.
     CHELPG_LARGE : SimpleKeyword
-        AtomicCharge
+        Calculate CHELPG charges with larger grids.
     DENSITYANALYSIS : SimpleKeyword
-        AtomicCharge
+        Perform density analysis for fragments.
     FMOPOP : SimpleKeyword
-        AtomicCharge
-    FMOPOPULATIONS : SimpleKeyword
-        AtomicCharge
+        Request population analyses for HOMO and LUMO.
     HIRSHFELD : SimpleKeyword
-        AtomicCharge
+        Calculate Hirshfeld charges.
     LOEWDIN : SimpleKeyword
-        AtomicCharge
+        Calculate Loewdin charges.
     MAYER : SimpleKeyword
-        AtomicCharge
+        Calculate Mayer charges.
     MBIS : SimpleKeyword
-        AtomicCharge
+        Calculate Minimal Basis Iterative Stockholder (MBIS) charges.
     MULLIKEN : SimpleKeyword
-        AtomicCharge
+        Calculate Mulliken charges.
     NOAIM : SimpleKeyword
-        AtomicCharge
+        Do not create a WFN file for usage in AIM analysis.
     NOFMOPOP : SimpleKeyword
-        AtomicCharge
-    NOFMOPOPULATIONS : SimpleKeyword
-        AtomicCharge
+        Do not request population analyses for HOMO and LUMO.
     NOHIRSHFELD : SimpleKeyword
-        AtomicCharge
+        Do not calculate Hirshfeld charges.
     NOLOEWDIN : SimpleKeyword
-        AtomicCharge
+        Do not calculate Loewdin charges.
     NOMAYER : SimpleKeyword
-        AtomicCharge
+        Do not calculate Mayer charges.
     NOMBIS : SimpleKeyword
-        AtomicCharge
+        Do not calculate Minimal Basis Iterative Stockholder (MBIS) charges.
     NOMULLIKEN : SimpleKeyword
-        AtomicCharge
+        Do not calculate Mulliken charges.
     NONPA : SimpleKeyword
-        AtomicCharge
+        Do not calculate NPA charges.
     NOPOP : SimpleKeyword
-        AtomicCharge
+        Turns off all population analyses.
     NOREDUCEDPOP : SimpleKeyword
-        AtomicCharge
+        Do not print Loewdin reduced orb.pop per MO.
     NPA : SimpleKeyword
-        AtomicCharge
+        Calculate NPA charges (requires the nbo package).
     REDUCEDPOP : SimpleKeyword
-        AtomicCharge
+        Print Loewdin reduced orb.pop per MO.
     """
 
     AIM = SimpleKeyword("aim")
@@ -77,7 +73,6 @@ class AtomicCharge(SimpleKeywordBox):
     MULLIKEN = SimpleKeyword("mulliken")
     NOAIM = SimpleKeyword("noaim")
     NOFMOPOP = SimpleKeyword("nofmopop")
-    NOFMOPOPULATIONS = SimpleKeyword("nofmopopulations")
     NOHIRSHFELD = SimpleKeyword("nohirshfeld")
     NOLOEWDIN = SimpleKeyword("noloewdin")
     NOMAYER = SimpleKeyword("nomayer")

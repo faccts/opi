@@ -12,7 +12,7 @@ class Opt(SimpleKeywordBox):
     Attributes
     ----------
     OPT : SimpleKeyword
-        Perform geometry optimization
+        Perform a geometry optimization
     CRUDEOPT : SimpleKeyword
         Geometry optimization with thresholds
     INTERPOPT : SimpleKeyword

@@ -12,45 +12,43 @@ class Approximation(SimpleKeywordBox):
     Attributes
     ----------
     CLUSTERALL : SimpleKeyword
-        cluster all grids
+        Cluster all grids.
     COSXCLUSTERALL : SimpleKeyword
-        cluster cosx grid
+        Cluster cosx grid.
     COSJXC : SimpleKeyword
-        fast but blurry DFT
+        Fast but blurry DFT.
     FMM : SimpleKeyword
-        Use FFM approximation
+        Use FFM approximation.
     FROZENCORE : SimpleKeyword
-        Frozen core approx. in correlated WFT
+        Frozen core approx. in correlated WFT.
     NOFROZENCORE : SimpleKeyword
-        do not use frozen core approximation
+        Do not use frozen core approximation.
     RI_BUPO_J : SimpleKeyword
-        Use BUPO
+        Use BUPO approximation.
     NOBUPO : SimpleKeyword
-        Do not use BUPO
+        Do not use BUPO approximation.
     NOCOSX : SimpleKeyword
-        Do not use cosx
+        Do not use cosx.
     RCSINGLESFOCK : SimpleKeyword
-        Use COSX for Fock like single terms in CC
+        Use COSX for Fock like single terms in CC.
     NORCSINGLESFOCK : SimpleKeyword
-        Do not use COSX for Fock like single terms in CC
+        Do not use COSX for Fock like single terms in CC.
     RI : SimpleKeyword
-        Use RI
+        Use RI.
     NORI : SimpleKeyword
-        Do not use RI
+        Do not use RI.
     RIJCOSX : SimpleKeyword
-        Approximation for two-electron integrals
+        Approximation for two-electron integrals.
     NORIJCOSX : SimpleKeyword
-        Approximation for two-electron integrals
+        Approximation for two-electron integrals.
     RIJKSINGLESFOCK : SimpleKeyword
-        Use RIJK for Fock like single terms in CC
+        Use RIJK for Fock like single terms in CC.
     NORIJKSINGLESFOCK : SimpleKeyword
-        Do not use RIJK for Fock like single terms in CC
+        Do not use RIJK for Fock like single terms in CC.
     USESFITTING : SimpleKeyword
-        Approximation
+        Use overlap fitting in cosx.
     NOSFITTING : SimpleKeyword
         Do not use overlap fitting in cosx
-    SPLITJ : SimpleKeyword
-        Approximation for two-electron integrals
     SPLITRIJ : SimpleKeyword
         Approximation for two-electron integrals
     NOSPLITRIJ : SimpleKeyword
@@ -88,7 +86,6 @@ class Approximation(SimpleKeywordBox):
     NORIJKSINGLESFOCK = SimpleKeyword("norijksinglesfock")
     USESFITTING = SimpleKeyword("usesfitting")
     NOSFITTING = SimpleKeyword("nosfitting")
-    SPLITJ = SimpleKeyword("splitj")
     SPLITRIJ = SimpleKeyword("splitrij")
     NOSPLITRIJ = SimpleKeyword("nosplitrij")
     RIAO = SimpleKeyword("riao")

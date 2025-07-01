@@ -12,19 +12,19 @@ class Dlpno(SimpleKeywordBox):
     Attributes
     ----------
     HFLD : SimpleKeyword
-        HF + Dispersion energy decomposition  as cheaper alternative to DLPNO-CCSD(T) LED
+        HF + Dispersion energy
     LED : SimpleKeyword
-        Energy decomposition for DLPNO-CCSD(T)
+        Energy decomposition for DLPNO-CC methods.
     LOOSEPNO : SimpleKeyword
-        loose PNO settings
+        Select loose PNO settings.
     NORMALPNO : SimpleKeyword
-        normal PNO settings
+        Select normal PNO settings.
     TIGHTPNO : SimpleKeyword
-        Tight PNO settings
+        Select Tight PNO settings.
     ADLD : SimpleKeyword
-        Dlpno
+        Atomic decomposition of the London Dispersion energy.
     PNOEXTRAPOLATION : SimpleKeyword
-        automatic extrapolation of PNO space
+        Automatic extrapolation of PNO space.
     """
 
     HFLD = SimpleKeyword("hfld")

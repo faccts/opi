@@ -12,25 +12,25 @@ class DispersionCorrection(SimpleKeywordBox):
     Attributes
     ----------
     ABC : SimpleKeyword
-        three body term for d3bj
+        Use three body term, applicable together with D3BJ.
     D2 : SimpleKeyword
-        D2
+        D2 - Dispersion correction.
     D3 : SimpleKeyword
-        D3
+        D3 - Dispersion correction.
     D3ZERO : SimpleKeyword
-        D3 Zero damping
+        D3 - Dispersion correction with zero damping.
     D3BJ : SimpleKeyword
-        D3 with BJ damping
+        D3 - Dispersion correction with Becke-Johnson damping
     D3TZ : SimpleKeyword
-        Use TZ optimized values damping parameters if available
+        Use TZ optimized damping parameters if available
     D4 : SimpleKeyword
-        Use D4 dispersion correction
+        D4 - Dispersion correction with three body term and Becke-Johnson damping
     NL : SimpleKeyword
-        use -NL / -VV10 / -V dispersion correction
+        Use -NL / -VV10 / -V dispersion correction
     POPDISP : SimpleKeyword
-        pairwise dispersion correction analysis
+        Pairwise dispersion correction analysis
     SCNL : SimpleKeyword
-        Use self-consistent nl
+        Use self-consistent NL
     """
 
     ABC = SimpleKeyword("abc")

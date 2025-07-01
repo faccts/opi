@@ -12,17 +12,17 @@ class Dft(SimpleKeywordBox):
     Attributes
     ----------
     B3LYP3C : SimpleKeyword
-        DFT 3c methods, do not require dispersion correction or basis set
+        DFT 3c methods, does not require dispersion correction or basis set separately
     B973C : SimpleKeyword
-        DFT 3c methods, do not require dispersion correction or basis set
+        DFT 3c methods, does not require dispersion correction or basis set separately
     PBEH3C : SimpleKeyword
-        DFT 3c methods, do not require dispersion correction or basis set
+        DFT 3c methods, does not require dispersion correction or basis set separately
     WB97X3C : SimpleKeyword
-        DFT 3c methods, do not require dispersion correction or basis set
+        DFT 3c methods, does not require dispersion correction or basis set separately
     B3LYP_GCP_D3_6_31G_D : SimpleKeyword
         Dft
     B3LYP_GCP_D3_6_31GSTAR : SimpleKeyword
-        DFT like 3c methods, do not require dispersion correction or basis set
+        DFT - similar to 3c methods, does not require dispersion correction or basis set separately
     FOD : SimpleKeyword
         DFT with smearing for determining multireference character (TPSS/def2-TZVP, T = 5000 K)
     B1LYP : SimpleKeyword
@@ -409,9 +409,7 @@ class Dft(SimpleKeywordBox):
     B973C = SimpleKeyword("b973c")
     PBEH3C = SimpleKeyword("pbeh3c")
     WB97X3C = SimpleKeyword("wb97x3c")
-    B3LYP_GCP_D3_6_31G_D = SimpleKeyword(
-        "b3lyp-gcp-d3/6-31g(d)"
-    )  # DFT like 3c methods, do not require dispersion correction or basis set
+    B3LYP_GCP_D3_6_31G_D = SimpleKeyword("b3lyp-gcp-d3/6-31g(d)")
     B3LYP_GCP_D3_6_31GSTAR = SimpleKeyword("b3lyp-gcp-d3/6-31g*")
     FOD = SimpleKeyword("fod")
     B1LYP = SimpleKeyword("b1lyp")

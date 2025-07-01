@@ -15,10 +15,7 @@ class ForceField(SimpleKeywordBox):
         GFN-FF (external) alias is xtb-ff
     MM : SimpleKeyword
         Use external molecular mechanics
-    SURFF : SimpleKeyword
-        Use SURFF
     """
 
     GFN_FF = SimpleKeyword("gfn-ff")
     MM = SimpleKeyword("mm")
-    SURFF = SimpleKeyword("surff")
