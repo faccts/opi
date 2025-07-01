@@ -448,7 +448,7 @@ class Output:
 
         return cartesians
 
-    def _get_fragments(self, index: int) -> list[list[StrictPositiveInt]] | None:
+    def _get_fragments(self, index: int, /) -> list[list[StrictPositiveInt]] | None:
         """
         Returns fragment ids from the output object for a specified geometry index.
 
@@ -467,7 +467,7 @@ class Output:
             "results_properties", "geometries", index, "geometry", "fragments"
         )
         # > Cast them into the correct type
-        if fragments is not None:
+        if fragments:
             fragments = cast(
                 list[list[StrictPositiveInt]],
                 fragments,
@@ -475,7 +475,7 @@ class Output:
 
         return fragments
 
-    def get_structure(self, *, index: int = -1, with_fragments = True) -> Structure:
+    def get_structure(self, *, index: int = -1, with_fragments: bool = True) -> Structure:
         """
         Returns structure from ORCA job as Structure object (by default the final structure).
 
@@ -501,7 +501,7 @@ class Output:
         # > Get Cartesian coordinates
         cartesians = self._get_cartesians(index)
 
-        if not cartesians:
+        if cartesians is None:
             raise ValueError(
                 f"Requested Cartesian coordinates for geometry with index {index} are not available."
             )
@@ -527,7 +527,7 @@ class Output:
         structure = Structure(atoms)
         return structure
 
-    def get_final_energy(self) -> StrictFiniteFloat:
+    def get_final_energy(self) -> StrictFiniteFloat | None:
         """
         Easy access to the final single point energy.
 
