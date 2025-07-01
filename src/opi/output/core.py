@@ -492,30 +492,25 @@ class Output:
                 f"Requested Cartesian coordinates for geometry with index {index} are not available."
             )
 
-    def get_final_energy(self) -> StrictFiniteFloat:
+    def get_final_energy(self) -> StrictFiniteFloat | None:
         """
-        Easy access to the final single point energy
+        Easy access to the final single point energy.
 
         Returns
         ----------
-        final_energy: StrictFiniteFloat
-            Returns the final energy of the ORCA calculation
-
-        Raises
-        ----------
-        ValueError
-            If no final energy is available.
+        final_energy: StrictFiniteFloat | None
+            Returns the final energy of the ORCA calculation or None if there is none in the output.
         """
 
         # > Get the final energy
         final_energy = self._safe_get("results_properties", "single_point_data", "finalenergy")
 
-        if isinstance(final_energy, StrictFiniteFloat):
-            return final_energy
-        else:
-            raise ValueError("No final energy is available.")
+        if final_energy:
+            final_energy = cast(StrictFiniteFloat, final_energy)
 
-    def get_energies(self, *, index: int = -1) -> dict[str, Energy]:
+        return final_energy
+
+    def get_energies(self, *, index: int = -1) -> dict[str, Energy] | None:
         """
         Return a dictionary with different energy types for the geometry at a given index.
 
@@ -526,14 +521,9 @@ class Output:
 
         Returns
         -------
-        energy_dict : dict[str, Energy]
+        energy_dict : dict[str, Energy] | None
             Dictionary where keys identify the energy type. If multiple energies of the same type are present, an index is
-            appended after the first one, e.g., SCF, SCF_1, SCF_2, etc.
-
-        Raises
-        ----------
-        ValueError
-            If no energy for geometry with the requested index is available.
+            appended after the first one, e.g., SCF, SCF_1, SCF_2, etc. If no energy is available None is returned.
 
         Notes
         -----
@@ -552,9 +542,7 @@ class Output:
         if energy_list:
             energy_list = cast(EnergyList, energy_list)
         else:
-            raise ValueError(
-                f"Requested energies for geometry with index {index} are not available."
-            )
+            return energy_list
 
         for energy in energy_list:
             if not energy.method:
