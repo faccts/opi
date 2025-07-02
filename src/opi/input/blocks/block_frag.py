@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import List, Literal
 
-from pydantic import field_validator
+from pydantic import BaseModel, field_validator
 
 from opi.input.blocks.base import Block, InputFilePath, InputString
 from opi.input.blocks.fragment import Fragment, Frags
@@ -17,14 +17,12 @@ class FragDefinition(Frags):
         return super().__str__() + "\n    end"
 
 
-class BlockFrag(Block):
-    """Class to model %frag block in ORCA"""
+class FragProc(BaseModel):
+    """
+    Class to model `fragproc` attribute in `BlockFrag`
+    """
 
-    _name: str = "frag"
-    printlevel: int | None = None
-    storefrags: bool | None = None
-    dointerfragbonds: bool | None = None
-    fragproc: (
+    flags: List[
         Literal[
             "extlib",
             "connectivity",
@@ -66,8 +64,34 @@ class BlockFrag(Block):
             "delsolvents",
             "delwater",
         ]
-        | None
-    ) = None
+    ]
+
+    def __str__(self) -> str:
+        return " ".join(self.flags)
+
+    @classmethod
+    def from_string(cls, inp: str) -> "FragProc":
+        """
+        Parameters
+        ----------
+        inp: str
+
+        Returns
+        -------
+        FragProc
+        """
+        parts = [part.strip().lower() for part in inp.split(",")]
+        return cls(flags=parts)
+
+
+class BlockFrag(Block):
+    """Class to model %frag block in ORCA"""
+
+    _name: str = "frag"
+    printlevel: int | None = None
+    storefrags: bool | None = None
+    dointerfragbonds: bool | None = None
+    fragproc: FragProc | None = None
     usetopology: bool | None = None
     printinputflags: bool | None = None
     topolfile: InputFilePath | None = None
@@ -117,3 +141,20 @@ class BlockFrag(Block):
             return InputString(string=string.strip())
         else:
             return string
+
+    @field_validator("fragproc", mode="before")
+    @classmethod
+    def init_fragproc(cls, inp: FragProc | str) -> FragProc:
+        """
+        Parameters
+        ----------
+        inp: FragProc | str
+
+        Returns
+        -------
+        FragProc
+        """
+        if isinstance(inp, str):
+            return FragProc.from_string(inp)
+        else:
+            return inp
