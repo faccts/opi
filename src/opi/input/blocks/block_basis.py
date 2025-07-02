@@ -1,4 +1,7 @@
+import re
+
 from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic_core.core_schema import FieldValidationInfo
 
 from opi.input.blocks.base import Block, InputFilePath
 from opi.input.simple_keywords import (
@@ -73,11 +76,49 @@ class FragBasis(BaseModel):
 
     def __str__(self) -> str:
         s = ""
-        s += f'{list(self.frag.keys())[0]} "{list(self.frag.values())[0]}" \n '
+        s += f'{list(self.frag.keys())[0]} "{list(self.frag.values())[0]}" '
         for key, value in list(self.frag.items())[1:]:
-            s += f'   {self.name} {key} "{value}" \n '
+            s += f'\n    {self.name} {key} "{value}" '
 
         return s
+
+    @classmethod
+    def from_string(cls, inp: str) -> "FragBasis":
+        """
+        Parameters
+        ----------
+        inp : str
+
+        Returns
+        --------
+        FragBasis
+        """
+        re_fragbasis = re.compile(
+            r"""
+                    \s*
+                    (?P<frag>
+                        (?:
+                        \s*(\d+)\s+(\w+)\s*
+                        (?:\n)?(?:,)?
+                        )+
+                    )
+            """,
+            re.VERBOSE,
+        )
+
+        res = re_fragbasis.match(inp.lower())
+        if not res:
+            raise ValueError("String not valid")
+        frag = res.group("frag")
+        inner_pattern = re.compile(r"\s*(\d+)\s+([\w]+)\s*(?:\n)?(?:,)?")
+        pairs = inner_pattern.findall(frag)
+
+        # Build dict[int, str]
+        frag_dict = {int(k): v.strip() for k, v in pairs}
+        for v in frag_dict:
+            frag_dict[v] = SimpleKeyword(frag_dict[v])
+
+        return cls(frag=frag_dict)
 
 
 class FragAux(FragBasis):
@@ -251,3 +292,51 @@ class BlockBasis(Block):
             return InputFilePath.from_string(path)
         else:
             return path
+
+    @field_validator(
+        "fragbasis",
+        "fragaux",
+        "fragauxj",
+        "fragauxjk",
+        "fragauxc",
+        "fragcabs",
+        "fragecp",
+        mode="before",
+    )
+    @classmethod
+    def frag_fromstring(cls, inp: str | FragBasis, info: FieldValidationInfo) -> FragBasis:
+        """
+
+        Parameters
+        ----------
+        inp: str | FragBasis
+        info: FieldValidationInfo
+
+        Returns
+        -------
+        FragBasis
+
+        """
+        if isinstance(inp, str):
+            field_to_class = {
+                "fragbasis": FragBasis,
+                "fragaux": FragAux,
+                "fragauxj": FragAuxJ,
+                "fragauxjk": FragAuxJK,
+                "fragauxc": FragAuxC,
+                "fragcabs": FragCabs,
+                "fragecp": FragEcp,
+            }
+
+            field_name: str = info.field_name  # type: ignore
+            if field_name is None:
+                raise ValueError("Field name not found")
+            frag_class = field_to_class.get(field_name)
+
+            if not frag_class:
+                raise TypeError(f"No FragBasis subclass for '{field_name}'")
+
+            return frag_class.from_string(inp)
+
+        else:
+            return inp
