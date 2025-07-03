@@ -1,6 +1,7 @@
 """
 Contains conversion factors for different units.
 """
+
 # Atomic unit of length (Bohr) to Angstrom
 AU_TO_ANGST: float = 0.52917721067
 # Angstrom to Atomic unit of length (Bohr)

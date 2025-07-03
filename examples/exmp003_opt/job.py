@@ -2,6 +2,7 @@
 
 import shutil
 from pathlib import Path
+import sys
 
 from opi.core import Calculator
 from opi.input.simple_keywords import BasisSet, Dft, Scf, Task
@@ -23,11 +24,21 @@ if __name__ == "__main__":
     output = calc.get_output()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
-        exit(1)
+        sys.exit(1)
     # << END OF IF
 
     # > Parse JSON files
     output.parse()
+
+    # > Verify that SCF converged
+    if not output.scf_converged():
+        print(f"ORCA SCF failed to converge, see output file: {output.get_outfile()}")
+        sys.exit(1)
+
+    # > Verify that geometry optimization converged
+    if not output.geometry_optimization_converged():
+        print(f"ORCA geometry optimization failed to converge, see output file: {output.get_outfile()}")
+        sys.exit(1)
 
     ngeoms = len(output.results_properties.geometries)
     print("N GEOMETRIES")

@@ -73,10 +73,9 @@ def has_aborted_run(file_name: Path, /) -> bool:
     return has_string_in_file(file_name, "aborting")
 
 
-def has_geometry_optimization_converged(file_name: Path, /) -> bool:
+def has_geometry_optimization(file_name: Path, /) -> bool:
     """
-    'HURRY' is the indicator for a successful Geometry optimization:
-    to be used if only on geometry optimization was done
+    Searches for the message 'Geometry Optimization Run' to indicate that a geometry optimization is performed.
 
     Parameter
     ---------
@@ -86,14 +85,31 @@ def has_geometry_optimization_converged(file_name: Path, /) -> bool:
     Returns
     -------
     bool
-        True if 'HURRAY' in file else False
+        True if expression is found in file else False
+    """
+    return has_string_in_file(file_name, "Geometry Optimization Run")
+
+
+def has_geometry_optimization_converged(file_name: Path, /) -> bool:
+    """
+    Searches for the message 'HURRAY' to indicate that a geometry optimization has converged.
+
+    Parameter
+    ---------
+    file_name: Path
+        Name of the output file
+
+    Returns
+    -------
+    bool
+        True if expression is found in file else False
     """
     return has_string_in_file(file_name, "HURRAY")
 
 
-def has_scf_converged(file_name: Path, /) -> bool:
+def has_scf(file_name: Path, /) -> bool:
     """
-    Searches for the message the SCF has not converged
+    Searches for the message 'SCF SETTINGS' to indicate that an SCF is used.
 
     Parameter
     ---------
@@ -103,6 +119,23 @@ def has_scf_converged(file_name: Path, /) -> bool:
     Returns
     -------
     bool
-        False if expression is found in file else True
+        True if expression is found in file else False
     """
-    return has_string_in_file(file_name, "SCF CONVERGED AFTER")
+    return has_string_in_file(file_name, "SCF SETTINGS")
+
+
+def has_scf_converged(file_name: Path, /) -> bool:
+    """
+    Searches for the message 'SUCCESS' as indicator that the SCF converged.
+
+    Parameter
+    ---------
+    file_name: Path
+        Name of the output file
+
+    Returns
+    -------
+    bool
+        True if expression is found in file else False
+    """
+    return has_string_in_file(file_name, "SUCCESS")

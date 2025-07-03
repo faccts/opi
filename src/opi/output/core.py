@@ -12,7 +12,11 @@ from pydantic import StrictStr
 
 from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
-from opi.output.grepper.recipes import has_terminated_normally
+from opi.output.grepper.recipes import (
+    has_geometry_optimization_converged,
+    has_scf_converged,
+    has_terminated_normally,
+)
 from opi.output.models.base.strict_types import StrictFiniteFloat
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.property.property_results import (
@@ -118,12 +122,19 @@ class Output:
         if parse:
             self.parse()
 
-    def parse(self) -> None:
+    def parse(self, read_prop_json: bool = True, read_gbw_json: bool = True) -> None:
         """
         Create property- and gbw-JSON file (according to `do_create_property_json` and `self.do_create_gbw_json`)
         and parse them.
-        """
+        Skips the parsing for the gbw or prop json file when the respective bool is false. It defaults to true
 
+        Parameters
+        ----------
+        read_prop_json: bool, default: True
+            Whether or not to read the property JSON file
+        read_gbw_json: bool, default: True
+            Whether or not to read the gbw JSON file
+        """
         # // Create JSONs files
         if self.do_create_gbw_json:
             self.create_gbw_json()
@@ -131,17 +142,21 @@ class Output:
             self.create_property_json()
 
         # // PARSE JSONS
-        self.gbw_json_data = self._process_json_file(self.gbw_json_file)
-        self.property_json_data = self._process_json_file(self.property_json_file)
-
-        # > `property_json_data` needs to be set
-        if self.do_version_check:
-            self.check_version()
-
         # // Property JSON
-        self.results_properties = PropertyResults(**self.property_json_data)
+        if read_prop_json:
+            self.property_json_data = self._process_json_file(self.property_json_file)
+            # > Check in property json whether version fits:
+            if self.do_version_check:
+                self.check_version()
+            self.results_properties = PropertyResults(**self.property_json_data)
+        else:
+            if self.do_version_check:
+                warn("No version check possible.")
+
         # // GBW JSON file
-        self.results_gbw = GbwResults(**self.gbw_json_data)
+        if read_gbw_json:
+            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
+            self.results_gbw = GbwResults(**self.gbw_json_data)        
 
         # > Redump JSON files
         if self.do_redump_jsons:
@@ -313,10 +328,49 @@ class Output:
         """
         Determine if ORCA terminated normally, by looking for "ORCA TERMINATED NORMALLY" in the ".out" file.
         If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if "ORCA TERMINATED NORMALLY" is found in ".out" file else False
         """
         outfile = self.get_outfile()
         try:
             return has_terminated_normally(outfile)
+        except FileNotFoundError:
+            return False
+
+    def scf_converged(self) -> bool:
+        """
+        Determine if ORCA SCF converged, by looking for "SUCCESS" in the ".out" file.
+        Check only if ORCA SCF was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if "SUCCESS" is found in ".out" file else False
+        """
+        outfile = self.get_outfile()
+        try:
+            return has_scf_converged(outfile)
+        except FileNotFoundError:
+            return False
+
+    def geometry_optimization_converged(self) -> bool:
+        """
+        Determine if ORCA geometry optimization converged, by looking for "HURRAY" in the ".out" file.
+        Check only if ORCA geometry optimization was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if "HURRAY" is found in ".out" file else False
+        """
+        outfile = self.get_outfile()
+        try:
+            return has_geometry_optimization_converged(outfile)
         except FileNotFoundError:
             return False
 

@@ -2,6 +2,7 @@
 
 import shutil
 from pathlib import Path
+import sys
 
 from opi.core import Calculator
 from opi.input.blocks import BlockMethod as BlockMethod
@@ -38,7 +39,7 @@ if __name__ == "__main__":
     output = calc.get_output()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
-        exit(1)
+        sys.exit(1)
     # << END OF IF
 
     # > Parse JSON files
