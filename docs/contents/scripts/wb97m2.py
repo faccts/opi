@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     # > Task 1
     # > Create a Calculator object for ORCA input generation and execution
-    calc = Calculator(basename=f"{basename}_1", working_dir=working_dir)
+    calc = Calculator(basename=f"{basename}_scf", working_dir=working_dir)
     
     # > Load the molecular structure from XYZ file
     structure = Structure.from_xyz(xyz_file)
@@ -67,11 +67,11 @@ if __name__ == "__main__":
     # > Run the ORCA calculation
     calc.run()
     # > Get the output object
-    output_1 = calc.get_output()
-    check_and_parse_output(output_1)
+    output_scf = calc.get_output()
+    check_and_parse_output(output_scf)
 
     # > Task 2
-    calc = Calculator(basename=f"{basename}_2", working_dir=working_dir)
+    calc = Calculator(basename=f"{basename}_mp2", working_dir=working_dir)
     calc.structure = structure
     calc.structure.charge = 0
     calc.structure.multiplicity = 1
@@ -88,24 +88,24 @@ if __name__ == "__main__":
         BlockScf(ignoreconv=1),
         BlockMp2(ri=True)
     )
-    calc.input.add_arbitrary_string('%moinp "wB97M2_1.gbw"')
-    # calc.input.moinp = "./RUN/wB97M2_1.gbw"
+    calc.input.add_arbitrary_string('%moinp "wB97M2_scf.gbw"')
+    # calc.input.moinp = working_dir / "wB97M2_scf.gbw"
     calc.write_input()
     calc.run()
-    output_2 = calc.get_output()
-    check_and_parse_output(output_2)
+    output_mp2 = calc.get_output()
+    check_and_parse_output(output_mp2)
 
-    E_Total_wB97MV = output_1.results_properties.geometries[0].energy[0].totalenergy[0][0]
-    E_Total_wB97M2 = output_2.results_properties.geometries[0].energy[1].totalenergy[0][0]
+    E_Total_wB97MV = output_scf.results_properties.geometries[0].energy[0].totalenergy[0][0]
+    E_Total_wB97M2 = output_mp2.results_properties.geometries[0].energy[1].totalenergy[0][0]
 
     print({
-        "SCF_Energy": {
+        "ωB97M-V/def2-TZVP": {
             "totalEnergy": float(f"{E_Total_wB97MV:.10f}")
         }
     })
 
     print({
-        "MP2_Energies": {
+        "ωB97M(2)/def2-TZVP": {
             "totalEnergy": float(f"{E_Total_wB97M2:.10f}")
         }
     })
