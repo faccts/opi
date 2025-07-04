@@ -17,8 +17,10 @@ from opi.output.grepper.recipes import (
     has_scf_converged,
     has_terminated_normally,
 )
-from opi.output.models.base.strict_types import StrictFiniteFloat
+from opi.output.models.base.strict_types import StrictFiniteFloat, StrictPositiveInt
 from opi.output.models.json.gbw.gbw_results import GbwResults
+from opi.output.models.json.property.properties.energy import Energy
+from opi.output.models.json.property.properties.energy_list import EnergyList
 from opi.output.models.json.property.property_results import (
     PropertyResults,
 )
@@ -156,7 +158,7 @@ class Output:
         # // GBW JSON file
         if read_gbw_json:
             self.gbw_json_data = self._process_json_file(self.gbw_json_file)
-            self.results_gbw = GbwResults(**self.gbw_json_data)        
+            self.results_gbw = GbwResults(**self.gbw_json_data)
 
         # > Redump JSON files
         if self.do_redump_jsons:
@@ -438,7 +440,7 @@ class Output:
             "results_properties", "geometries", index, "geometry", "coordinates", "cartesians"
         )
         # > Cast them into the correct type
-        if cartesians is not None:
+        if cartesians:
             cartesians = cast(
                 list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]],
                 cartesians,
@@ -446,14 +448,43 @@ class Output:
 
         return cartesians
 
-    def get_structure(self, *, index: int = -1) -> Structure:
+    def _get_fragments(self, index: int, /) -> list[list[StrictPositiveInt]] | None:
         """
-        Returns structure from ORCA job as Structure object. By default, the final structure is returned.
+        Returns fragment ids from the output object for a specified geometry index.
+
+        Parameters
+        ----------
+        index : int
+            index of geometry to return.
+
+        Returns
+        ----------
+        fragments: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None
+            List containing the cartesian coordinates or None.
+        """
+        # > Safely get the fragment IDs
+        fragments = self._safe_get(
+            "results_properties", "geometries", index, "geometry", "fragments"
+        )
+        # > Cast them into the correct type
+        if fragments:
+            fragments = cast(
+                list[list[StrictPositiveInt]],
+                fragments,
+            )
+
+        return fragments
+
+    def get_structure(self, *, index: int = -1, with_fragments: bool = True) -> Structure:
+        """
+        Returns structure from ORCA job as Structure object (by default the final structure).
 
         Parameters
         ----------
         index : int, default: -1
-            index of geometry to return (default: last in list)
+            index of geometry to return. The default -1 refers to the final geometry.
+        with_fragments : bool, default: True
+            whether the fragment IDs should be added as well to the structure (if available)
 
         Returns
         ----------
@@ -470,22 +501,105 @@ class Output:
         # > Get Cartesian coordinates
         cartesians = self._get_cartesians(index)
 
-        if cartesians:
-            for entry in cartesians:
-                # > Get element symbol
-                elem = entry[0]
-                # > Get coordinates and convert to Angström
-                x = entry[1] * AU_TO_ANGST
-                y = entry[2] * AU_TO_ANGST
-                z = entry[3] * AU_TO_ANGST
-                # > Generate atom and append to list
-                atom = Atom(element=elem, coordinates=Coordinates((x, y, z)))
-                atoms.append(atom)
-
-            structure = Structure(atoms)
-            return structure
-
-        else:
+        if not cartesians:
             raise ValueError(
                 f"Requested Cartesian coordinates for geometry with index {index} are not available."
             )
+
+        for line in cartesians:
+            elem, x_au, y_au, z_au = line
+            # > Get coordinates and convert to angstrom
+            x = x_au * AU_TO_ANGST
+            y = y_au * AU_TO_ANGST
+            z = z_au * AU_TO_ANGST
+            # > Generate atom and append to list
+            atom = Atom(element=elem, coordinates=Coordinates((x, y, z)))
+            atoms.append(atom)
+
+        if with_fragments:
+            # > Get fragment IDs
+            fragments = self._get_fragments(index)
+
+            if fragments:
+                for atom, frag in zip(atoms, fragments):
+                    atom.fragment_id = frag[0]
+
+        structure = Structure(atoms)
+        return structure
+
+    def get_final_energy(self) -> StrictFiniteFloat | None:
+        """
+        Easy access to the final single point energy.
+
+        Returns
+        ----------
+        final_energy: StrictFiniteFloat | None
+            Returns the final energy of the ORCA calculation or None if there is none in the output.
+        """
+
+        # > Get the final energy
+        final_energy = self._safe_get("results_properties", "single_point_data", "finalenergy")
+
+        if final_energy is not None:
+            final_energy = cast(StrictFiniteFloat, final_energy)
+
+        return final_energy
+
+    def get_energies(self, *, index: int = -1) -> dict[str, Energy] | None:
+        """
+        Return a dictionary with different energy types for the geometry at a given index.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the energy should be returned. The default -1 refers to the final geometry.
+
+        Returns
+        -------
+        energy_dict : dict[str, Energy] | None
+            Dictionary where keys identify the energy type. If multiple energies of the same type are present, an index is
+            appended after the first one, e.g., SCF, SCF_1, SCF_2, etc. If no energy is available None is returned.
+
+        Notes
+        -----
+        Common keys include:
+
+        - **Unknown** : No information about the energy is provided.
+
+        - **SCF** : SCF energy from HF, DFT, or SQM methods.
+
+        - **MDCI(SD)** : Typically the (DLPNO-)CCSD energy.
+
+        - **MDCI(SD(T))** : Typically the (DLPNO-)CCSD(T) energy.
+
+        - **CASSCF** : CASSCF energy.
+
+        - **MP2** : MP2 energy.
+
+        - **TDA/CIS** : TDA-TD-DFT or CIS energy.
+        """
+
+        # > Energy dict to populate & return
+        energy_dict: dict[str, Energy] = {}
+
+        # > Get the list of energies to be converted to a dictionary
+        energy_list = self._safe_get("results_properties", "geometries", index, "energy")
+
+        if energy_list is not None:
+            energy_list = cast(EnergyList, energy_list)
+        else:
+            return None
+
+        for energy in energy_list:
+            if not energy.method:
+                key = "Unknown"
+            else:
+                key = energy.method
+            # > Add index at the end if multiple energies of the same type are present
+            index = 1
+            while key in energy_dict:
+                key = f"{key}_{index}"
+                index += 1
+            energy_dict[key] = energy
+
+        return energy_dict

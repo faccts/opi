@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import ClassVar, Iterator
 
 from pydantic import ConfigDict, RootModel
 
@@ -36,13 +36,16 @@ EnergyTypes = (
 )
 
 
-# Define a list of energies using RootModel
+# Define a list of energies using a RootModel
 class EnergyList(RootModel[list[EnergyTypes]]):
     """RootModel for identifying different ORCA energy types based on their `method` string"""
 
     model_config: ClassVar[ConfigDict] = {  # type: ignore
         "discriminator": "method"
     }
+
+    def __iter__(self) -> Iterator[EnergyTypes]:  # type: ignore
+        return iter(self.root)
 
     def __getitem__(self, index: int) -> EnergyTypes:
         return self.root[index]
