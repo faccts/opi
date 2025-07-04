@@ -158,7 +158,7 @@ class Output:
         # // GBW JSON file
         if read_gbw_json:
             self.gbw_json_data = self._process_json_file(self.gbw_json_file)
-            self.results_gbw = GbwResults(**self.gbw_json_data)        
+            self.results_gbw = GbwResults(**self.gbw_json_data)
 
         # > Redump JSON files
         if self.do_redump_jsons:
@@ -505,7 +505,7 @@ class Output:
         # > Get the final energy
         final_energy = self._safe_get("results_properties", "single_point_data", "finalenergy")
 
-        if final_energy:
+        if final_energy is not None:
             final_energy = cast(StrictFiniteFloat, final_energy)
 
         return final_energy
@@ -527,10 +527,14 @@ class Output:
 
         Notes
         -----
-        Common keys include: **Unknown** - No information about the energy is provided,
-        **SCF** - SCF energy from HF, DFT, or SQM methods, **MDCI(SD)** - Typically the (DLPNO-)CCSD energy,
-        **MDCI(SD(T))** - Typically the (DLPNO-)CCSD(T) energy, **CASSCF** - CASSCF energy,
-        **MP2** - MP2 energy, **TDA/CIS** - TDA-TD-DFT or CIS energy.
+        Common keys include:
+            - **Unknown**     : No information about the energy is provided.
+            - **SCF**         : SCF energy from HF, DFT, or SQM methods.
+            - **MDCI(SD)**    : Typically the (DLPNO-)CCSD energy.
+            - **MDCI(SD(T))** : Typically the (DLPNO-)CCSD(T) energy.
+            - **CASSCF**      : CASSCF energy.
+            - **MP2**         : MP2 energy.
+            - **TDA/CIS**     : TDA-TD-DFT or CIS energy.
         """
 
         # > Energy dict to populate & return
@@ -539,10 +543,10 @@ class Output:
         # > Get the list of energies to be converted to a dictionary
         energy_list = self._safe_get("results_properties", "geometries", index, "energy")
 
-        if energy_list:
+        if energy_list is not None:
             energy_list = cast(EnergyList, energy_list)
         else:
-            return energy_list
+            return None
 
         for energy in energy_list:
             if not energy.method:
