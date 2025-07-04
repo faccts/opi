@@ -77,7 +77,9 @@ contents/notebooks/opencosmors.ipynb
 :caption: Community Examples
 :maxdepth: 1
 
-contents/notebooks/how_to_opi.ipynb
+contents/notebooks/extrapolate_cps_cbs.ipynb
+contents/notebooks/extrapolate_ep1.ipynb
+contents/notebooks/wb97m2.ipynb
 ```
 
 [documentation]: index.html
