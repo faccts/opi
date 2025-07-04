@@ -18,40 +18,17 @@ def check_and_parse_output(output: Output) -> None:
         output.parse()
 
     # Now check for convergence of the SCF
-    if output.results_properties.geometries[0].single_point_data.converged:
-        print("ORCA terminated normally and the SCF converged")
-    else:
+    if not output.results_properties.geometries[0].single_point_data.converged:
         raise RuntimeError("SCF DID NOT CONVERGE")
 
-if __name__ == "__main__":
-    # > Create a working directory and XYZ file
-    # > You can replace everything up to the next comment with your own directory or file
-    working_dir = Path("RUN")
-    working_dir.mkdir(exist_ok=True)
-    
-    xyz_data = """\
-    3
-
-    O         -3.56626        1.77639        0.00000
-    H         -2.59626        1.77639        0.00000
-    H         -3.88959        1.36040       -0.81444
-    """
-    xyz_file = working_dir / "struc.xyz"
-    with open(xyz_file, "w") as f:
-        f.write(xyz_data)
-
-    # > Define a basename for the calculation files
-    basename = "extrapolate_CPS_CBS"
-
-    # > Task 1
+def extrapolation_cps_cbs(structure: Structure, basename : str = "job", working_dir: Path = Path("RUN"), charge = 0, mult = 1) -> pd.DataFrame:
+    # > Task 1: DLPNO-CCSD(T1)/aug-cc-pVTZ with TCutPNO = 1E-06
     # > Create a Calculator object for ORCA input generation and execution
     calc = Calculator(basename=f"{basename}_1", working_dir=working_dir)
 
-    # > Load the molecular structure from XYZ file
-    structure = Structure.from_xyz(xyz_file)
     calc.structure = structure
-    calc.structure.multiplicity = 1
-    calc.structure.charge = 0
+    calc.structure.multiplicity = mult
+    calc.structure.charge = charge
 
     # > Add calculation keywords and blocks
     calc.input.add_simple_keywords(
@@ -74,12 +51,11 @@ if __name__ == "__main__":
     output_1 = calc.get_output()
     check_and_parse_output(output_1)
 
-    # > Task 2
+    # > Task 2: DLPNO-CCSD(T1)/aug-cc-pVTZ with TCutPNO = 1E-07
     calc = Calculator(basename=f"{basename}_2", working_dir=working_dir)
-    structure = Structure.from_xyz(xyz_file)
     calc.structure = structure
-    calc.structure.multiplicity = 1
-    calc.structure.charge = 0
+    calc.structure.multiplicity = mult
+    calc.structure.charge = charge
     calc.input.add_simple_keywords(
         Wft.DLPNO_CCSD_T1,
         BasisSet.AUG_CC_PVTZ,
@@ -96,12 +72,11 @@ if __name__ == "__main__":
     output_2 = calc.get_output()
     check_and_parse_output(output_2)
 
-    # > Task 3
+    # > Task 3: DLPNO-CCSD(T1)/aug-cc-pVQZ with TCutPNO = 1E-06
     calc = Calculator(basename=f"{basename}_3", working_dir=working_dir)
-    structure = Structure.from_xyz(xyz_file)
     calc.structure = structure
-    calc.structure.multiplicity = 1
-    calc.structure.charge = 0
+    calc.structure.multiplicity = mult
+    calc.structure.charge = charge
     calc.input.add_simple_keywords(
         Wft.DLPNO_CCSD_T1,
         BasisSet.AUG_CC_PVQZ,
@@ -118,12 +93,11 @@ if __name__ == "__main__":
     output_3 = calc.get_output()
     check_and_parse_output(output_3)
 
-    # > Task 4
+    # > Task 4: DLPNO-CCSD(T1)/aug-cc-pVQZ with TCutPNO = 1E-07
     calc = Calculator(basename=f"{basename}_4", working_dir=working_dir)
-    structure = Structure.from_xyz(xyz_file)
     calc.structure = structure
-    calc.structure.multiplicity = 1
-    calc.structure.charge = 0
+    calc.structure.multiplicity = mult
+    calc.structure.charge = charge
     calc.input.add_simple_keywords(
         Wft.DLPNO_CCSD_T1,
         BasisSet.AUG_CC_PVQZ,
@@ -141,8 +115,6 @@ if __name__ == "__main__":
     check_and_parse_output(output_4)
 
     F_CPS = 1.5
-    X = 3
-    Y = 4
     F_0 = 1.301304
     F_corr = 1.711889
 
@@ -188,7 +160,36 @@ if __name__ == "__main__":
     ]
 
     df = pd.DataFrame(rows, columns=[
-        "Energy Types", "TCut Levels", "aug-cc-pVDZ", "aug-cc-pVTZ", "CBS(3/4)"
+        "Energy Types", "TCut Levels", "aug-cc-pVTZ", "aug-cc-pVQZ", "CBS(3/4)"
     ])
     df.set_index(["Energy Types", "TCut Levels"], inplace=True)
+    return df
+
+if __name__ == "__main__":
+    # > Create a working directory and XYZ file
+    # > You can replace everything up to the next comment with your own directory or file
+    working_dir = Path("RUN")
+    working_dir.mkdir(exist_ok=True)
+
+    xyz_data = """\
+    3
+
+    O         -3.56626        1.77639        0.00000
+    H         -2.59626        1.77639        0.00000
+    H         -3.88959        1.36040       -0.81444
+    """
+    xyz_file = working_dir / "struc.xyz"
+    with open(xyz_file, "w") as f:
+        f.write(xyz_data)
+
+    # > Load the molecular structure from XYZ file
+    structure = Structure.from_xyz(xyz_file)
+
+    # > Define a basename for the calculation files
+    basename = "extrapolate_CPS_CBS"
+
+    # > Perform ORCA calculations for DLPNO-CCSD(T1) CPS + CBS extrapolation and extrapolate
+    df = extrapolation_cps_cbs(structure, basename, working_dir)
+
+    # > Print the results
     print(df)
