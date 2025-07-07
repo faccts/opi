@@ -152,7 +152,7 @@ class Input:
         """
         if value is not None:
             try:
-                value = Path(value)
+                value = Path(value).resolve()
             except Exception as err:
                 raise ValueError(f"{self.__class__.__name__}.moinp: Invalid path.") from err
             else:

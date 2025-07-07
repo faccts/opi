@@ -221,7 +221,7 @@ class Calculator:
                 if (ncores := input_param.ncores) is not None:
                     inp.write(f"%pal\n    nprocs {ncores:d}\nend\n")
                 if (moinp := input_param.moinp) is not None:
-                    inp.write(f"%moinp {moinp}\n")
+                    inp.write(f"%moinp {self._check_moinp(moinp)}\n")
 
                 # ---------------------------------
                 # > Block Options: Before coords
@@ -329,3 +329,16 @@ class Calculator:
         Can be called before execution of job.
         """
         return Output(basename=self.basename, working_dir=self.working_dir)
+
+    def _check_moinp(self, moinp: Path) -> str:
+        """
+        Returns the quoted path to the moinp GBW file.
+
+        If the file is located within the working directory, the relative path is returned.
+        Otherwise, the absolute path is used. The result is always returned as a quoted string.
+        """
+        try:
+            rel = moinp.relative_to(self.working_dir)
+            return f'"{rel}"'
+        except ValueError:
+            return f'"{moinp}"'
