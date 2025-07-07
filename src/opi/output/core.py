@@ -527,9 +527,14 @@ class Output:
         structure = Structure(atoms)
         return structure
 
-    def get_final_energy(self) -> StrictFiniteFloat | None:
+    def get_final_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Easy access to the final single point energy.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the energy should be returned. The default -1 refers to the final geometry.
 
         Returns
         ----------
@@ -538,7 +543,9 @@ class Output:
         """
 
         # > Get the final energy
-        final_energy = self._safe_get("results_properties", "single_point_data", "finalenergy")
+        final_energy = self._safe_get(
+            "results_properties", "geometries", index, "single_point_data", "finalenergy"
+        )
 
         if final_energy is not None:
             final_energy = cast(StrictFiniteFloat, final_energy)

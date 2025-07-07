@@ -55,7 +55,10 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print("FINAL SINGLE POINT ENERGY")
+    print(output.get_final_energy())
+    # > is (for this calculation) equal to
     print(output.results_properties.geometries[0].single_point_data.finalenergy)
+    # > is (for this calculation) equal to
     print(
         output.results_properties.geometries[0].energy[0].totalenergy[0][0]
         + output.results_properties.geometries[0].vdw_correction.vdw
