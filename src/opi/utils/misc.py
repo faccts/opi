@@ -173,3 +173,17 @@ def check_minimal_version(version: OrcaVersion, /) -> bool:
     version : OrcaVersion
     """
     return cast(bool, version >= ORCA_MINIMAL_VERSION)
+
+
+def check_file_path(file_path: Path, working_dir: Path) -> str:
+    """
+    Returns the absolute or relative path to a file as string.
+
+    If the file is located within the working directory, the relative path is returned.
+    Otherwise, the absolute path is returned.
+    """
+    try:
+        rel = file_path.relative_to(working_dir)
+        return str(rel)
+    except ValueError:
+        return str(file_path)

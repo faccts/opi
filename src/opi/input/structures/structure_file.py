@@ -4,6 +4,8 @@ from abc import ABC
 from pathlib import Path
 from typing import cast
 
+from opi.utils.misc import check_file_path
+
 __all__ = (
     "BaseStructureFile",
     "XyzFile",
@@ -15,7 +17,7 @@ __all__ = (
 class BaseStructureFile(ABC):
     """
     Class to model structure file.
-    The structure file is directly passed to ORCA. This interface not read or modify the contents of the file.
+    The structure file is directly passed to ORCA. This interface does not read or modify the contents of the file.
 
     Attributes
     ----------
@@ -52,17 +54,23 @@ class BaseStructureFile(ABC):
         """
         self._file = Path(val).expanduser().resolve(strict=True)
 
-    def format_orca(self, *, full_path: bool = False) -> str:
+    def format_orca(self, working_dir: Path, /, *, force_full_path: bool = False) -> str:
         """
-        Format respectively line in ORCA input.
+        Format respectively line in ORCA input. If the file lies within the working directory a relative path is
+        used, but if it lies outside an absolute path is employed.
 
         Parameters
         ----------
-        full_path : bool, default: False
+        working_dir : Path
+            Path to the working directory.
+        force_full_path : bool, default: False
             True: Print full path to the structure in the ORCA input file.
             False: Print only the filename. This is usually the preferred way!
         """
-        filename = self.file if full_path else self.file.name
+        if not force_full_path:
+            filename = check_file_path(self.file, working_dir)
+        else:
+            filename = self.file.name
         return f"*{self._type}file {self.charge} {self.multiplicity} {filename}"
 
     def copy_to(self, dest: Path, /) -> bool:
