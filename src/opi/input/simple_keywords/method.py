@@ -7,15 +7,9 @@ __all__ = ("Method",)
 
 
 class Method(SimpleKeywordBox):
-    """Enum to store all simple keywords of type Method.
-
-    Attributes
-    ----------
-    HF : SimpleKeyword
-        Hartee-Fock
-    HF_3C : SimpleKeyword
-        3c methods, do not require dispersion correction or basis set
-    """
+    """Enum to store all simple keywords of type Method."""
 
     HF = SimpleKeyword("hf")
+    """SimpleKeyword: Hartee-Fock."""
     HF_3C = SimpleKeyword("hf-3c")
+    """SimpleKeyword: 3c methods, do not require dispersion correction or basis set."""

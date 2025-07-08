@@ -8,12 +8,7 @@ __all__ = ("ExternalTools",)
 
 
 class ExternalTools(SimpleKeywordBox):
-    """Enum to store all simple keywords of type ExternalTools.
-
-    Attributes
-    ----------
-    EXTOPT : SimpleKeyword
-        Use external energy/gradient
-    """
+    """Enum to store all simple keywords of type ExternalTools."""
 
     EXTOPT = SimpleKeyword("extopt")
+    """SimpleKeyword: Use external energy/gradient."""

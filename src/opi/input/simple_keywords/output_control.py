@@ -7,48 +7,31 @@ __all__ = ("OutputControl",)
 
 
 class OutputControl(SimpleKeywordBox):
-    """Enum to store all simple keywords of type OutputControl.
-
-    Attributes
-    ----------
-    MINIPRINT : SimpleKeyword
-        OutputControl
-    SMALLPRINT : SimpleKeyword
-        OutputControl
-    NORMALPRINT : SimpleKeyword
-        OutputControl
-    LARGEPRINT : SimpleKeyword
-        OutputControl
-    SCFSOLVERTIME : SimpleKeyword
-        OutputControl
-    PRINTGAP : SimpleKeyword
-        OutputControl
-    PRINTMOS : SimpleKeyword
-        OutputControl
-    PRINTBASIS : SimpleKeyword
-        printbas
-    GRIDPRINT : SimpleKeyword
-        Print grid information
-    WRITEONLYINITIALPROPFILE : SimpleKeyword
-        Only write property file for first geometry
-    NOMOPRINT : SimpleKeyword
-        OutputControl
-    NOPROPFILE : SimpleKeyword
-        Write no property file
-    NOPRINTMOS : SimpleKeyword
-        OutputControl
-    """
+    """Enum to store all simple keywords of type OutputControl."""
 
     MINIPRINT = SimpleKeyword("miniprint")
+    """SimpleKeyword: OutputControl."""
     SMALLPRINT = SimpleKeyword("smallprint")
+    """SimpleKeyword: OutputControl."""
     NORMALPRINT = SimpleKeyword("normalprint")
+    """SimpleKeyword: OutputControl."""
     LARGEPRINT = SimpleKeyword("largeprint")
+    """SimpleKeyword: OutputControl."""
     SCFSOLVERTIME = SimpleKeyword("scfsolvertime")
+    """SimpleKeyword: OutputControl."""
     PRINTGAP = SimpleKeyword("printgap")
+    """SimpleKeyword: OutputControl."""
     PRINTMOS = SimpleKeyword("printmos")
+    """SimpleKeyword: OutputControl."""
     PRINTBASIS = SimpleKeyword("printbasis")
+    """SimpleKeyword: printbas."""
     GRIDPRINT = SimpleKeyword("gridprint")
+    """SimpleKeyword: Print grid information."""
     WRITEONLYINITIALPROPFILE = SimpleKeyword("writeonlyinitialpropfile")
+    """SimpleKeyword: Only write property file for first geometry."""
     NOMOPRINT = SimpleKeyword("nomoprint")
+    """SimpleKeyword: OutputControl."""
     NOPROPFILE = SimpleKeyword("nopropfile")
+    """SimpleKeyword: Write no property file."""
     NOPRINTMOS = SimpleKeyword("noprintmos")
+    """SimpleKeyword: OutputControl."""
