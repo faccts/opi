@@ -24,7 +24,7 @@ class Molecule(GetItem):
         multiplicity of the molecule
     charge: StrictInt
         charge of the molecule
-    hftyp: StrictSrt
+    hftyp: StrictStr
         Used shell-type (e.g., UHF/RHF) in the calculation
     origin: tuple[StrictFloat, StrictFloat, StrictFloat]
         Origin of the molecule

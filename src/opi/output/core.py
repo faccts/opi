@@ -17,8 +17,10 @@ from opi.output.grepper.recipes import (
     has_scf_converged,
     has_terminated_normally,
 )
+from opi.output.hftypes import Hftypes
 from opi.output.models.base.strict_types import StrictFiniteFloat, StrictPositiveInt
 from opi.output.models.json.gbw.gbw_results import GbwResults
+from opi.output.models.json.gbw.properties.mos import MO
 from opi.output.models.json.property.properties.energy import Energy
 from opi.output.models.json.property.properties.energy_list import EnergyList
 from opi.output.models.json.property.property_results import (
@@ -605,3 +607,183 @@ class Output:
             energy_dict[key] = energy
 
         return energy_dict
+
+    def get_hftype(self) -> Hftypes | None:
+        """
+        Get the HFType from GBW results
+
+        Returns
+        -------
+        hftype : Hftypes | None
+        """
+        hftype = self._safe_get("results_gbw", "molecule", "hftyp")
+        if hftype is not None:
+            hftype = cast(str, hftype)
+            try:
+                hftype = Hftypes(hftype)
+            except ValueError:
+                hftype = Hftypes.UNKNOWN
+
+        return hftype
+
+    def get_charge(self) -> int | None:
+        """
+        Get the molecular charge.
+
+        Returns
+        -------
+        charge : int | None
+        """
+        charge = self._safe_get("results_properties", "calculation_info", "charge")
+
+        if charge is not None:
+            charge = cast(int, charge)
+
+        return charge
+
+    def get_mult(self) -> int | None:
+        """
+        Get the molecular electron multiplicity.
+
+        Returns
+        -------
+        mult : int | None
+        """
+        mult = self._safe_get("results_properties", "calculation_info", "mult")
+
+        if mult is not None:
+            mult = cast(int, mult)
+
+        return mult
+
+    def get_electrons(self, *, spin_resolved: bool = False) -> int | tuple[int, int] | None:
+        """
+        Get the number of electrons from property results. If requested separated into alpha and beta.
+
+        Parameter
+        -------
+        spin_resolved: bool, default=False
+            If True, the numbers of electrons are returned as alpha and beta electrons separately, if False,
+            the total number of electrons is returned.
+
+        Returns
+        -------
+        nel : int | tuple[int, int] | None
+            Returns either the number of electrons, the number of alpha and beta electrons separately, or None, if the number of
+            electrons could not be obtained or the multiplicity for distinguishing alpha and beta could not be obtained.
+        """
+        nel = self._safe_get("results_properties", "calculation_info", "numofelectrons")
+
+        if nel is not None:
+            nel = cast(int, nel)
+        else:
+            return None
+
+        # > Return total number of electrons
+        if not spin_resolved:
+            return nel
+
+        # > Get the electron spin multiplicity
+        mult = self.get_mult()
+        if mult is None:
+            return None
+
+        # > Calculate amount of alpha and beta electrons
+        alpha = nel // 2 + (mult - 1)
+        beta = nel - alpha
+
+        # > Return spin resolved number of electrons
+        return alpha, beta
+
+    def get_mos(self) -> dict[str, list[MO]] | None:
+        """
+        Returns a list of molecular orbitals. If the calculation is of type UHF separate lists for alpha and
+        beta electrons are returned.
+        """
+        molecular_orbitals = self._safe_get("results_gbw", "molecule", "molecularorbitals", "mos")
+        if molecular_orbitals is not None:
+            mos = {}
+            cast(list[MO], molecular_orbitals)
+            # > Get the HFtype
+            hftype = self.get_hftype()
+            # > Sort for UHF
+            if hftype == Hftypes.UHF:
+                offset = len(molecular_orbitals) // 2
+                mos["alpha"] = molecular_orbitals[:offset]
+                mos["beta"] = molecular_orbitals[offset:]
+            else:
+                mos["mos"] = molecular_orbitals
+            return mos
+        else:
+            return None
+
+    @staticmethod
+    def _find_homo(mo_list: list[MO]) -> tuple[int, float, float] | None:
+        """Find highest occupied molecular orbital (HOMO) in numpy array."""
+        # > Search for the index of the LUMO
+        index = next((i for i, mo in enumerate(mo_list) if mo.occupancy == 0), None)
+        if index is not None and index >= 1:
+            # > HOMO is LUMO-1
+            index -= 1
+            mo_occ = mo_list[index].occupancy
+            mo_energy = mo_list[index].orbitalenergy
+            if mo_occ is not None and mo_energy is not None:
+                return index, mo_occ, mo_energy
+
+        return None
+
+    def get_homo_occ(self) -> tuple[int, str, float, float] | None:
+        """Get the occupation number and the energy of the HOMO (or highest SOMO)"""
+        homo: tuple[int, str, float, float] | None = None
+        """index, spin_channel, occupancy, energy"""
+        mos = self.get_mos()
+
+        if mos is not None:
+            for channel in mos:
+                # > find homo for spin channel
+                current_homo = self._find_homo(mos[channel])
+                if current_homo is not None:
+                    channel_homo = (current_homo[0], channel, current_homo[1], current_homo[2])
+                    """index, spin_channel, occupancy, energy"""
+                    # > Check if spin channel homo is the actual homo
+                    if homo is None:
+                        homo = channel_homo
+                    else:
+                        # > Compare energies and pick highest
+                        if channel_homo[-1] > homo[-1]:
+                            homo = channel_homo
+        return homo
+
+    @staticmethod
+    def _find_lumo(mo_list: list[MO]) -> tuple[int, float, float] | None:
+        """Find highest occupied molecular orbital (HOMO) in numpy array."""
+        index = next((i for i, mo in enumerate(mo_list) if mo.occupancy == 0), None)
+        if index is not None:
+            mo_occ = mo_list[index].occupancy
+            mo_energy = mo_list[index].orbitalenergy
+            if mo_occ is not None and mo_energy is not None:
+                return index, mo_occ, mo_energy
+
+        return None
+
+    def get_lumo_occ(self) -> tuple[int, str, float, float] | None:
+        """Get the occupation number and the energy of the LUMO"""
+        lumo: tuple[int, str, float, float] | None = None
+        """index, spin_channel, occupancy, energy"""
+        mos = self.get_mos()
+
+        if mos is not None:
+            for channel in mos:
+                # > find lumo for spin channel
+                current_lumo = self._find_lumo(mos[channel])
+                if current_lumo is not None:
+                    channel_lumo = (current_lumo[0], channel, current_lumo[1], current_lumo[2])
+                    """index, spin_channel, occupancy, energy"""
+                    # > Check if spin channel lumo is the actual lumo
+                    if lumo is None:
+                        lumo = channel_lumo
+                    else:
+                        # > Compare energies and pick highest
+                        if channel_lumo[-1] < lumo[-1]:
+                            lumo = channel_lumo
+        return lumo
