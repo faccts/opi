@@ -67,7 +67,7 @@ class FragProc(BaseModel):
     ]
 
     def __str__(self) -> str:
-        return " ".join(self.flags)
+        return ",".join(self.flags)
 
     @classmethod
     def from_string(cls, inp: str) -> "FragProc":
