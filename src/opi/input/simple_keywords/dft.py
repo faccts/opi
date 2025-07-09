@@ -171,9 +171,8 @@ class Dft(SimpleKeywordBox):
     """SimpleKeyword: Double-hybrid DFT with DLPNO approximation."""
     DLPNO_WB97X_2 = SimpleKeyword("dlpno-wb97x-2")
     """SimpleKeyword: Double-hybrid DFT with DLPNO approximation."""
-    DLPNO_WB97X_2_TQZ = SimpleKeyword(
-        "dlpno-wb97x-2(tqz)"
-    )  # Double-hybrid DFT with DLPNO approximation
+    DLPNO_WB97X_2_TQZ = SimpleKeyword("dlpno-wb97x-2(tqz)")
+    """SimpleKeyword: Double-hybrid DFT with DLPNO approximation."""
     DLPNO_WPBEPP86 = SimpleKeyword("dlpno-wpbepp86")
     """SimpleKeyword: Double-hybrid DFT with DLPNO approximation."""
     DLPNO_WPR2SCAN50 = SimpleKeyword("dlpno-wpr2scan50")

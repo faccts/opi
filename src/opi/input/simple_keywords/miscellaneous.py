@@ -15,8 +15,6 @@ class Miscellaneous(SimpleKeywordBox):
     """SimpleKeyword: Miscellaneous."""
     CHEAPINTS = SimpleKeyword("cheapints")
     """SimpleKeyword: Miscellaneous."""
-    KEEPDENS = SimpleKeyword("keepdens")
-    """SimpleKeyword: Miscellaneous."""
     KEEPDENSITY = SimpleKeyword("keepdensity")
     """SimpleKeyword: Miscellaneous."""
     KEEPFOCK = SimpleKeyword("keepfock")
@@ -32,8 +30,6 @@ class Miscellaneous(SimpleKeywordBox):
     MASS2016 = SimpleKeyword("mass2016")
     """SimpleKeyword: Miscellaneous."""
     NOCHEAPINTS = SimpleKeyword("nocheapints")
-    """SimpleKeyword: Miscellaneous."""
-    NOKEEPDENS = SimpleKeyword("nokeepdens")
     """SimpleKeyword: Miscellaneous."""
     NOKEEPDENSITY = SimpleKeyword("nokeepdensity")
     """SimpleKeyword: Miscellaneous."""
@@ -59,42 +55,6 @@ class Miscellaneous(SimpleKeywordBox):
     """SimpleKeyword: Symmetry keywords."""
     NOXCFUN = SimpleKeyword("noxcfun")
     """SimpleKeyword: do not use Xcfun library."""
-    PAL = SimpleKeyword("pal")
-    """SimpleKeyword: Parallelization."""
-    PAL16 = SimpleKeyword("pal16")
-    """SimpleKeyword: Parallelization."""
-    PAL16_4X4 = SimpleKeyword("pal16(4x4)")
-    """SimpleKeyword: Parallelization."""
-    PAL2 = SimpleKeyword("pal2")
-    """SimpleKeyword: Parallelization."""
-    PAL3 = SimpleKeyword("pal3")
-    """SimpleKeyword: Parallelization."""
-    PAL32 = SimpleKeyword("pal32")
-    """SimpleKeyword: Parallelization."""
-    PAL32_4X8 = SimpleKeyword("pal32(4x8)")
-    """SimpleKeyword: Parallelization."""
-    PAL32_8X4 = SimpleKeyword("pal32(8x4)")
-    """SimpleKeyword: Parallelization."""
-    PAL4 = SimpleKeyword("pal4")
-    """SimpleKeyword: Parallelization."""
-    PAL4_2X2 = SimpleKeyword("pal4(2x2)")
-    """SimpleKeyword: Parallelization."""
-    PAL5 = SimpleKeyword("pal5")
-    """SimpleKeyword: Parallelization."""
-    PAL6 = SimpleKeyword("pal6")
-    """SimpleKeyword: Parallelization."""
-    PAL64 = SimpleKeyword("pal64")
-    """SimpleKeyword: Parallelization."""
-    PAL64_8X8 = SimpleKeyword("pal64(8x8)")
-    """SimpleKeyword: Parallelization."""
-    PAL7 = SimpleKeyword("pal7")
-    """SimpleKeyword: Parallelization."""
-    PAL8 = SimpleKeyword("pal8")
-    """SimpleKeyword: Parallelization."""
-    PAL8_2X4 = SimpleKeyword("pal8(2x4)")
-    """SimpleKeyword: Parallelization."""
-    PAL8_4X2 = SimpleKeyword("pal8(4x2)")
-    """SimpleKeyword: Parallelization."""
     PREFERC2V = SimpleKeyword("preferc2v")
     """SimpleKeyword: Symmetry keywords."""
     PREFERD2 = SimpleKeyword("preferd2")
