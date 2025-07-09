@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import field_validator
 
-from opi.input.blocks.base import (
+from opi.input.blocks import (
     Block,
     InputFilePath,
     IntGroup,

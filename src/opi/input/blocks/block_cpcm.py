@@ -2,7 +2,7 @@ from typing import Any, Callable, Literal, Union
 
 from pydantic import BaseModel, Field
 
-from opi.input.blocks.base import Block
+from opi.input.blocks import Block
 from opi.input.simple_keywords import Solvent
 
 __all__ = ("AtomRadii", "Radius", "BlockCpcm")

@@ -1,6 +1,6 @@
 from pydantic import field_validator
 
-from opi.input.blocks.base import Block, InputFilePath
+from opi.input.blocks import Block, InputFilePath
 
 __all__ = ("BlockMethod",)
 
@@ -19,6 +19,7 @@ class BlockMethod(Block):
     # > Options for Extopt
     ProgExt: InputFilePath | None = None  # Path to wrapper script
     Ext_Params: str | None = None  # Arbitrary optional command line arguments
+
 
     @field_validator("ProgExt", mode="before")
     @classmethod

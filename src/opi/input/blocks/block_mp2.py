@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import field_validator
 
-from opi.input.blocks.base import Block, InputString, NumList
+from opi.input.blocks import Block, InputString, NumList
 
 __all__ = ("BlockMp2",)
 

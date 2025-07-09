@@ -2,7 +2,7 @@ from typing import Any, Literal, Self
 
 from pydantic import BaseModel, field_validator
 
-from opi.input.blocks.base import Block, InputFilePath, NumList
+from opi.input.blocks import Block, InputFilePath, NumList
 
 __all__ = ("DIIS", "Shift", "Damp", "SOSCF", "Trah", "Stab", "Rotate", "BlockScf")
 

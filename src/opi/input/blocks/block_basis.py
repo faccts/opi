@@ -3,7 +3,7 @@ import re
 from pydantic import BaseModel, ConfigDict, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
-from opi.input.blocks.base import Block, InputFilePath
+from opi.input.blocks import Block, InputFilePath
 from opi.input.simple_keywords import (
     SimpleKeyword,
 )

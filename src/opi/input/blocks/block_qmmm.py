@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import field_validator
 
-from opi.input.blocks.base import Block, InputFilePath, IntGroup
+from opi.input.blocks import Block, InputFilePath, IntGroup
 from opi.input.simple_keywords import SimpleKeyword
 
 __all__ = ("BlockQmmm",)

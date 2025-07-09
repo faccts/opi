@@ -8,7 +8,7 @@ from pydantic import (
     model_validator,
 )
 
-from opi.input.blocks.base import (
+from opi.input.blocks import (
     Block,
     InputFilePath,
     NumList,

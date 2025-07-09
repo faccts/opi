@@ -3,7 +3,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
 
-from opi.input.blocks.base import IntGroup
+from opi.input.blocks import IntGroup
 
 __all__ = ("FragList", "Fragment", "Frags")
 

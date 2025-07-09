@@ -1,4 +1,4 @@
-from opi.input.blocks.base import Block
+from opi.input.blocks import Block
 
 __all__ = ("BlockRocis",)
 

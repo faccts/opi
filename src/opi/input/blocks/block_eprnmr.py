@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from opi.input.blocks.base import Block, InputFilePath, IntGroup, NumList
+from opi.input.blocks import Block, InputFilePath, IntGroup, NumList
 from opi.utils.element import Element
 
 __all__ = ("NucleiFlag", "Nuclei", "NmrGroup", "NmrEquiv", "BlockEprnmr")
