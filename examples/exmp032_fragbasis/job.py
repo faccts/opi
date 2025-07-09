@@ -22,7 +22,7 @@ if __name__ == "__main__":
     )
 
     calc.input.add_blocks(
-        BlockBasis(fragbasis= FragBasis(frag={1:BasisSet.DEF2_TZVP,2:BasisSet.CC_PVTZ_PP}),
+        BlockBasis(fragbasis= FragBasis(frag={1:BasisSet.DEF2_TZVP,2:BasisSet.DEF2_QZVP}),
                    fragauxj = FragAuxJ(frag={2:AuxBasisSet.AUTOAUX,3:AuxBasisSet.DEF2_JK}),
                    fragecp = FragEcp(frag={3:Ecp.SK_MCDHF_RSC}),
 
