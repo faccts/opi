@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, cast
 from warnings import warn
 
-from pydantic import StrictStr
+from pydantic import StrictInt, StrictStr
 
 from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
@@ -421,123 +421,92 @@ class Output:
                 return None
         return current
 
-    def _get_cartesians(
-        self, index: int
-    ) -> list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None:
+    def get_hftype(self) -> Hftypes | None:
         """
-        Returns cartesian coordinates from the output object for a specified index.
-
-        Parameters
-        ----------
-        index : int
-            index of geometry to return.
+        Get the HFType from GBW results.
 
         Returns
-        ----------
-        cartesians: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None
-            List containing the cartesian coordinates or None.
+        -------
+        hftype : Hftypes | None
         """
-        # > Safely get the cartesian coordinates
-        cartesians = self._safe_get(
-            "results_properties", "geometries", index, "geometry", "coordinates", "cartesians"
-        )
-        # > Cast them into the correct type
-        if cartesians is not None:
-            cartesians = cast(
-                list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]],
-                cartesians,
-            )
+        hftype = self._safe_get("results_gbw", "molecule", "hftyp")
+        if hftype is not None:
+            hftype = cast(str, hftype)
+            try:
+                hftype = Hftypes(hftype)
+            except ValueError:
+                hftype = Hftypes.UNKNOWN
 
-        return cartesians
+        return hftype
 
-    def _get_fragments(self, index: int, /) -> list[list[StrictPositiveInt]] | None:
+    def get_charge(self) -> StrictInt | None:
         """
-        Returns fragment ids from the output object for a specified geometry index.
-
-        Parameters
-        ----------
-        index : int
-            index of geometry to return.
+        Get the molecular charge.
 
         Returns
-        ----------
-        fragments: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None
-            List containing the cartesian coordinates or None.
+        -------
+        charge : int | None
         """
-        # > Safely get the fragment IDs
-        fragments = self._safe_get(
-            "results_properties", "geometries", index, "geometry", "fragments"
-        )
-        # > Cast them into the correct type
-        if fragments:
-            fragments = cast(
-                list[list[StrictPositiveInt]],
-                fragments,
-            )
+        charge = self._safe_get("results_properties", "calculation_info", "charge")
 
-        return fragments
-
-    def get_structure(self, *, index: int = -1, with_fragments: bool = True) -> Structure:
-        """
-        Returns structure from ORCA job as Structure object (by default the final structure).
-
-        Parameters
-        ----------
-        index : int, default: -1
-            index of geometry to return. The default -1 refers to the final geometry.
-        with_fragments : bool, default: True
-            whether the fragment IDs should be added as well to the structure (if available)
-
-        Returns
-        ----------
-        structure: Structure
-            Returns structure object generated from the output for the given index.
-
-        Raises
-        ----------
-        ValueError
-            If no geometry with the requested index is available.
-        """
-
-        atoms: list[Atom] = []
-        # > Get Cartesian coordinates
-        cartesians = self._get_cartesians(index)
-
-        if cartesians is None:
-            raise ValueError(
-                f"Requested Cartesian coordinates for geometry with index {index} are not available."
-            )
-
-        for line in cartesians:
-            elem, x_au, y_au, z_au = line
-            # > Get coordinates and convert to angstrom
-            x = x_au * AU_TO_ANGST
-            y = y_au * AU_TO_ANGST
-            z = z_au * AU_TO_ANGST
-            # > Generate atom and append to list
-            atom = Atom(element=elem, coordinates=Coordinates((x, y, z)))
-            atoms.append(atom)
-
-        if with_fragments:
-            # > Get fragment IDs
-            fragments = self._get_fragments(index)
-
-            if fragments:
-                for atom, frag in zip(atoms, fragments):
-                    atom.fragment_id = frag[0]
-
-        structure = Structure(atoms)
-
-        # > Add charge data
-        charge = self.get_charge()
         if charge is not None:
-            structure.charge = charge
+            charge = cast(int, charge)
 
-        # > Add multiplicity data
-        mult = self.get_mult()
+        return charge
+
+    def get_mult(self) -> StrictPositiveInt | None:
+        """
+        Get the molecular electron multiplicity.
+
+        Returns
+        -------
+        mult : int | None
+        """
+        mult = self._safe_get("results_properties", "calculation_info", "mult")
+
         if mult is not None:
-            structure.multiplicity = mult
-        return structure
+            mult = cast(int, mult)
+
+        return mult
+
+    def get_electrons(self, *, spin_resolved: bool = False) -> int | tuple[int, int] | None:
+        """
+        Get the number of electrons from property results. If requested separated into alpha and beta.
+
+        Parameter
+        -------
+        spin_resolved: bool, default=False
+            If True, the numbers of electrons are returned as alpha and beta electrons separately, if False,
+            the total number of electrons is returned.
+
+        Returns
+        -------
+        nel : int | tuple[int, int] | None
+            Returns either the number of electrons, the number of alpha and beta electrons separately, or None, if the number of
+            electrons could not be obtained or the multiplicity for distinguishing alpha and beta could not be obtained.
+        """
+        nel = self._safe_get("results_properties", "calculation_info", "numofelectrons")
+
+        if nel is not None:
+            nel = cast(int, nel)
+        else:
+            return None
+
+        # > Return total number of electrons
+        if not spin_resolved:
+            return nel
+
+        # > Get the electron spin multiplicity
+        mult = self.get_mult()
+        if mult is None:
+            return None
+
+        # > Calculate amount of alpha and beta electrons
+        alpha = nel // 2 + (mult - 1)
+        beta = nel - alpha
+
+        # > Return spin resolved number of electrons
+        return alpha, beta
 
     def get_final_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
@@ -564,34 +533,6 @@ class Output:
             final_energy = cast(StrictFiniteFloat, final_energy)
 
         return final_energy
-
-    def get_gradient(self, *, index: int = -1) -> list[list[StrictFiniteFloat]] | None:
-        """
-        Easy access to the nuclear gradient
-
-        Parameters
-        ----------
-        index : int, default: -1
-            index of geometry for which the gradient is to be returned. The default -1 refers to the final geometry.
-
-        Returns
-        ----------
-        list[list[StrictFiniteFloat]] | None
-            Returns nuclear gradient for the given index or None if it cannot be found.
-        """
-        # > Safely get the gradient
-        gradient = self._safe_get(
-            "results_properties", "geometries", index, "nuclear_gradient", "grad"
-        )
-
-        # > Cast them into the correct type
-        if gradient is not None:
-            gradient = cast(
-                list[list[StrictFiniteFloat]],
-                gradient,
-            )
-
-        return gradient
 
     def get_energies(self, *, index: int = -1) -> dict[str, Energy] | None:
         """
@@ -646,92 +587,147 @@ class Output:
 
         return energy_dict
 
-    def get_hftype(self) -> Hftypes | None:
+    def get_gradient(self, *, index: int = -1) -> list[StrictFiniteFloat] | None:
         """
-        Get the HFType from GBW results.
+        Easy access to the nuclear gradient
+
+        Parameters
+        ----------
+        index : int, default: -1
+            index of geometry for which the gradient is to be returned. The default -1 refers to the final geometry.
 
         Returns
-        -------
-        hftype : Hftypes | None
+        ----------
+        list[list[StrictFiniteFloat]] | None
+            Returns nuclear gradient (order x, y, z in Eh/Bohr) for the given index or None if it cannot be obtained.
         """
-        hftype = self._safe_get("results_gbw", "molecule", "hftyp")
-        if hftype is not None:
-            hftype = cast(str, hftype)
-            try:
-                hftype = Hftypes(hftype)
-            except ValueError:
-                hftype = Hftypes.UNKNOWN
+        # > Safely get the gradient
+        gradient = self._safe_get(
+            "results_properties", "geometries", index, "nuclear_gradient", 0, "grad"
+        )
 
-        return hftype
+        # > Cast them into the correct type
+        if gradient is not None:
+            gradient = cast(
+                list[list[StrictFiniteFloat]],
+                gradient,
+            )
+            flat = [inner[0] for inner in gradient]
+            gradient = flat
 
-    def get_charge(self) -> int | None:
+        return gradient
+
+    def get_structure(self, *, index: int = -1, with_fragments: bool = True) -> Structure | None:
         """
-        Get the molecular charge.
+        Returns structure from ORCA job as Structure object (by default the final structure).
+        Silently returns None of no structure is available.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            index of geometry to return. The default -1 refers to the final geometry.
+        with_fragments : bool, default: True
+            whether the fragment IDs should be added as well to the structure (if available)
 
         Returns
-        -------
-        charge : int | None
+        ----------
+        structure: Structure | None
+            Returns structure object generated from the output for the given index or None if no structure is available.
         """
-        charge = self._safe_get("results_properties", "calculation_info", "charge")
 
+        atoms: list[Atom] = []
+        # > Get Cartesian coordinates
+        cartesians = self._get_cartesians(index)
+
+        if cartesians is None:
+            return None
+
+        for line in cartesians:
+            elem, x_au, y_au, z_au = line
+            # > Get coordinates and convert to angstrom
+            x = x_au * AU_TO_ANGST
+            y = y_au * AU_TO_ANGST
+            z = z_au * AU_TO_ANGST
+            # > Generate atom and append to list
+            atom = Atom(element=elem, coordinates=Coordinates((x, y, z)))
+            atoms.append(atom)
+
+        if with_fragments:
+            # > Get fragment IDs
+            fragments = self._get_fragments(index)
+
+            if fragments:
+                for atom, frag in zip(atoms, fragments):
+                    atom.fragment_id = frag[0]
+
+        structure = Structure(atoms)
+
+        # > Add charge data
+        charge = self.get_charge()
         if charge is not None:
-            charge = cast(int, charge)
+            structure.charge = charge
 
-        return charge
-
-    def get_mult(self) -> int | None:
-        """
-        Get the molecular electron multiplicity.
-
-        Returns
-        -------
-        mult : int | None
-        """
-        mult = self._safe_get("results_properties", "calculation_info", "mult")
-
-        if mult is not None:
-            mult = cast(int, mult)
-
-        return mult
-
-    def get_electrons(self, *, spin_resolved: bool = False) -> int | tuple[int, int] | None:
-        """
-        Get the number of electrons from property results. If requested separated into alpha and beta.
-
-        Parameter
-        -------
-        spin_resolved: bool, default=False
-            If True, the numbers of electrons are returned as alpha and beta electrons separately, if False,
-            the total number of electrons is returned.
-
-        Returns
-        -------
-        nel : int | tuple[int, int] | None
-            Returns either the number of electrons, the number of alpha and beta electrons separately, or None, if the number of
-            electrons could not be obtained or the multiplicity for distinguishing alpha and beta could not be obtained.
-        """
-        nel = self._safe_get("results_properties", "calculation_info", "numofelectrons")
-
-        if nel is not None:
-            nel = cast(int, nel)
-        else:
-            return None
-
-        # > Return total number of electrons
-        if not spin_resolved:
-            return nel
-
-        # > Get the electron spin multiplicity
+        # > Add multiplicity data
         mult = self.get_mult()
-        if mult is None:
-            return None
+        if mult is not None:
+            structure.multiplicity = mult
+        return structure
 
-        # > Calculate amount of alpha and beta electrons
-        alpha = nel // 2 + (mult - 1)
-        beta = nel - alpha
+    def _get_cartesians(
+        self, index: int, /
+    ) -> list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None:
+        """
+        Returns cartesian coordinates from the output object for a specified index.
 
-        # > Return spin resolved number of electrons
-        return alpha, beta
+        Parameters
+        ----------
+        index : int
+            index of geometry to return.
+
+        Returns
+        ----------
+        cartesians: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None
+            List containing the cartesian coordinates or None.
+        """
+        # > Safely get the cartesian coordinates
+        cartesians = self._safe_get(
+            "results_properties", "geometries", index, "geometry", "coordinates", "cartesians"
+        )
+        # > Cast them into the correct type
+        if cartesians is not None:
+            cartesians = cast(
+                list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]],
+                cartesians,
+            )
+
+        return cartesians
+
+    def _get_fragments(self, index: int, /) -> list[list[StrictPositiveInt]] | None:
+        """
+        Returns fragment ids from the output object for a specified geometry index.
+
+        Parameters
+        ----------
+        index : int
+            index of geometry to return.
+
+        Returns
+        ----------
+        fragments: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None
+            List containing the cartesian coordinates or None.
+        """
+        # > Safely get the fragment IDs
+        fragments = self._safe_get(
+            "results_properties", "geometries", index, "geometry", "fragments"
+        )
+        # > Cast them into the correct type
+        if fragments:
+            fragments = cast(
+                list[list[StrictPositiveInt]],
+                fragments,
+            )
+
+        return fragments
 
     def get_mos(self) -> dict[str, list[MO]] | None:
         """
@@ -740,10 +736,14 @@ class Output:
         Returns
         -------
         dict[str, list[MO]] | None
-            Dictionary containing the molecular orbitals as lists with the following keys:
-                - 'mos' : RHF/ROHF type MOs
-                - 'alpha' : UHF MOs with alpha spin function
-                - 'beta' : UHF MOs with beta spin function
+            Dictionary containing the molecular orbitals as lists.
+
+        Notes
+        -----
+        The keys are:
+            - **mos**     : RHF/ROHF orbitals
+            - **alpha**   : UHF alpha orbitals
+            - **beta**    : UHF beta orbitals
         """
         molecular_orbitals = self._safe_get("results_gbw", "molecule", "molecularorbitals", "mos")
         if molecular_orbitals is not None:

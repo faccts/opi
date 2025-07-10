@@ -67,3 +67,6 @@ if __name__ == "__main__":
     # > Now we print the final structure as xyz file
     optimized = output.get_structure()
     print(optimized.to_xyz_block())
+
+    # > Now we print the final gradient
+    print(output.get_gradient(index=-2))

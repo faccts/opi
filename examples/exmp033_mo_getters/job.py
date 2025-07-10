@@ -19,9 +19,11 @@ if __name__ == "__main__":
 
     calc = Calculator(basename="job", working_dir=wd)
     calc.structure = Structure.from_xyz("inp.xyz")
+    calc.structure.charge = 1
+    calc.structure.multiplicity = 2
     calc.input.add_simple_keywords(
         Scf.NOAUTOSTART,
-        Dft.TPSS,
+        Dft.PBE0,
         BasisSet.DEF2_SVP,
         Task.SP,
     )
