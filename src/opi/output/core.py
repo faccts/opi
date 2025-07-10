@@ -28,7 +28,7 @@ from opi.output.models.json.property.property_results import (
 )
 from opi.utils.misc import check_minimal_version, lowercase
 from opi.utils.orca_version import OrcaVersion
-from opi.utils.units import AU_TO_ANGST
+from opi.utils.units import AU_TO_ANGST, AU_TO_EV
 
 
 class Output:
@@ -610,7 +610,7 @@ class Output:
 
     def get_hftype(self) -> Hftypes | None:
         """
-        Get the HFType from GBW results
+        Get the HFType from GBW results.
 
         Returns
         -------
@@ -704,7 +704,7 @@ class Output:
         if molecular_orbitals is not None:
             mos = {}
             cast(list[MO], molecular_orbitals)
-            # > Get the HFtype
+            # > Get the hftype (e.g. rhf / uhf)
             hftype = self.get_hftype()
             # > Sort for UHF
             if hftype == Hftypes.UHF:
@@ -718,72 +718,81 @@ class Output:
             return None
 
     @staticmethod
-    def _find_homo(mo_list: list[MO]) -> tuple[int, float, float] | None:
-        """Find highest occupied molecular orbital (HOMO) in numpy array."""
+    def _find_homo(mo_list: list[MO]) -> int | None:
+        """Find the highest occupied molecular orbital HOMO in ordered list of MOs."""
         # > Search for the index of the LUMO
         index = next((i for i, mo in enumerate(mo_list) if mo.occupancy == 0), None)
         if index is not None and index >= 1:
             # > HOMO is LUMO-1
             index -= 1
-            mo_occ = mo_list[index].occupancy
-            mo_energy = mo_list[index].orbitalenergy
-            if mo_occ is not None and mo_energy is not None:
-                return index, mo_occ, mo_energy
+            return index
 
         return None
 
-    def get_homo_occ(self) -> tuple[int, str, float, float] | None:
-        """Get the occupation number and the energy of the HOMO (or highest SOMO)"""
-        homo: tuple[int, str, float, float] | None = None
-        """index, spin_channel, occupancy, energy"""
+    def get_homo(self) -> MO | None:
+        """"""
+        homo: MO | None = None
         mos = self.get_mos()
 
         if mos is not None:
             for channel in mos:
                 # > find homo for spin channel
-                current_homo = self._find_homo(mos[channel])
-                if current_homo is not None:
-                    channel_homo = (current_homo[0], channel, current_homo[1], current_homo[2])
-                    """index, spin_channel, occupancy, energy"""
-                    # > Check if spin channel homo is the actual homo
-                    if homo is None:
-                        homo = channel_homo
-                    else:
-                        # > Compare energies and pick highest
-                        if channel_homo[-1] > homo[-1]:
+                index = self._find_homo(mos[channel])
+                if index is not None:
+                    channel_homo = mos[channel][index]
+                    if channel_homo.orbitalenergy is not None:
+                        # > Check if spin channel homo is the actual homo
+                        if homo is None:
                             homo = channel_homo
+                        else:
+                            # > Compare energies and pick highest
+                            if (
+                                homo.orbitalenergy is not None
+                                and channel_homo.orbitalenergy > homo.orbitalenergy
+                            ):
+                                homo = channel_homo
         return homo
 
     @staticmethod
-    def _find_lumo(mo_list: list[MO]) -> tuple[int, float, float] | None:
-        """Find highest occupied molecular orbital (HOMO) in numpy array."""
+    def _find_lumo(mo_list: list[MO]) -> int | None:
+        """Find the lowest unoccupied molecular orbital LUMO in ordered list of MOs."""
         index = next((i for i, mo in enumerate(mo_list) if mo.occupancy == 0), None)
         if index is not None:
-            mo_occ = mo_list[index].occupancy
-            mo_energy = mo_list[index].orbitalenergy
-            if mo_occ is not None and mo_energy is not None:
-                return index, mo_occ, mo_energy
+            return index
 
         return None
 
-    def get_lumo_occ(self) -> tuple[int, str, float, float] | None:
-        """Get the occupation number and the energy of the LUMO"""
-        lumo: tuple[int, str, float, float] | None = None
-        """index, spin_channel, occupancy, energy"""
+    def get_lumo(self) -> MO | None:
+        """"""
+        lumo: MO | None = None
         mos = self.get_mos()
 
         if mos is not None:
             for channel in mos:
                 # > find lumo for spin channel
-                current_lumo = self._find_lumo(mos[channel])
-                if current_lumo is not None:
-                    channel_lumo = (current_lumo[0], channel, current_lumo[1], current_lumo[2])
-                    """index, spin_channel, occupancy, energy"""
-                    # > Check if spin channel lumo is the actual lumo
-                    if lumo is None:
-                        lumo = channel_lumo
-                    else:
-                        # > Compare energies and pick highest
-                        if channel_lumo[-1] < lumo[-1]:
+                index = self._find_lumo(mos[channel])
+                if index is not None:
+                    channel_lumo = mos[channel][index]
+                    if channel_lumo.orbitalenergy is not None:
+                        # > Check if spin channel lumo is the actual lumo
+                        if lumo is None:
                             lumo = channel_lumo
+                        else:
+                            # > pick lowest lumo
+                            if (
+                                lumo.orbitalenergy is not None
+                                and channel_lumo.orbitalenergy < lumo.orbitalenergy
+                            ):
+                                lumo = channel_lumo
         return lumo
+
+    def get_hl_gap(self) -> float | None:
+        """Returns the HOMO-LUMO gap in eV"""
+        homo = self.get_homo()
+        lumo = self.get_lumo()
+
+        if homo is not None and lumo is not None:
+            if homo.orbitalenergy is not None and lumo.orbitalenergy is not None:
+                return (lumo.orbitalenergy - homo.orbitalenergy) * AU_TO_EV
+
+        return None
