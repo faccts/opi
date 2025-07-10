@@ -527,6 +527,16 @@ class Output:
                     atom.fragment_id = frag[0]
 
         structure = Structure(atoms)
+
+        # > Add charge data
+        charge = self.get_charge()
+        if charge is not None:
+            structure.charge = charge
+
+        # > Add multiplicity data
+        mult = self.get_mult()
+        if mult is not None:
+            structure.multiplicity = mult
         return structure
 
     def get_final_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
@@ -554,6 +564,34 @@ class Output:
             final_energy = cast(StrictFiniteFloat, final_energy)
 
         return final_energy
+
+    def get_gradient(self, *, index: int = -1) -> list[list[StrictFiniteFloat]] | None:
+        """
+        Easy access to the nuclear gradient
+
+        Parameters
+        ----------
+        index : int, default: -1
+            index of geometry for which the gradient is to be returned. The default -1 refers to the final geometry.
+
+        Returns
+        ----------
+        list[list[StrictFiniteFloat]] | None
+            Returns nuclear gradient for the given index or None if it cannot be found.
+        """
+        # > Safely get the gradient
+        gradient = self._safe_get(
+            "results_properties", "geometries", index, "nuclear_gradient", "grad"
+        )
+
+        # > Cast them into the correct type
+        if gradient is not None:
+            gradient = cast(
+                list[list[StrictFiniteFloat]],
+                gradient,
+            )
+
+        return gradient
 
     def get_energies(self, *, index: int = -1) -> dict[str, Energy] | None:
         """
@@ -697,8 +735,15 @@ class Output:
 
     def get_mos(self) -> dict[str, list[MO]] | None:
         """
-        Returns a list of molecular orbitals. If the calculation is of type UHF separate lists for alpha and
-        beta electrons are returned.
+        Returns a dictionary with list(s) of molecular orbitals.
+
+        Returns
+        -------
+        dict[str, list[MO]] | None
+            Dictionary containing the molecular orbitals as lists with the following keys:
+                - 'mos' : RHF/ROHF type MOs
+                - 'alpha' : UHF MOs with alpha spin function
+                - 'beta' : UHF MOs with beta spin function
         """
         molecular_orbitals = self._safe_get("results_gbw", "molecule", "molecularorbitals", "mos")
         if molecular_orbitals is not None:
@@ -719,7 +764,19 @@ class Output:
 
     @staticmethod
     def _find_homo(mo_list: list[MO]) -> int | None:
-        """Find the highest occupied molecular orbital HOMO in ordered list of MOs."""
+        """
+        Find and return the index of the highest occupied molecular orbital HOMO in energy ordered list of MOs.
+
+        Parameter
+        -------
+        mo_list: list[MO]
+
+        Returns
+        -------
+        int | None
+            index of HOMO, or None, if the HOMO could not be found.
+        """
+
         # > Search for the index of the LUMO
         index = next((i for i, mo in enumerate(mo_list) if mo.occupancy == 0), None)
         if index is not None and index >= 1:
@@ -730,7 +787,14 @@ class Output:
         return None
 
     def get_homo(self) -> MO | None:
-        """"""
+        """
+        Returns the highest occupied molecular orbital (HOMO, or SOMO for UHF)
+
+        Returns
+        -------
+        MO | None
+            Returns the HOMO (or SOMO), or None, if the HOMO could not be found
+        """
         homo: MO | None = None
         mos = self.get_mos()
 
@@ -755,7 +819,18 @@ class Output:
 
     @staticmethod
     def _find_lumo(mo_list: list[MO]) -> int | None:
-        """Find the lowest unoccupied molecular orbital LUMO in ordered list of MOs."""
+        """
+        Find and return the index of the lowest unoccupied molecular orbital LUMO in energy ordered list of MOs.
+
+        Parameter
+        -------
+        mo_list: list[MO]
+
+        Returns
+        -------
+        int | None
+            index of LUMO, or None, if the LUMO could not be found.
+        """
         index = next((i for i, mo in enumerate(mo_list) if mo.occupancy == 0), None)
         if index is not None:
             return index
@@ -763,7 +838,14 @@ class Output:
         return None
 
     def get_lumo(self) -> MO | None:
-        """"""
+        """
+        Returns the lowest unoccupied molecular orbital (LUMO)
+
+        Returns
+        -------
+        MO | None
+            Returns the LUMO, or None, if the LUMO could not be found
+        """
         lumo: MO | None = None
         mos = self.get_mos()
 
@@ -787,7 +869,14 @@ class Output:
         return lumo
 
     def get_hl_gap(self) -> float | None:
-        """Returns the HOMO-LUMO gap in eV"""
+        """
+        Returns the HOMO-LUMO gap in eV
+
+        Returns
+        -------
+        float | None
+            Returns the HOMO-LUMO gap in eV or None if the gap could not be obtained.
+        """
         homo = self.get_homo()
         lumo = self.get_lumo()
 
