@@ -48,8 +48,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print(output.get_hftype())
-    print(output.get_electrons())
-    print(output.get_mos())
-    print(output.get_homo())
-    print(output.get_lumo())
+    print(output.get_nelectrons())
+    mos = output.get_mos()
+    print(f"HOMO energy: {output.get_homo().orbitalenergy:.8f} Eh")
+    print(f"LUMO energy: {output.get_lumo().orbitalenergy:.8f} Eh")
     print(f"HOMO-LUMO gap: {output.get_hl_gap():.2f} eV")

@@ -12,5 +12,3 @@ class Hftypes(StringEnum):
     """Restricted Open-Shell Hartree-Fock or Kohn-Sham calculation"""
     CASSCF = "casscf"
     """Multiconfigurational wavefunction calculation."""
-    UNKNOWN = "unknown"
-    """The wavefunction type is unknown."""

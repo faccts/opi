@@ -423,7 +423,7 @@ class Output:
 
     def get_hftype(self) -> Hftypes | None:
         """
-        Get the HFType from GBW results.
+        Get the HFType from GBW json file.
 
         Returns
         -------
@@ -434,14 +434,15 @@ class Output:
             hftype = cast(str, hftype)
             try:
                 hftype = Hftypes(hftype)
+                return hftype
             except ValueError:
-                hftype = Hftypes.UNKNOWN
-
-        return hftype
+                return None
+        else:
+            return None
 
     def get_charge(self) -> StrictInt | None:
         """
-        Get the molecular charge.
+        Get the molecular charge from the json properties file.
 
         Returns
         -------
@@ -456,7 +457,7 @@ class Output:
 
     def get_mult(self) -> StrictPositiveInt | None:
         """
-        Get the molecular electron multiplicity.
+        Get the molecular electron multiplicity from the json properties file.
 
         Returns
         -------
@@ -469,11 +470,13 @@ class Output:
 
         return mult
 
-    def get_electrons(self, *, spin_resolved: bool = False) -> int | tuple[int, int] | None:
+    def get_nelectrons(
+        self, *, spin_resolved: bool = False
+    ) -> tuple[int, int | None] | tuple[None, None]:
         """
         Get the number of electrons from property results. If requested separated into alpha and beta.
 
-        Parameter
+        Parameters
         -------
         spin_resolved: bool, default=False
             If True, the numbers of electrons are returned as alpha and beta electrons separately, if False,
@@ -481,25 +484,27 @@ class Output:
 
         Returns
         -------
-        nel : int | tuple[int, int] | None
-            Returns either the number of electrons, the number of alpha and beta electrons separately, or None, if the number of
-            electrons could not be obtained or the multiplicity for distinguishing alpha and beta could not be obtained.
+        nel, None | alpha, beta | None, None: tuple[int, int] | tuple[None,None]
+            Returns the number of electrons (spin resolved if requested) as integers or None:
+                - nel, None, all electrons, not spin resolved.
+                - nalpha, nbeta, alpha and beta electrons separated.
+                - None, None, if no electrons could be retrieved, or no multiplicity for spin resolution is available.
         """
         nel = self._safe_get("results_properties", "calculation_info", "numofelectrons")
 
         if nel is not None:
             nel = cast(int, nel)
         else:
-            return None
+            return None, None
 
         # > Return total number of electrons
         if not spin_resolved:
-            return nel
+            return nel, None
 
         # > Get the electron spin multiplicity
         mult = self.get_mult()
         if mult is None:
-            return None
+            return None, None
 
         # > Calculate amount of alpha and beta electrons
         alpha = nel // 2 + (mult - 1)
@@ -595,11 +600,16 @@ class Output:
         ----------
         index : int, default: -1
             index of geometry for which the gradient is to be returned. The default -1 refers to the final geometry.
+            **Attention:** In a normal geometry optimization ORCA does not calculate the gradient for the final
+            geometry, so the default index will return None. You can request the gradient for the structure one step
+            before the final one with the index -2. For most intents and purposes, the last and second to last
+            geometries, energies and gradients are the same within the given tolerances.
 
         Returns
         ----------
-        list[list[StrictFiniteFloat]] | None
-            Returns nuclear gradient (order x, y, z in Eh/Bohr) for the given index or None if it cannot be obtained.
+        list[StrictFiniteFloat] | None
+            Returns nuclear gradient (packed in order x1, y1, z1, x2 y2, z2, ... in Eh/Bohr) for the given index
+            or None if it cannot be obtained.
         """
         # > Safely get the gradient
         gradient = self._safe_get(
