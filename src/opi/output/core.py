@@ -484,11 +484,16 @@ class Output:
 
         Returns
         -------
-        nel, None | alpha, beta | None, None: tuple[int, int] | tuple[None,None]
-            Returns the number of electrons (spin resolved if requested) as integers or None:
-                - nel, None, all electrons, not spin resolved.
-                - nalpha, nbeta, alpha and beta electrons separated.
-                - None, None, if no electrons could be retrieved, or no multiplicity for spin resolution is available.
+        nalpha : int | None
+            * None: if no electrons could be retrieved, or no multiplicity for spin resolution is available.
+            * int:
+                * if `spin_resolved == False`, the total number of electrons
+                * if `spin_resolved == True`, the number of alpha electrons.
+        nbeta : int | None
+            * None:
+                * if no electrons could be retrieved, or no multiplicity for spin resolution is available.
+                * if `spin_resolved == False`
+            * int : number of beta electrons (requires `spin_resolved == True`)
         """
         nel = self._safe_get("results_properties", "calculation_info", "numofelectrons")
 
@@ -507,11 +512,11 @@ class Output:
             return None, None
 
         # > Calculate amount of alpha and beta electrons
-        alpha = nel // 2 + (mult - 1)
-        beta = nel - alpha
+        nalpha = nel // 2 + (mult - 1)
+        nbeta = nel - nalpha
 
         # > Return spin resolved number of electrons
-        return alpha, beta
+        return nalpha, nbeta
 
     def get_final_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
