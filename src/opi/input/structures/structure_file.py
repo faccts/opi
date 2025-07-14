@@ -66,9 +66,14 @@ class BaseStructureFile(ABC):
         force_full_path : bool, default: False
             True: Print full path to the structure in the ORCA input file.
             False: Print only the filename. This is usually the preferred way!
+
+        Raises
+        ------
+        ValueError
+            If relative path cannot be resolved.
         """
         if not force_full_path:
-            filename = check_file_path(self.file, working_dir)
+            filename = f"{check_file_path(self.file, working_dir)}"
         else:
             filename = self.file.name
         return f"*{self._type}file {self.charge} {self.multiplicity} {filename}"
