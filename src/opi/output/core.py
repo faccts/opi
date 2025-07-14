@@ -17,6 +17,11 @@ from opi.output.grepper.recipes import (
     has_scf_converged,
     has_terminated_normally,
 )
+from opi.output.models.base.strict_types import (
+    StrictFiniteFloat,
+    StrictNonNegativeInt,
+    StrictPositiveInt,
+)
 from opi.output.hftypes import Hftypes
 from opi.output.models.base.strict_types import StrictFiniteFloat, StrictPositiveInt
 from opi.output.models.json.gbw.gbw_results import GbwResults
@@ -377,6 +382,91 @@ class Output:
             return has_geometry_optimization_converged(outfile)
         except FileNotFoundError:
             return False
+
+    def run_orca_plot(self, input_string: str, *, suffix: str = ".gbw", timeout: int = -1) -> None:
+        """
+        Executes orca_plot and passes it an input_string that specifies what to plot.
+
+        Parameters
+        ----------
+        input_string : str
+            Input string for interactive orca_plot session
+        suffix : str, default ".gbw"
+            Determines the suffix of the gbw file to use.
+        timeout : int, default: = -1
+            Timeout in seconds to wait for ORCA process.
+            If value is smaller than zero, wait indefinitely.
+
+        Raises
+        ----------
+        ValueError
+            If the input string is empty a ValueError is raised.
+        """
+        runner = self._create_runner()
+        gbwfile = self.working_dir / f"{self.basename}{suffix}"
+
+        if not input_string:
+            raise ValueError
+
+        runner.run_orca_plot(gbwfile, input_string, timeout=timeout)
+
+    def plot_mo(
+        self,
+        index: StrictNonNegativeInt,
+        /,
+        *,
+        operator: StrictNonNegativeInt = 0,
+        resolution: StrictNonNegativeInt = 40,
+    ) -> str | None:
+        """
+        Generates and returns the cube file for a molecular orbital by running the orca_plot binary.
+
+        Parameters
+        ----------
+        index: StrictNonNegativeInt
+            Index of the MO to plot.
+        operator : StrictNonNegativeInt, default=0
+            Operator of the MO, alpha MOs are indicated by 0 and beta MOs by 1.
+        resolution: StrictNonNegativeInt, default=40
+            Resolution of the generated cube file. Higher numbers result in smoother plots, but also in longer orca_plot
+            run time and a larger cube file.
+
+        Returns
+        -------
+        str | None
+            Returns the cube file as string or returns None if the cube file cannot be retrieved.
+        """
+
+        operator_list = ["a", "b"]
+
+        # > Define input string for orca_plot.
+        # > If anything goes wrong orca_plot should exit.
+        input_list = [
+            "1",  # Select type of plot
+            "1",  # Enter MO plot
+            "2",  # Select index of orbital
+            str(index),  # Enter index
+            "3",  # Select alpha/beta operator
+            str(operator),  # Enter alpha/beta (0/1)
+            "4",  # Select the resolution (grid size) settings
+            str(resolution),  # Enter resolution
+            "5",  # Select the output format
+            "7",  # Request cube file format
+            "11",  # Perform the plotting
+            "12",  # Exit the program
+        ]
+        input_string = "\n".join(input_list) + "\n"
+        self.run_orca_plot(input_string)
+
+        # > get the resulting cube file as string
+        cube_file = self.working_dir / f"{self.basename}.mo{index}{operator_list[operator]}.cube"
+
+        if not cube_file.is_file():
+            return None
+
+        with open(cube_file, "r") as f:
+            cube_data = f.read()
+            return cube_data
 
     def _safe_get(self, *attrs: str | int) -> Any | None:
         """

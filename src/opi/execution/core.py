@@ -147,6 +147,7 @@ class Runner:
         args: Sequence[str] = (),
         /,
         *,
+        input_string: str | None = None,
         stdout: Path | None = None,
         stderr: Path | None = None,
         silent: bool = True,
@@ -163,6 +164,8 @@ class Runner:
             Name of ORCA binary to be executed. Path is automatically resolved based on configuration.
         args : Sequence[str], default: ()
             Command line arguments to pass to ORCA binary.
+        input_string: str | None = None
+            String to be passed to stdin.
         stdout : Path | None, default: None
             Dump STDOUT to a file.
         stderr : Path | None, default: None
@@ -235,6 +238,7 @@ class Runner:
             with outfile as f_out, errfile as f_err:
                 proc = subprocess.run(
                     cmd,
+                    input=input_string,
                     stdout=f_out,
                     stderr=f_err,
                     cwd=cwd,
@@ -285,7 +289,59 @@ class Runner:
         # Run the Orca calculation
         self.run(
             OrcaBinary.ORCA,
-            [inpfile.name],
+            arguments,
+            stdout=outfile,
+            stderr=errfile,
+            silent=silent,
+            timeout=timeout,
+        )
+
+    def run_orca_plot(
+        self,
+        gbwfile: Path,
+        input_string: str,
+        /,
+        *extra_args: str,
+        silent: bool = True,
+        timeout: int = -1,
+    ) -> None:
+        """
+        Executes the orca_plot binary and passes the gbw path, an input string, and extra arguments to the binary.
+
+        Parameters
+        ----------
+        gbwfile : Path
+            Path to an ORCA geometry, basis set, wavefunction (gbw) file.
+        input_string : str
+            Input string handed to stdin of orca_plot.
+        *extra_args: str
+            Additional arguments passed to orca_plot.
+        silent : bool, default: True
+            Capture and discard STDOUT and STDERR.
+        timeout : int, default: -1
+            Optional timeout in seconds to wait for process to complete.
+        """
+        if not gbwfile.is_file():
+            # Raises an error if the gbw file does not exist
+            raise FileNotFoundError(f"GBW file {gbwfile} does not exist")
+
+        # Sets the output and error file from the gbwfile.
+        outfile = gbwfile.with_suffix(".plot.out")
+        errfile = gbwfile.with_suffix(".plot.err")
+
+        # > CLI arguments
+        arguments = [gbwfile.name]
+        # > Request interactive plot mode by adding "-i"
+        arguments += ["-i"]
+        if extra_args:
+            # > All extra arguments are passed as second argument to orca_plot.
+            arguments += [shlex.join(extra_args)]
+
+        # Run orca_plot
+        self.run(
+            OrcaBinary.ORCA_PLOT,
+            arguments,
+            input_string=input_string,
             stdout=outfile,
             stderr=errfile,
             silent=silent,
