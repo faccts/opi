@@ -2,7 +2,8 @@ from pathlib import Path
 
 from pydantic import FilePath, field_validator
 
-from opi.input.blocks import Block, IntGroup
+from opi.input.blocks import Block
+from opi.input.blocks.util import IntGroup
 
 __all__ = ("HessList", "BlockFreq")
 

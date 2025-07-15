@@ -2,8 +2,9 @@ from typing import List, Literal
 
 from pydantic import BaseModel, field_validator
 
-from opi.input.blocks import Block, InputFilePath, InputString
+from opi.input.blocks import Block
 from opi.input.blocks.fragment import Fragment, Frags
+from opi.input.blocks.util import InputFilePath, InputString
 
 __all__ = ("FragDefinition", "BlockFrag")
 

@@ -8,13 +8,10 @@ from pydantic import (
     model_validator,
 )
 
-from opi.input.blocks import (
-    Block,
-    InputFilePath,
-    NumList,
-)
+from opi.input.blocks import Block
 from opi.input.blocks.fragment import FragList, Fragment, Frags
 from opi.input.blocks.geom_wrapper import GeomWrapper, GeomWrapperBox
+from opi.input.blocks.util import InputFilePath, NumList
 from opi.utils.element import Element
 from opi.utils.misc import FLOAT_REGEX
 
