@@ -1,3 +1,4 @@
+# ruff: isort: skip_file
 """
 Modules that hold Python objects representing the most common block options.
 """

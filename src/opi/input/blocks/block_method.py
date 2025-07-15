@@ -20,7 +20,6 @@ class BlockMethod(Block):
     ProgExt: InputFilePath | None = None  # Path to wrapper script
     Ext_Params: str | None = None  # Arbitrary optional command line arguments
 
-
     @field_validator("ProgExt", mode="before")
     @classmethod
     def path_from_string(cls, path: str | InputFilePath) -> InputFilePath:
