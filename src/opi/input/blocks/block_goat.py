@@ -105,13 +105,16 @@ class BlockGoat(Block):
 
     @field_validator("topobreak", "reactiveatoms", mode="before")
     @classmethod
-    def atomlist_instantiate(cls, inp: str | list[int | tuple[int, int]]) -> AtomList:
+    def atomlist_instantiate(cls, inp: str | list[int | tuple[int, int]] | AtomList) -> AtomList:
         """
         Parameters
         ----------
-        inp : str | list[int | tuple[int | int]]
+        inp : str | list[int | tuple[int | int]] | AtomList
         """
-        return AtomList.init(inp)
+        if isinstance(inp, AtomList):
+            return inp
+        else:
+            return AtomList.init(inp)
 
     @field_validator("ensemblefile", mode="before")
     @classmethod
