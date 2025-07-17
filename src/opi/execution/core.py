@@ -306,7 +306,7 @@ class Runner:
     ) -> None:
         """
         Executes the orca_plot binary in the interactive mode and passes the gbw path, an input string, and extra
-        arguments to the binary. Note that currently only the interactive mode ("-i") is supported.
+        arguments to the binary. Note that currently only the interactive mode (orca_plot (gbw) -i) is supported.
 
         Parameters
         ----------
@@ -325,10 +325,14 @@ class Runner:
         ----------
         FileNotFoundError
             If the gbw file for plotting does not exist.
+        ValueError
+            If no stdin_list for the input of orca_plot is provided.
         """
         if not gbwfile.is_file():
-            # Raises an error if the gbw file does not exist
             raise FileNotFoundError(f"GBW file {gbwfile} does not exist")
+
+        if not stdin_list:
+            raise ValueError("stdin_list is required but was empty or not provided.")
 
         # Sets the output and error file from the gbwfile.
         outfile = gbwfile.with_suffix(".plot.out")
@@ -344,9 +348,6 @@ class Runner:
 
         # > Generate stdin string from stdin list
         stdin_str = "\n".join(stdin_list) + "\n"
-
-        # > Add exit command once again to the string
-        stdin_str += "\n" + "12" + "\n"
 
         # Run orca_plot
         self.run(
