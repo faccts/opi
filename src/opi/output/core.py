@@ -12,18 +12,18 @@ from pydantic import StrictInt, StrictStr
 
 from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
+from opi.output.cube import CubeOutput
 from opi.output.grepper.recipes import (
     has_geometry_optimization_converged,
     has_scf_converged,
     has_terminated_normally,
 )
+from opi.output.hftypes import Hftypes
 from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
     StrictNonNegativeInt,
     StrictPositiveInt,
 )
-from opi.output.hftypes import Hftypes
-from opi.output.models.base.strict_types import StrictFiniteFloat, StrictPositiveInt
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.gbw.properties.mos import MO
 from opi.output.models.json.property.properties.energy import Energy
@@ -383,14 +383,16 @@ class Output:
         except FileNotFoundError:
             return False
 
-    def run_orca_plot(self, input_string: str, *, suffix: str = ".gbw", timeout: int = -1) -> None:
+    def run_orca_plot(
+        self, stdin_list: list[str], *, suffix: str = ".gbw", timeout: int = -1
+    ) -> None:
         """
-        Executes orca_plot and passes it an input_string that specifies what to plot.
+        Executes orca_plot and passes it an input list stdin_list that specifies what to plot.
 
         Parameters
         ----------
-        input_string : str
-            Input string for interactive orca_plot session
+        stdin_list : list[str]
+            Input list for interactive orca_plot session
         suffix : str, default ".gbw"
             Determines the suffix of the gbw file to use.
         timeout : int, default: = -1
@@ -401,14 +403,17 @@ class Output:
         ----------
         ValueError
             If the input string is empty a ValueError is raised.
+        FileNotFoundError
+            If the gbwfile {basename}{suffix} is not found.
         """
         runner = self._create_runner()
         gbwfile = self.working_dir / f"{self.basename}{suffix}"
 
-        if not input_string:
-            raise ValueError
+        # if no input for orca_plot is given
+        if not stdin_list:
+            raise ValueError("No input (stdin_list) supplied for orca_plot, but input is required!")
 
-        runner.run_orca_plot(gbwfile, input_string, timeout=timeout)
+        runner.run_orca_plot(gbwfile, stdin_list, timeout=timeout)
 
     def plot_mo(
         self,
@@ -417,9 +422,12 @@ class Output:
         *,
         operator: StrictNonNegativeInt = 0,
         resolution: StrictNonNegativeInt = 40,
-    ) -> str | None:
+        timeout: int = 300,
+    ) -> CubeOutput | None:
         """
         Generates and returns the cube file for a molecular orbital by running the orca_plot binary.
+        **Attention:** will terminate orca_plot after 300 seconds by default. If you plot something large you will have
+        to adapt this threshold or set it to -1 for waiting indefinitely!
 
         Parameters
         ----------
@@ -430,18 +438,21 @@ class Output:
         resolution: StrictNonNegativeInt, default=40
             Resolution of the generated cube file. Higher numbers result in smoother plots, but also in longer orca_plot
             run time and a larger cube file.
+        timeout: int, default 300
+            Time after which orca_plot will be stopped. 300 seconds should be sufficient for most MOs but when something
+            large is plotted set this to a larger value or to -1 for waiting indefinitely long.
 
         Returns
         -------
-        str | None
-            Returns the cube file as string or returns None if the cube file cannot be retrieved.
+        CubeOutput | None
+            Returns the cube output object or returns None if the cube file cannot be retrieved.
         """
 
         operator_list = ["a", "b"]
 
         # > Define input string for orca_plot.
         # > If anything goes wrong orca_plot should exit.
-        input_list = [
+        stdin_list = [
             "1",  # Select type of plot
             "1",  # Enter MO plot
             "2",  # Select index of orbital
@@ -455,8 +466,7 @@ class Output:
             "11",  # Perform the plotting
             "12",  # Exit the program
         ]
-        input_string = "\n".join(input_list) + "\n"
-        self.run_orca_plot(input_string)
+        self.run_orca_plot(stdin_list, timeout=timeout)
 
         # > get the resulting cube file as string
         cube_file = self.working_dir / f"{self.basename}.mo{index}{operator_list[operator]}.cube"
@@ -464,9 +474,7 @@ class Output:
         if not cube_file.is_file():
             return None
 
-        with open(cube_file, "r") as f:
-            cube_data = f.read()
-            return cube_data
+        return CubeOutput(cube_file)
 
     def _safe_get(self, *attrs: str | int) -> Any | None:
         """
