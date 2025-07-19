@@ -16,6 +16,7 @@ The ORCA Python Interface (OPI) is a Python library to create input and parse ou
   - Source code: https://www.github.com/faccts/opi
   - Bug reports: https://www.github.com/faccts/opi/issues
   - PyPI: https://pypi.org/project/orca-pi/
+  - MCP: https://context7.com/faccts/opi
 
 - **ORCA:**
 
