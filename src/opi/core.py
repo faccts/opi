@@ -14,7 +14,6 @@ from opi.input.core import Input
 from opi.input.structures.structure import Structure
 from opi.input.structures.structure_file import BaseStructureFile
 from opi.output.core import Output
-from opi.utils.misc import relative_path
 
 
 class Calculator:
@@ -214,7 +213,7 @@ class Calculator:
                 if (ncores := input_param.ncores) is not None:
                     inp.write(f"%pal\n    nprocs {ncores:d}\nend\n")
                 if (moinp := input_param.moinp) is not None:
-                    inp.write(f'%moinp "{relative_path(moinp, self.working_dir)}"\n')
+                    inp.write(f'%moinp "{moinp.relative_to(self.working_dir)}"\n')
 
                 # ---------------------------------
                 # > Block Options: Before coords

@@ -173,22 +173,3 @@ def check_minimal_version(version: OrcaVersion, /) -> bool:
     version : OrcaVersion
     """
     return cast(bool, version >= ORCA_MINIMAL_VERSION)
-
-
-def relative_path(file_path: Path, working_dir: Path) -> Path:
-    """
-    Returns the relative path to a file and checks if the file exists.
-
-    Raises
-    ------
-    ValueError
-        If relative path cannot be resolved.
-    FileNotFoundError
-        If the file does not exist.
-    """
-    rel = file_path.relative_to(working_dir, walk_up=True)
-
-    if not rel.is_file():
-        raise FileNotFoundError
-
-    return rel

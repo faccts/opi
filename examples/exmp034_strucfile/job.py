@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import copy
 import shutil
 import sys
 from pathlib import Path
@@ -17,7 +17,8 @@ if __name__ == "__main__":
     wd.mkdir()
 
     calc = Calculator(basename="job", working_dir=wd)
-    calc.structure = XyzFile("inp.xyz")
+    shutil.copy('inp.xyz', wd / 'inp.xyz')
+    calc.structure = XyzFile(wd / "inp.xyz")
     calc.input.add_simple_keywords(
         Scf.NOAUTOSTART,
         Method.HF,
