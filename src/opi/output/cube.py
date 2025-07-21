@@ -24,6 +24,11 @@ class CubeOutput:
         """
         Reads the cube data from file at stored path and returns it as string.
 
+        Returns
+        ----------
+        str
+            Returns a string with the cube data.
+
         Raises
         ----------
         FileNotFoundError
@@ -31,16 +36,21 @@ class CubeOutput:
         """
         return self._path.read_text()
 
-    def iter_cube(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[str]:
         """
         Lazily yields lines from the cube file (memory efficient).
-        """
-        with self._path.open("r") as f:
-            for line in f:
-                yield line
 
-    def __iter__(self) -> Iterator[str]:
-        return self.iter_cube()
+        Returns
+        ----------
+        Iterator[str]
+            Iterator that yields the cube data line by line.
+
+        Raises
+        ----------
+        FileNotFoundError
+            If the cube file does not exist.
+        """
+        return iter(self._path.open())
 
     def __str__(self) -> str:
         """Returns the name of the class and the path the object holds"""
