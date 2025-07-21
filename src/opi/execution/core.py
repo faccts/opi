@@ -146,7 +146,7 @@ class Runner:
         args: Sequence[str] = (),
         /,
         *,
-        std_str: str | None = None,
+        stdin_str: str | None = None,
         stdout: Path | None = None,
         stderr: Path | None = None,
         silent: bool = True,
@@ -163,7 +163,7 @@ class Runner:
             Name of ORCA binary to be executed. Path is automatically resolved based on configuration.
         args : Sequence[str], default: ()
             Command line arguments to pass to ORCA binary.
-        std_str: str | None = None
+        stdin_str: str | None = None
             String to be passed to stdin.
         stdout : Path | None, default: None
             Dump STDOUT to a file.
@@ -237,7 +237,7 @@ class Runner:
             with outfile as f_out, errfile as f_err:
                 proc = subprocess.run(
                     cmd,
-                    input=std_str,
+                    input=stdin_str,
                     stdout=f_out,
                     stderr=f_err,
                     cwd=cwd,
@@ -353,7 +353,7 @@ class Runner:
         self.run(
             OrcaBinary.ORCA_PLOT,
             arguments,
-            std_str=stdin_str,
+            stdin_str=stdin_str,
             stdout=outfile,
             stderr=errfile,
             silent=silent,
