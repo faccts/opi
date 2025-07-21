@@ -4,8 +4,6 @@ from abc import ABC
 from pathlib import Path
 from typing import cast
 
-from opi.utils.misc import check_file_path
-
 __all__ = (
     "BaseStructureFile",
     "XyzFile",
@@ -54,26 +52,28 @@ class BaseStructureFile(ABC):
         """
         self._file = Path(val).expanduser().resolve(strict=True)
 
-    def format_orca(self, working_dir: Path, /, *, force_full_path: bool = False) -> str:
+    def format_orca(self, working_dir: Path | None, /, *, original_path: bool = False) -> str:
         """
         Format respectively line in ORCA input. If the file lies within the working directory a relative path is
-        used, but if it lies outside an absolute path is employed.
+        used. If no working directory is set just the filename is employed.
 
         Parameters
         ----------
-        working_dir : Path
+        working_dir : Path | None
             Path to the working directory.
-        force_full_path : bool, default: False
-            True: Print full path to the structure in the ORCA input file.
-            False: Print only the filename. This is usually the preferred way!
+        original_path : bool, default False
+            If True, the original path will not be altered.
 
         Raises
         ------
         ValueError
-            If relative path cannot be resolved.
+            If relative path is requested and cannot be resolved.
         """
-        if not force_full_path:
-            filename = f"{check_file_path(self.file, working_dir)}"
+        filename: str | Path
+        if original_path:
+            filename = self.file
+        elif working_dir is not None:
+            filename = self.file.relative_to(working_dir)
         else:
             filename = self.file.name
         return f"*{self._type}file {self.charge} {self.multiplicity} {filename}"

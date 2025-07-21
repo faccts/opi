@@ -175,7 +175,7 @@ def check_minimal_version(version: OrcaVersion, /) -> bool:
     return cast(bool, version >= ORCA_MINIMAL_VERSION)
 
 
-def check_file_path(file_path: Path, working_dir: Path) -> Path:
+def relative_path(file_path: Path, working_dir: Path) -> Path:
     """
     Returns the relative path to a file and checks if the file exists.
 
