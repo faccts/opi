@@ -13,6 +13,7 @@ from pydantic import StrictInt, StrictStr
 from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
+from opi.output.gbw_suffixes import GbwSuffixes
 from opi.output.grepper.recipes import (
     has_geometry_optimization_converged,
     has_scf_converged,
@@ -409,6 +410,9 @@ class Output:
         runner = self._create_runner()
         gbwfile = self.working_dir / f"{self.basename}{suffix}"
 
+        if not gbwfile.is_file():
+            raise FileNotFoundError(f"The requested .gbw file is not available: ({gbwfile})")
+
         # if no input for orca_plot is given
         if not stdin_list:
             raise ValueError("No input (stdin_list) supplied for orca_plot, but input is required!")
@@ -423,6 +427,7 @@ class Output:
         operator: StrictNonNegativeInt = 0,
         resolution: StrictNonNegativeInt = 40,
         timeout: int = 300,
+        gbw_type: str | GbwSuffixes = GbwSuffixes.gbw,
     ) -> CubeOutput | None:
         """
         Generates and returns the cube file for a molecular orbital by running the orca_plot binary.
@@ -441,6 +446,8 @@ class Output:
         timeout: int, default = 300
             Time after which orca_plot will be stopped. 300 seconds should be sufficient for most MOs but when something
             large is plotted set this to a larger value or to -1 for waiting indefinitely long.
+        gbw_type: str | GbwSuffixes, default = GbwSuffixes.gbw
+            Type of the gbw file from which orbitals should be plotted.
 
         Returns
         -------
@@ -466,7 +473,11 @@ class Output:
             "11",  # Perform the plotting
             "12",  # Exit the program
         ]
-        self.run_orca_plot(stdin_list, timeout=timeout)
+
+        if isinstance(gbw_type, str):
+            gbw_type = GbwSuffixes.from_string(gbw_type)
+
+        self.run_orca_plot(stdin_list, timeout=timeout, suffix=gbw_type)
 
         # > get the resulting cube file as string
         cube_file = self.working_dir / f"{self.basename}.mo{index}{operator_list[operator]}.cube"
