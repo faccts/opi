@@ -50,3 +50,7 @@ if __name__ == "__main__":
 
     # > Parse JSON files
     output.parse()
+
+    print(output.get_mulliken())
+    print(output.get_loewdin())
+    print(output.get_chelpg())

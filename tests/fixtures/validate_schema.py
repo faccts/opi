@@ -42,8 +42,8 @@ from opi.output.models.json.property.properties.energy_extrap import (
 from opi.output.models.json.property.properties.energy_list import (
     EnergyList,
 )
-from opi.output.models.json.property.properties.geom import Geometry
-from opi.output.models.json.property.properties.geometry import Geometries
+from opi.output.models.json.property.properties.geometries import Geometries
+from opi.output.models.json.property.properties.geometry import Geometry
 from opi.output.models.json.property.properties.gradient import NucGradient
 from opi.output.models.json.property.properties.gtensor import Gtensor
 from opi.output.models.json.property.properties.hess import Hessian

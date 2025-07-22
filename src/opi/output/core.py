@@ -15,6 +15,7 @@ from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
 from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
+    get_float_from_line,
     has_geometry_optimization_converged,
     has_scf_converged,
     has_terminated_normally,
@@ -29,6 +30,7 @@ from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.gbw.properties.mos import MO
 from opi.output.models.json.property.properties.energy import Energy
 from opi.output.models.json.property.properties.energy_list import EnergyList
+from opi.output.models.json.property.properties.popanalysis import PopulationAnalysis
 from opi.output.models.json.property.property_results import (
     PropertyResults,
 )
@@ -1009,7 +1011,7 @@ class Output:
 
     def get_homo(self) -> MO | None:
         """
-        Returns the highest occupied molecular orbital (HOMO, or SOMO for UHF)
+        Returns the highest occupied molecular orbital (HOMO, or SOMO for UHF).
 
         Returns
         -------
@@ -1106,3 +1108,108 @@ class Output:
                 return (lumo.orbitalenergy - homo.orbitalenergy) * AU_TO_EV
 
         return None
+
+    def get_mulliken(self, *, index: int = -1) -> list[PopulationAnalysis] | None:
+        """
+        Easy access to the Mulliken population(s) from the properties results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        mulliken : list[PopulationAnalysis] | None
+            Returns the population(s) or None if there is none in the output for the requested index.
+        """
+
+        # > Get the Mulliken population
+        mulliken = self._safe_get(
+            "results_properties", "geometries", index, "mulliken_population_analysis"
+        )
+
+        if mulliken is not None:
+            mulliken = cast(list[PopulationAnalysis], mulliken)
+
+        return mulliken
+
+    def get_loewdin(self, *, index: int = -1) -> list[PopulationAnalysis] | None:
+        """
+        Easy access to the Loewdin population(s) from the properties results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        loewdin : list[PopulationAnalysis] | None
+            Returns the population(s) or None if there is none in the output for the requested index.
+        """
+
+        # > Get the Loewdin population
+        loewdin = self._safe_get(
+            "results_properties", "geometries", index, "loewdin_population_analysis"
+        )
+
+        if loewdin is not None:
+            loewdin = cast(list[PopulationAnalysis], loewdin)
+
+        return loewdin
+
+    def get_chelpg(self, *, index: int = -1) -> list[PopulationAnalysis] | None:
+        """
+        Easy access to the CHarges from ELectrostatic Potentials using a Grid-based method (CHELPG) from the properties
+        results. Note that the RESP charges are basically CHELPG charges with some restraint and are obtained as well
+        with this function.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        chelpg : list[PopulationAnalysis] | None
+            Returns the population(s) or None if there is none in the output for the requested index.
+        """
+
+        # > Get the CHELPG population
+        chelpg = self._safe_get(
+            "results_properties", "geometries", index, "chelpg_population_analysis"
+        )
+
+        if chelpg is not None:
+            chelpg = cast(list[PopulationAnalysis], chelpg)
+
+        return chelpg
+
+    def get_s2(self, *, index: int = -1) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | None:
+        """
+        Get the S² expectation value and the ideal S² value by grepping them from the output file
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which S² should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        tuple[StrictFiniteFloat, StrictFiniteFloat] | None
+            Return the expectation value and the ideal value or None if nothing is found.
+        """
+        outfile = self.get_outfile()
+        expec_string = "Expectation value of <S**2>"
+        ideal_string = "Ideal value S*(S+1)"
+        try:
+            expec_s2 = get_float_from_line(outfile, expec_string, index)
+            ideal_s2 = get_float_from_line(outfile, ideal_string, index)
+            return expec_s2, ideal_s2
+        except FileNotFoundError:
+            return None

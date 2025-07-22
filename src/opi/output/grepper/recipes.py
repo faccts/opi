@@ -40,6 +40,48 @@ def has_string_in_file(file_name: Path, search_for: str, /, *, strict: bool = Tr
             return False
 
 
+def get_float_from_line(
+    file_name: Path, search_for: str, index: int, field: int = -1, /, *, strict: bool = True
+) -> float:
+    """
+    Searches the output_file for a string and returns a float from the line of this string.
+
+    Parameters
+    ----------
+    file_name : Path
+        Path to the output file
+    search_for : str
+        string that function searches in file.
+    index : int
+        index of occurrence that should be returned.
+    field: int
+        field in line that should be returned
+    strict : bool, default: False
+        True: Raise "FileNotFoundError" exception if `file_name` does not exist.
+        False: Return just False if `file_name` does not exist.
+
+    Returns
+    -------
+    bool
+        True if *search_for* was found, else False
+    """
+    try:
+        grepper = Grepper(file_name)
+        results = grepper.search(
+            search_for,
+            kind=float,
+            field=field,
+            case_sensitive=True,
+        )
+        return float(results[index])
+
+    except FileNotFoundError:
+        if strict:
+            raise
+        else:
+            return False
+
+
 def has_terminated_normally(file_name: Path, /) -> bool:
     """
     Check if `file_name` contains the string ****ORCA TERMINATED NORMALLY****

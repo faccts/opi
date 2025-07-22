@@ -21,7 +21,6 @@ class AtomicCharge(SimpleKeywordBox):
     """SimpleKeyword: Perform density analysis for fragments."""
     FMOPOP = SimpleKeyword("fmopop")
     """SimpleKeyword: Request population analyses for HOMO and LUMO."""
-    FMOPOPULATIONS = SimpleKeyword("fmopopulations")
     HIRSHFELD = SimpleKeyword("hirshfeld")
     """SimpleKeyword: Calculate Hirshfeld charges."""
     LOEWDIN = SimpleKeyword("loewdin")
@@ -56,3 +55,5 @@ class AtomicCharge(SimpleKeywordBox):
     """SimpleKeyword: Calculate NPA charges (requires the nbo package)."""
     REDUCEDPOP = SimpleKeyword("reducedpop")
     """SimpleKeyword: Print Loewdin reduced orb.pop per MO."""
+    RESP = SimpleKeyword("resp")
+    """SimpleKeyword: Calculate RESP charges (special CHELPG variant)"""
