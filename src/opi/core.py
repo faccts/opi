@@ -170,6 +170,8 @@ class Calculator:
         ------
         RuntimeError
           * When `.inp` cannot be written.
+        ValueError
+          * When the `moinp` path is given, and it is not a subpath of the working directory.
         """
 
         assert self.working_dir
