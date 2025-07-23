@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, cast
 from warnings import warn
 
+import numpy as np
+import numpy.typing as npt
 from pydantic import StrictInt, StrictStr
 
 from opi.execution.core import Runner
@@ -20,7 +22,7 @@ from opi.output.grepper.recipes import (
     has_scf_converged,
     has_terminated_normally,
 )
-from opi.output.hftypes import Hftypes
+from opi.output.hftyp import Hftyp
 from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
     StrictNonNegativeInt,
@@ -136,7 +138,7 @@ class Output:
         self.gbw_json_data: dict[str, Any] | None = None
         self.property_json_data: dict[str, Any] | None = None
 
-        # // PARSED JSON TREES
+        # > // PARSED JSON TREES
         self.results_properties: PropertyResults | None = None
         self.results_gbw: GbwResults | None = None
 
@@ -639,19 +641,19 @@ class Output:
                 return None
         return current
 
-    def get_hftype(self) -> Hftypes | None:
+    def get_hftype(self) -> Hftyp | None:
         """
         Get the HFType from GBW json file.
 
         Returns
         -------
-        hftype : Hftypes | None
+        hftype : Hftyp | None
         """
         hftype = self._safe_get("results_gbw", "molecule", "hftyp")
         if hftype is not None:
             hftype = cast(str, hftype)
             try:
-                hftype = Hftypes(hftype)
+                hftype = Hftyp(hftype)
                 return hftype
             except ValueError:
                 return None
@@ -664,12 +666,12 @@ class Output:
 
         Returns
         -------
-        charge : int | None
+        charge : StrictInt | None
         """
         charge = self._safe_get("results_properties", "calculation_info", "charge")
 
         if charge is not None:
-            charge = cast(int, charge)
+            charge = cast(StrictInt, charge)
 
         return charge
 
@@ -679,12 +681,12 @@ class Output:
 
         Returns
         -------
-        mult : int | None
+        mult : StrictPositiveInt | None
         """
         mult = self._safe_get("results_properties", "calculation_info", "mult")
 
         if mult is not None:
-            mult = cast(int, mult)
+            mult = cast(StrictPositiveInt, mult)
 
         return mult
 
@@ -735,6 +737,21 @@ class Output:
 
         # > Return spin resolved number of electrons
         return nalpha, nbeta
+
+    def get_nbf(self) -> StrictNonNegativeInt | None:
+        """
+        Get the number of basis functions (nbf) from the json properties file.
+
+        Returns
+        -------
+        nbf : StrictNonNegativeInt | None
+        """
+        nbf = self._safe_get("results_properties", "calculation_info", "numofbasisfuncts")
+
+        if nbf is not None:
+            nbf = cast(StrictNonNegativeInt, nbf)
+
+        return nbf
 
     def get_final_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
@@ -985,7 +1002,7 @@ class Output:
             # > Get the hftype (e.g. rhf / uhf)
             hftype = self.get_hftype()
             # > Sort for UHF
-            if hftype == Hftypes.UHF:
+            if hftype == Hftyp.UHF:
                 offset = len(molecular_orbitals) // 2
                 mos["alpha"] = molecular_orbitals[:offset]
                 mos["beta"] = molecular_orbitals[offset:]
@@ -1504,5 +1521,130 @@ class Output:
         el_energy = self.get_el_energy(index=index)
         if free_energy is not None and el_energy is not None:
             return free_energy - el_energy
+        else:
+            return None
+
+    def get_int_overlap(self, recreate_json: bool = False) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the overlap integral matrix as numpy array.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request (exclusively) the overlap integrals to be included.
+        """
+
+        if recreate_json:
+            config_dict = {"1elIntegrals": ["S"]}
+            self.create_gbw_json(force=True, config=config_dict)
+            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
+            self.results_gbw = GbwResults(**self.gbw_json_data)
+
+        # > get overlap from gbw json files
+        overlap_list = self._safe_get("results_gbw", "molecule", "s_matrix")
+
+        if overlap_list is not None:
+            overlap = np.array(overlap_list)
+            return overlap
+        else:
+            return None
+
+    def get_int_hcore(self, recreate_json: bool = False) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the core hamiltonian integral matrix as numpy array.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request (exclusively) the hcore integrals to be included.
+        """
+
+        if recreate_json:
+            config_dict = {"1elIntegrals": ["H"]}
+            self.create_gbw_json(force=True, config=config_dict)
+            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
+            self.results_gbw = GbwResults(**self.gbw_json_data)
+
+        # > get hcore from gbw json files
+        hcore_list = self._safe_get("results_gbw", "molecule", "h_matrix")
+
+        if hcore_list is not None:
+            hcore = np.array(hcore_list)
+            return hcore
+        else:
+            return None
+
+    def get_int_f(self, recreate_json: bool = False) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the two-electron interaction matrix F (often termed G).
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request (exclusively) the fock correction integrals to be included.
+        """
+
+        if recreate_json:
+            config_dict = {"FockMatrix": ["F"]}
+            self.create_gbw_json(force=True, config=config_dict)
+            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
+            self.results_gbw = GbwResults(**self.gbw_json_data)
+
+        # > get hcore from gbw json files
+        fock_list = self._safe_get("results_gbw", "molecule", "f_matrix")
+
+        if fock_list is not None:
+            fock = np.array(fock_list[0])
+            return fock
+        else:
+            return None
+
+    def get_int_j(self, recreate_json: bool = False) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the Coulomb matrix J.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request (exclusively) J to be included.
+        """
+
+        if recreate_json:
+            config_dict = {"FockMatrix": ["J"]}
+            self.create_gbw_json(force=True, config=config_dict)
+            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
+            self.results_gbw = GbwResults(**self.gbw_json_data)
+
+        # > get hcore from gbw json files
+        j_list = self._safe_get("results_gbw", "molecule", "j_matrix")
+
+        if j_list is not None:
+            j = np.array(j_list[0])
+            return j
+        else:
+            return None
+
+    def get_int_k(self, recreate_json: bool = False) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the Exchange matrix K.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request (exclusively) K to be included.
+        """
+
+        if recreate_json:
+            config_dict = {"FockMatrix": ["K"]}
+            self.create_gbw_json(force=True, config=config_dict)
+            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
+            self.results_gbw = GbwResults(**self.gbw_json_data)
+
+        # > get hcore from gbw json files
+        k_list = self._safe_get("results_gbw", "molecule", "k_matrix")
+
+        if k_list is not None:
+            k = np.array(k_list[0])
+            return k
         else:
             return None
