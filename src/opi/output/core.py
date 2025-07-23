@@ -13,7 +13,7 @@ from pydantic import StrictInt, StrictStr
 from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
-from opi.output.gbw_suffixes import GbwSuffixes
+from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
     has_geometry_optimization_converged,
     has_scf_converged,
@@ -427,7 +427,7 @@ class Output:
         operator: StrictNonNegativeInt = 0,
         resolution: StrictNonNegativeInt = 40,
         timeout: int = 300,
-        gbw_type: str | GbwSuffixes = GbwSuffixes.gbw,
+        gbw_type: str | GbwSuffix = GbwSuffix.GBW,
     ) -> CubeOutput | None:
         """
         Generates and returns the cube file for a molecular orbital by running the orca_plot binary.
@@ -446,7 +446,7 @@ class Output:
         timeout: int, default = 300
             Time after which orca_plot will be stopped. 300 seconds should be sufficient for most MOs but when something
             large is plotted set this to a larger value or to -1 for waiting indefinitely long.
-        gbw_type: str | GbwSuffixes, default = GbwSuffixes.gbw
+        gbw_type: str | GbwSuffixes, default = GbwSuffixes.GBW
             Type of the gbw file from which orbitals should be plotted.
 
         Returns
@@ -475,7 +475,7 @@ class Output:
         ]
 
         if isinstance(gbw_type, str):
-            gbw_type = GbwSuffixes.from_string(gbw_type)
+            gbw_type = GbwSuffix(gbw_type)
 
         self.run_orca_plot(stdin_list, timeout=timeout, suffix=gbw_type)
 
