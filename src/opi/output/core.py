@@ -1018,15 +1018,17 @@ class Output:
 
         return None
 
-    def get_homo(self) -> MO | None:
+    def get_homo(self) -> tuple[int, str, MO] | None:
         """
         Returns the highest occupied molecular orbital (HOMO, or SOMO for UHF).
 
         Returns
         -------
-        MO | None
-            Returns the HOMO (or SOMO), or None, if the HOMO could not be found
+        tuple[int, str, MO] | None
+            Returns tuple of index, spin-channel (mos/alpha/beta), and MO (HOMO or SOMO), or None, if the HOMO could not be found.
         """
+        homo_id: int | None = None
+        homo_type: str | None = None
         homo: MO | None = None
         mos = self.get_mos()
 
@@ -1040,6 +1042,8 @@ class Output:
                         # > Check if spin channel homo is the actual homo
                         if homo is None:
                             homo = channel_homo
+                            homo_id = index
+                            homo_type = channel
                         else:
                             # > Compare energies and pick highest
                             if (
@@ -1047,7 +1051,12 @@ class Output:
                                 and channel_homo.orbitalenergy > homo.orbitalenergy
                             ):
                                 homo = channel_homo
-        return homo
+                                homo_id = index
+                                homo_type = channel
+        if homo_id is not None and homo_type is not None and homo is not None:
+            return homo_id, homo_type, homo
+        else:
+            return None
 
     @staticmethod
     def _find_lumo(mo_list: list[MO]) -> int | None:
@@ -1069,15 +1078,17 @@ class Output:
 
         return None
 
-    def get_lumo(self) -> MO | None:
+    def get_lumo(self) -> tuple[int, str, MO] | None:
         """
         Returns the lowest unoccupied molecular orbital (LUMO)
 
         Returns
         -------
-        MO | None
-            Returns the LUMO, or None, if the LUMO could not be found
+        tuple[int, str, MO] | None
+            Returns tuple of index, spin-channel (mos/alpha/beta), and MO (LUMO), or None, if the LUMO could not be found.
         """
+        lumo_id: int | None = None
+        lumo_type: str | None = None
         lumo: MO | None = None
         mos = self.get_mos()
 
@@ -1090,6 +1101,8 @@ class Output:
                     if channel_lumo.orbitalenergy is not None:
                         # > Check if spin channel lumo is the actual lumo
                         if lumo is None:
+                            lumo_id = index
+                            lumo_type = channel
                             lumo = channel_lumo
                         else:
                             # > pick lowest lumo
@@ -1098,7 +1111,12 @@ class Output:
                                 and channel_lumo.orbitalenergy < lumo.orbitalenergy
                             ):
                                 lumo = channel_lumo
-        return lumo
+                                lumo_id = index
+                                lumo_type = channel
+        if lumo_id is not None and lumo_type is not None and lumo is not None:
+            return lumo_id, lumo_type, lumo
+        else:
+            return None
 
     def get_hl_gap(self) -> float | None:
         """
@@ -1109,8 +1127,16 @@ class Output:
         float | None
             Returns the HOMO-LUMO gap in eV or None if the gap could not be obtained.
         """
-        homo = self.get_homo()
-        lumo = self.get_lumo()
+        homo_data = self.get_homo()
+        if homo_data is not None:
+            homo = homo_data[2]
+        else:
+            homo = None
+        lumo_data = self.get_lumo()
+        if lumo_data is not None:
+            lumo = lumo_data[2]
+        else:
+            lumo = None
 
         if homo is not None and lumo is not None:
             if homo.orbitalenergy is not None and lumo.orbitalenergy is not None:
