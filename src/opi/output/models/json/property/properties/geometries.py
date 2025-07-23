@@ -25,7 +25,7 @@ from opi.output.models.json.property.properties.led import Led
 from opi.output.models.json.property.properties.mayerpopanalysis import (
     MayerPopulationAnalysis,
 )
-from opi.output.models.json.property.properties.mbis import MbisPopAnalysis
+from opi.output.models.json.property.properties.mbispopanalysis import MbisPopulationAnalysis
 from opi.output.models.json.property.properties.mdci_adex import MdciAdex
 from opi.output.models.json.property.properties.mdci_adld import MdciAdld
 from opi.output.models.json.property.properties.nat_orbitals import (
@@ -35,7 +35,9 @@ from opi.output.models.json.property.properties.polarisation import (
     Polarizability,
 )
 from opi.output.models.json.property.properties.popanalysis import (
-    PopulationAnalysis,
+    ChelpgPopulationAnalysis,
+    LoewdinPopulationAnalysis,
+    MullikenPopulationAnalysis,
 )
 from opi.output.models.json.property.properties.quadrupole import (
     QuadrupoleMoment,
@@ -140,12 +142,12 @@ class Geometries(GetItem):
     geometry: Geometry | None = None
     energy: EnergyList | None = None
     single_point_data: SinglePointData | None = None
-    mulliken_population_analysis: list[PopulationAnalysis] | None = None
-    loewdin_population_analysis: list[PopulationAnalysis] | None = None
-    chelpg_population_analysis: list[PopulationAnalysis] | None = None
+    mulliken_population_analysis: list[MullikenPopulationAnalysis] | None = None
+    loewdin_population_analysis: list[LoewdinPopulationAnalysis] | None = None
+    chelpg_population_analysis: list[ChelpgPopulationAnalysis] | None = None
     hirshfeld_population_analysis: list[HirshfeldPopulationAnalysis] | None = None
     mayer_population_analysis: list[MayerPopulationAnalysis] | None = None
-    mbis_population_analysis: list[MbisPopAnalysis] | None = None
+    mbis_population_analysis: list[MbisPopulationAnalysis] | None = None
     calculation_info: CalcInfo | None = None
     dipole_moment: list[Dipole] | None = None
     nuclear_gradient: list[NucGradient] | None = None

@@ -33,6 +33,7 @@ if __name__ == "__main__":
         AtomicCharge.MULLIKEN,
         AtomicCharge.LOEWDIN,
         AtomicCharge.MAYER,
+        AtomicCharge.MBIS,
         AtomicCharge.REDUCEDPOP,
         SolvationModel.CPCM(Solvent.WATER),
     )
@@ -51,6 +52,9 @@ if __name__ == "__main__":
     # > Parse JSON files
     output.parse()
 
-    print(output.get_mulliken())
-    print(output.get_loewdin())
-    print(output.get_chelpg())
+    print("Mulliken: ", output.get_mulliken())
+    print("Loewdin: ", output.get_loewdin())
+    print("CHELPG: ", output.get_chelpg())
+    print("Hirshfeld: ", output.get_hirshfeld())
+    print("Mayer: ", output.get_mayer())
+    print("MBIS: ", output.get_mbis())

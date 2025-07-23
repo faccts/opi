@@ -40,3 +40,15 @@ class PopulationAnalysis(GetItem):
     state: StrictInt | None = None
     irrep: StrictInt | None = None
     atomiccharges: list[list[StrictFiniteFloat]] | None = None
+
+
+class MullikenPopulationAnalysis(PopulationAnalysis):
+    """This class contains the information about the Mulliken population analysis"""
+
+
+class LoewdinPopulationAnalysis(PopulationAnalysis):
+    """This class contains the information about the Loewdin population analysis"""
+
+
+class ChelpgPopulationAnalysis(PopulationAnalysis):
+    """This class contains the information about the CHELPG population analysis"""

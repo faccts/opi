@@ -1,34 +1,18 @@
-from pydantic import StrictInt, StrictStr
-
-from opi.output.models.base.get_item import GetItem
 from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
     StrictNonNegativeInt,
     StrictPositiveFloat,
     StrictPositiveInt,
 )
+from opi.output.models.json.property.properties.popanalysis import PopulationAnalysis
 
 
-class MayerPopulationAnalysis(GetItem):
+class MayerPopulationAnalysis(PopulationAnalysis):
     """
     Has the Information about the Mayer population analyses
 
     Attributes
     ----------
-    natoms: StrictPositiveInt
-        Numbers of atoms
-    atno: list[list[StrictFiniteFloat]]
-        Atom-number according to the position in the periodic table
-    method : StrictStr
-        Underlying electronic structure method
-    level : StrictStr
-        Source of density e.g. linearized, un-relaxed, relaxed
-    mult : StrictPositiveInt
-        Multiplicity of the electronic state
-    state : StrictInt
-        Electronic state
-    irrep : StrictInt
-        Irreducible representation of the electronic state
     bondthresh: StrictPositiveFiniteFloat
         Threshold for the bound order to be printed
     nbondordersprint: StrictPositiveInt
@@ -51,13 +35,6 @@ class MayerPopulationAnalysis(GetItem):
         Mayer's free valence
     """
 
-    natoms: StrictPositiveInt | None = None
-    atno: list[list[StrictFiniteFloat]] | None = None
-    method: StrictStr | None = None
-    level: StrictStr | None = None
-    mult: StrictPositiveInt | None = None
-    state: StrictInt | None = None
-    irrep: StrictInt | None = None
     bondthresh: StrictPositiveFloat | None = None
     nbondordersprint: StrictPositiveInt | None = None
     bondorders: list[list[StrictFiniteFloat]] | None = None

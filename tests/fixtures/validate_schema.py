@@ -54,7 +54,7 @@ from opi.output.models.json.property.properties.led import Led
 from opi.output.models.json.property.properties.mayerpopanalysis import (
     MayerPopulationAnalysis,
 )
-from opi.output.models.json.property.properties.mbis import MbisPopAnalysis
+from opi.output.models.json.property.properties.mbispopanalysis import MbisPopulationAnalysis
 from opi.output.models.json.property.properties.mdci_energy import (
     Mdcisd_t_Energies,
     MdcisdEnergies,
@@ -206,7 +206,7 @@ def get_schema(type_name: str) -> dict[str, Any]:
         "HirshfeldPopulationAnalysis": HirshfeldPopulationAnalysis,
         "Led": Led,
         "MayerPopulationAnalysis": MayerPopulationAnalysis,
-        "MbisPopAnalysis": MbisPopAnalysis,
+        "MbisPopAnalysis": MbisPopulationAnalysis,
         "ScfEnergy": ScfEnergy,
         "Mdcisd_Energies": MdcisdEnergies,
         "Mdcisd_t_Energies": Mdcisd_t_Energies,

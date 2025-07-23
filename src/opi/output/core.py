@@ -30,7 +30,16 @@ from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.gbw.properties.mos import MO
 from opi.output.models.json.property.properties.energy import Energy
 from opi.output.models.json.property.properties.energy_list import EnergyList
-from opi.output.models.json.property.properties.popanalysis import PopulationAnalysis
+from opi.output.models.json.property.properties.hirshfeldpopanalysis import (
+    HirshfeldPopulationAnalysis,
+)
+from opi.output.models.json.property.properties.mayerpopanalysis import MayerPopulationAnalysis
+from opi.output.models.json.property.properties.mbispopanalysis import MbisPopulationAnalysis
+from opi.output.models.json.property.properties.popanalysis import (
+    ChelpgPopulationAnalysis,
+    LoewdinPopulationAnalysis,
+    MullikenPopulationAnalysis,
+)
 from opi.output.models.json.property.property_results import (
     PropertyResults,
 )
@@ -1109,7 +1118,7 @@ class Output:
 
         return None
 
-    def get_mulliken(self, *, index: int = -1) -> list[PopulationAnalysis] | None:
+    def get_mulliken(self, *, index: int = -1) -> list[MullikenPopulationAnalysis] | None:
         """
         Easy access to the Mulliken population(s) from the properties results.
 
@@ -1131,11 +1140,11 @@ class Output:
         )
 
         if mulliken is not None:
-            mulliken = cast(list[PopulationAnalysis], mulliken)
+            mulliken = cast(list[MullikenPopulationAnalysis], mulliken)
 
         return mulliken
 
-    def get_loewdin(self, *, index: int = -1) -> list[PopulationAnalysis] | None:
+    def get_loewdin(self, *, index: int = -1) -> list[LoewdinPopulationAnalysis] | None:
         """
         Easy access to the Loewdin population(s) from the properties results.
 
@@ -1157,11 +1166,11 @@ class Output:
         )
 
         if loewdin is not None:
-            loewdin = cast(list[PopulationAnalysis], loewdin)
+            loewdin = cast(list[LoewdinPopulationAnalysis], loewdin)
 
         return loewdin
 
-    def get_chelpg(self, *, index: int = -1) -> list[PopulationAnalysis] | None:
+    def get_chelpg(self, *, index: int = -1) -> list[ChelpgPopulationAnalysis] | None:
         """
         Easy access to the CHarges from ELectrostatic Potentials using a Grid-based method (CHELPG) from the properties
         results. Note that the RESP charges are basically CHELPG charges with some restraint and are obtained as well
@@ -1185,13 +1194,89 @@ class Output:
         )
 
         if chelpg is not None:
-            chelpg = cast(list[PopulationAnalysis], chelpg)
+            chelpg = cast(list[ChelpgPopulationAnalysis], chelpg)
 
         return chelpg
 
+    def get_mayer(self, *, index: int = -1) -> list[MayerPopulationAnalysis] | None:
+        """
+        Easy access to the Mayer population(s) from the properties results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        mayer : list[MayerPopulationAnalysis] | None
+            Returns the population(s) or None if there is none in the output for the requested index.
+        """
+
+        # > Get the Mayer population
+        mayer = self._safe_get(
+            "results_properties", "geometries", index, "mayer_population_analysis"
+        )
+
+        if mayer is not None:
+            mayer = cast(list[MayerPopulationAnalysis], mayer)
+
+        return mayer
+
+    def get_hirshfeld(self, *, index: int = -1) -> list[HirshfeldPopulationAnalysis] | None:
+        """
+        Easy access to the Hirshfeld population(s) from the properties results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        mayer : list[HirshfeldPopulationAnalysis] | None
+            Returns the population(s) or None if there is none in the output for the requested index.
+        """
+
+        # > Get the Hirshfeld population
+        hirshfeld = self._safe_get(
+            "results_properties", "geometries", index, "hirshfeld_population_analysis"
+        )
+
+        if hirshfeld is not None:
+            hirshfeld = cast(list[HirshfeldPopulationAnalysis], hirshfeld)
+
+        return hirshfeld
+
+    def get_mbis(self, *, index: int = -1) -> list[MbisPopulationAnalysis] | None:
+        """
+        Easy access to the MBIS population(s) from the properties results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        mayer : list[MbisPopulationAnalysis] | None
+            Returns the population(s) or None if there is none in the output for the requested index.
+        """
+
+        # > Get the MBIS population
+        mbis = self._safe_get("results_properties", "geometries", index, "mbis_population_analysis")
+
+        if mbis is not None:
+            mbis = cast(list[MbisPopulationAnalysis], mbis)
+
+        return mbis
+
     def get_s2(self, *, index: int = -1) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | None:
         """
-        Get the S² expectation value and the ideal S² value by grepping them from the output file
+        Get the S² expectation value and the ideal S² value by grepping them from the output file.
 
         Parameters
         ----------
