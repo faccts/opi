@@ -24,6 +24,7 @@ from opi.output.hftypes import Hftypes
 from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
     StrictNonNegativeInt,
+    StrictPositiveFloat,
     StrictPositiveInt,
 )
 from opi.output.models.json.gbw.gbw_results import GbwResults
@@ -1262,7 +1263,7 @@ class Output:
 
         Returns
         ----------
-        mayer : list[HirshfeldPopulationAnalysis] | None
+        mbis : list[HirshfeldPopulationAnalysis] | None
             Returns the population(s) or None if there is none in the output for the requested index.
         """
 
@@ -1288,7 +1289,7 @@ class Output:
 
         Returns
         ----------
-        mayer : list[MbisPopulationAnalysis] | None
+        mbis : list[MbisPopulationAnalysis] | None
             Returns the population(s) or None if there is none in the output for the requested index.
         """
 
@@ -1323,4 +1324,185 @@ class Output:
             ideal_s2 = get_float_from_line(outfile, ideal_string, index)
             return expec_s2, ideal_s2
         except FileNotFoundError:
+            return None
+
+    def get_zpe(self, *, index: int = -1) -> StrictPositiveFloat | None:
+        """
+        Returns the zero-point energy (in a.u.) from the thermochemistry key in properties results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            thermochemical properties are only available for the final geometry.
+
+        Returns
+        ----------
+        zpe : StrictFiniteFloat | None
+            Returns the zero-point energy in a.u., or None if nothing is found.
+        """
+        # > "thermochemistry_energies" contains a list, but there should always be only one index
+        zpe = self._safe_get(
+            "results_properties", "geometries", index, "thermochemistry_energies", 0, "zpe"
+        )
+
+        if zpe is not None:
+            zpe = cast(StrictPositiveFloat, zpe)
+
+        return zpe
+
+    def get_inner_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
+        """
+        Returns the inner energy (in a.u.) from the thermochemistry key in properties results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            thermochemical properties are only available for the final geometry.
+
+        Returns
+        ----------
+        inner_energy : StrictFiniteFloat | None
+            Returns the inner energy (U) in a.u., or None if nothing is found.
+        """
+        # > "thermochemistry_energies" contains a list, but there should always be only one index
+        inner_energy = self._safe_get(
+            "results_properties", "geometries", index, "thermochemistry_energies", 0, "innerenergyu"
+        )
+
+        if inner_energy is not None:
+            inner_energy = cast(StrictFiniteFloat, inner_energy)
+
+        return inner_energy
+
+    def get_enthalpy(self, *, index: int = -1) -> StrictFiniteFloat | None:
+        """
+        Returns the enthalpy (in a.u.) from the thermochemistry key in properties results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            thermochemical properties are only available for the final geometry.
+
+        Returns
+        ----------
+        enthalpy : StrictFiniteFloat | None
+            Returns the enthalpy (H) in a.u., or None if nothing is found.
+        """
+        # > "thermochemistry_energies" contains a list, but there should always be only one index
+        enthalpy = self._safe_get(
+            "results_properties", "geometries", index, "thermochemistry_energies", 0, "enthalpyh"
+        )
+
+        if enthalpy is not None:
+            enthalpy = cast(StrictFiniteFloat, enthalpy)
+
+        return enthalpy
+
+    def get_entropy(self, *, index: int = -1) -> StrictFiniteFloat | None:
+        """
+        Returns the entropy (in a.u.) from the thermochemistry key in properties results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            thermochemical properties are only available for the final geometry.
+
+        Returns
+        ----------
+        entropy : StrictFiniteFloat | None
+            Returns the entropy (S) in a.u., or None if nothing is found.
+        """
+        # > "thermochemistry_energies" contains a list, but there should always be only one index
+        entropy = self._safe_get(
+            "results_properties", "geometries", index, "thermochemistry_energies", 0, "entropys"
+        )
+
+        if entropy is not None:
+            entropy = cast(StrictFiniteFloat, entropy)
+
+        return entropy
+
+    def get_free_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
+        """
+        Returns the free energy (in a.u.) from the thermochemistry key in properties results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            thermochemical properties are only available for the final geometry.
+
+        Returns
+        ----------
+        free_energy : StrictFiniteFloat | None
+            Returns the free energy (G) in a.u., or None if nothing is found.
+        """
+        # > "thermochemistry_energies" contains a list, but there should always be only one index
+        free_energy = self._safe_get(
+            "results_properties", "geometries", index, "thermochemistry_energies", 0, "freeenergyg"
+        )
+
+        if free_energy is not None:
+            free_energy = cast(StrictFiniteFloat, free_energy)
+
+        return free_energy
+
+    def get_el_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
+        """
+        Returns the electronic energy (in a.u.) from the thermochemistry key in properties results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            thermochemical properties are only available for the final geometry.
+
+        Returns
+        ----------
+        el_energy : StrictFiniteFloat | None
+            Returns electronic energy in a.u., or None if nothing is found.
+        """
+        # > "thermochemistry_energies" contains a list, but there should always be only one index
+        el_energy = self._safe_get(
+            "results_properties", "geometries", index, "thermochemistry_energies", 0, "elenergy"
+        )
+
+        if el_energy is not None:
+            el_energy = cast(StrictFiniteFloat, el_energy)
+
+        return el_energy
+
+    def get_free_energy_delta(self, *, index: int = -1) -> StrictFiniteFloat | None:
+        """
+        Returns the thermostatistical contributions to the free energy by subtracting the electronic energy from the
+        free energy.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            thermochemical properties are only available for the final geometry.
+
+        Returns
+        ----------
+        free_energy_thermo : StrictFiniteFloat | None
+            Free energy contributions from thermostatistical corrections (G_thermo) in a.u., or None if one of the
+            components is missing.
+        """
+        free_energy = self.get_free_energy(index=index)
+        el_energy = self.get_el_energy(index=index)
+        if free_energy is not None and el_energy is not None:
+            return free_energy - el_energy
+        else:
             return None
