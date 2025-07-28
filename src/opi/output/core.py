@@ -446,7 +446,7 @@ class Output:
         timeout: int, default = 300
             Time after which orca_plot will be stopped. 300 seconds should be sufficient for most MOs but when something
             large is plotted set this to a larger value or to -1 for waiting indefinitely long.
-        gbw_type: str | GbwSuffixes, default = GbwSuffixes.GBW
+        gbw_type: str | GbwSuffix, default = GbwSuffix.GBW
             Type of the gbw file from which orbitals should be plotted.
 
         Returns
