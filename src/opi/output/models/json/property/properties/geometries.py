@@ -5,9 +5,9 @@ from opi.output.models.json.property.properties.chem_shift import (
     ChemicalShift,
 )
 from opi.output.models.json.property.properties.ci_psi import CiPsi
-from opi.output.models.json.property.properties.dftenergy import DftEnergy
-from opi.output.models.json.property.properties.dipole import Dipole
-from opi.output.models.json.property.properties.efgtensor import EfgTensor
+from opi.output.models.json.property.properties.dft_energy import DftEnergy
+from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
+from opi.output.models.json.property.properties.efg_tensor import EfgTensor
 from opi.output.models.json.property.properties.energy_extrap import (
     EnergyExtrapolation,
 )
@@ -18,28 +18,30 @@ from opi.output.models.json.property.properties.geometry import Geometry
 from opi.output.models.json.property.properties.gradient import NucGradient
 from opi.output.models.json.property.properties.gtensor import Gtensor
 from opi.output.models.json.property.properties.hess import Hessian
-from opi.output.models.json.property.properties.hirshfeldpopanalysis import (
+from opi.output.models.json.property.properties.hirshfeld_population_analysis import (
     HirshfeldPopulationAnalysis,
 )
 from opi.output.models.json.property.properties.led import Led
-from opi.output.models.json.property.properties.mayerpopanalysis import (
+from opi.output.models.json.property.properties.mayer_population_analysis import (
     MayerPopulationAnalysis,
 )
-from opi.output.models.json.property.properties.mbispopanalysis import MbisPopulationAnalysis
+from opi.output.models.json.property.properties.mbis_population_analysis import (
+    MbisPopulationAnalysis,
+)
 from opi.output.models.json.property.properties.mdci_adex import MdciAdex
 from opi.output.models.json.property.properties.mdci_adld import MdciAdld
 from opi.output.models.json.property.properties.nat_orbitals import (
     NaturalOrbitals,
 )
-from opi.output.models.json.property.properties.polarisation import (
+from opi.output.models.json.property.properties.polarizability import (
     Polarizability,
 )
-from opi.output.models.json.property.properties.popanalysis import (
+from opi.output.models.json.property.properties.population_analysis import (
     ChelpgPopulationAnalysis,
     LoewdinPopulationAnalysis,
     MullikenPopulationAnalysis,
 )
-from opi.output.models.json.property.properties.quadrupole import (
+from opi.output.models.json.property.properties.quadrupole_moment import (
     QuadrupoleMoment,
 )
 from opi.output.models.json.property.properties.roci_en import RoCiEnergy
@@ -149,7 +151,7 @@ class Geometries(GetItem):
     mayer_population_analysis: list[MayerPopulationAnalysis] | None = None
     mbis_population_analysis: list[MbisPopulationAnalysis] | None = None
     calculation_info: CalcInfo | None = None
-    dipole_moment: list[Dipole] | None = None
+    dipole_moment: list[DipoleMoment] | None = None
     nuclear_gradient: list[NucGradient] | None = None
     dft_energy: DftEnergy | None = None
     vdw_correction: VdwCorrection | None = None

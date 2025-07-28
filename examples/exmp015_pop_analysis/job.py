@@ -58,3 +58,12 @@ if __name__ == "__main__":
     print("Hirshfeld: ", output.get_hirshfeld())
     print("Mayer: ", output.get_mayer())
     print("MBIS: ", output.get_mbis())
+
+    dip = output.get_dipole()
+    print(f"Total dipole moment (x,y,z): {dip[0].dipoletotal[0][0]:.8f}, {dip[0].dipoletotal[1][0]:.8f}, "
+          f"{dip[0].dipoletotal[2][0]:.8f}")
+    quad = output.get_quadrupole()
+    print(f"Total quadrupole moment (xx,yy,zz): {quad[0].quadtotal[0][0]:.8f}, {quad[0].quadtotal[1][0]:.8f}, {quad[0].quadtotal[2][0]:.8f}")
+    print(f"Total quadrupole moment (xy,xz,yz): {quad[0].quadtotal[3][0]:.8f}, {quad[0].quadtotal[4][0]:.8f}, {quad[0].quadtotal[5][0]:.8f}")
+
+    print(output.get_polarizability())

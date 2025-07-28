@@ -6,7 +6,7 @@ from opi.output.models.base.strict_types import StrictFiniteFloat
 
 class QuadrupoleMoment(GetItem):
     """
-    Has the Information about the quadrupole-Moment calculated by the ORCA Job
+    Has the Information about the quadrupole moment calculated by the ORCA Job
 
     Attributes
     ----------
@@ -25,11 +25,11 @@ class QuadrupoleMoment(GetItem):
     isotropicquadmoment: StrictFloat
         Isotopic quadruple moment
     quadeleccontrib: list[list[StrictNegativeFloat]]
-        Contribution of the electrons on the quadrupole moment in all three dimension
+        Contribution of the electrons on the quadrupole moments with 6 components in space - xx, yy, zz, xy, xz, yz
     quadnuccontrib: list[list[StrictPositiveFloat]]
-        Contribution of the nucleus on the quadrupole moment in all three dimension
+        Contribution of the nucleus on the quadrupole moments with 6 components in space - xx, yy, zz, xy, xz, yz
     quadtotal: list[list[StrictFiniteFloat]]
-        Total quadruple moment in all three dimension
+        Total quadruple moments with 6 components in space - xx, yy, zz, xy, xz, yz
     quaddiagonalized: list[list[StrictFinteFloat]]
         Diagonalized quadruple matrix
     """

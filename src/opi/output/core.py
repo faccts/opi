@@ -31,18 +31,25 @@ from opi.output.models.base.strict_types import (
 )
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.gbw.properties.mos import MO
+from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
 from opi.output.models.json.property.properties.energy import Energy
 from opi.output.models.json.property.properties.energy_list import EnergyList
-from opi.output.models.json.property.properties.hirshfeldpopanalysis import (
+from opi.output.models.json.property.properties.hirshfeld_population_analysis import (
     HirshfeldPopulationAnalysis,
 )
-from opi.output.models.json.property.properties.mayerpopanalysis import MayerPopulationAnalysis
-from opi.output.models.json.property.properties.mbispopanalysis import MbisPopulationAnalysis
-from opi.output.models.json.property.properties.popanalysis import (
+from opi.output.models.json.property.properties.mayer_population_analysis import (
+    MayerPopulationAnalysis,
+)
+from opi.output.models.json.property.properties.mbis_population_analysis import (
+    MbisPopulationAnalysis,
+)
+from opi.output.models.json.property.properties.polarizability import Polarizability
+from opi.output.models.json.property.properties.population_analysis import (
     ChelpgPopulationAnalysis,
     LoewdinPopulationAnalysis,
     MullikenPopulationAnalysis,
 )
+from opi.output.models.json.property.properties.quadrupole_moment import QuadrupoleMoment
 from opi.output.models.json.property.property_results import (
     PropertyResults,
 )
@@ -1317,6 +1324,75 @@ class Output:
             mbis = cast(list[MbisPopulationAnalysis], mbis)
 
         return mbis
+
+    def get_dipole(self, *, index: int = -1) -> list[DipoleMoment] | None:
+        """
+        Get a list of the dipole moments from property results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the dipole moments should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        dipole : list[DipoleMoment] | None
+            Returns the dipole moment(s) or None if there is none in the output for the requested index.
+        """
+
+        dipole = self._safe_get("results_properties", "geometries", index, "dipole_moment")
+
+        if dipole is not None:
+            dipole = cast(list[DipoleMoment], dipole)
+
+        return dipole
+
+    def get_quadrupole(self, *, index: int = -1) -> list[QuadrupoleMoment] | None:
+        """
+        Get a list of the quadrupole moments from property results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the quadrupole moments should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        quadrupole : list[QuadrupoleMoment] | None
+            Returns the quadrupole moment(s) or None if there is none in the output for the requested index.
+        """
+
+        quadrupole = self._safe_get("results_properties", "geometries", index, "quadrupole_moment")
+
+        if quadrupole is not None:
+            quadrupole = cast(list[QuadrupoleMoment], quadrupole)
+
+        return quadrupole
+
+    def get_polarizability(self, *, index: int = -1) -> list[Polarizability] | None:
+        """
+        Get a list of the polarizabilities from property results.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the polarizabilies should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        pol : list[Polarizability] | None
+            Returns the polarizabilities or None if there is none in the output for the requested index.
+        """
+
+        pol = self._safe_get("results_properties", "geometries", index, "polarizability")
+
+        if pol is not None:
+            pol = cast(list[Polarizability], pol)
+
+        return pol
 
     def get_s2(self, *, index: int = -1) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | None:
         """
