@@ -1,7 +1,7 @@
 from pydantic import Field, StrictFloat, StrictInt, StrictStr
 
 from opi.output.models.base.get_item import GetItem
-from opi.output.models.json.gbw.properties.atom import Atoms
+from opi.output.models.json.gbw.properties.atoms import Atoms
 from opi.output.models.json.gbw.properties.molecular_orbitals import (
     MolecularOrbitals,
 )

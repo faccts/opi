@@ -7,15 +7,15 @@ import pytest
 from jsonschema import ValidationError as SchemaValidationError
 from jsonschema import validate
 
-from opi.output.models.json.gbw.properties.atom import Atoms
+from opi.output.models.json.gbw.properties.atoms import Atoms
 from opi.output.models.json.gbw.properties.base import Base
 from opi.output.models.json.gbw.properties.cite import Cite
 from opi.output.models.json.gbw.properties.header import OrcaHeader
+from opi.output.models.json.gbw.properties.mo import MO
 from opi.output.models.json.gbw.properties.molecular_orbitals import (
     MolecularOrbitals,
 )
 from opi.output.models.json.gbw.properties.molecule import Molecule
-from opi.output.models.json.gbw.properties.mos import MO
 from opi.output.models.json.gbw.properties.paper import Paper
 from opi.output.models.json.gbw.properties.tddft import TdDft
 from opi.output.models.json.property.properties.auto_ci_energy import AutoCiEnergy

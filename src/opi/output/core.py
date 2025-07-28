@@ -23,6 +23,7 @@ from opi.output.grepper.recipes import (
     has_terminated_normally,
 )
 from opi.output.hftyp import Hftyp
+from opi.output.mo_data import MOData
 from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
     StrictNonNegativeInt,
@@ -30,7 +31,7 @@ from opi.output.models.base.strict_types import (
     StrictPositiveInt,
 )
 from opi.output.models.json.gbw.gbw_results import GbwResults
-from opi.output.models.json.gbw.properties.mos import MO
+from opi.output.models.json.gbw.properties.mo import MO
 from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
 from opi.output.models.json.property.properties.energy import Energy
 from opi.output.models.json.property.properties.energy_list import EnergyList
@@ -998,7 +999,7 @@ class Output:
         Notes
         -----
         The keys are:
-            - **mos**     : RHF/ROHF orbitals
+            - **mo**     : RHF/ROHF orbitals
             - **alpha**   : UHF alpha orbitals
             - **beta**    : UHF beta orbitals
         """
@@ -1014,7 +1015,7 @@ class Output:
                 mos["alpha"] = molecular_orbitals[:offset]
                 mos["beta"] = molecular_orbitals[offset:]
             else:
-                mos["mos"] = molecular_orbitals
+                mos["mo"] = molecular_orbitals
             return mos
         else:
             return None
@@ -1043,14 +1044,14 @@ class Output:
 
         return None
 
-    def get_homo(self) -> tuple[int, str, MO] | None:
+    def get_homo(self) -> MOData | None:
         """
         Returns the highest occupied molecular orbital (HOMO, or SOMO for UHF).
 
         Returns
         -------
-        tuple[int, str, MO] | None
-            Returns tuple of index, spin-channel (mos/alpha/beta), and MO (HOMO or SOMO), or None, if the HOMO could not be found.
+        MOData | None
+            Returns MO data of HOMO/SOMO or None, if the HOMO could not be found.
         """
         homo_id: int | None = None
         homo_type: str | None = None
@@ -1079,7 +1080,7 @@ class Output:
                                 homo_id = index
                                 homo_type = channel
         if homo_id is not None and homo_type is not None and homo is not None:
-            return homo_id, homo_type, homo
+            return MOData(homo_id, homo_type, homo)
         else:
             return None
 
@@ -1103,14 +1104,14 @@ class Output:
 
         return None
 
-    def get_lumo(self) -> tuple[int, str, MO] | None:
+    def get_lumo(self) -> MOData | None:
         """
         Returns the lowest unoccupied molecular orbital (LUMO)
 
         Returns
         -------
-        tuple[int, str, MO] | None
-            Returns tuple of index, spin-channel (mos/alpha/beta), and MO (LUMO), or None, if the LUMO could not be found.
+        MOData | None
+            Returns MO data of LUMO, or None, if the LUMO could not be found.
         """
         lumo_id: int | None = None
         lumo_type: str | None = None
@@ -1139,7 +1140,7 @@ class Output:
                                 lumo_id = index
                                 lumo_type = channel
         if lumo_id is not None and lumo_type is not None and lumo is not None:
-            return lumo_id, lumo_type, lumo
+            return MOData(lumo_id, lumo_type, lumo)
         else:
             return None
 
@@ -1154,18 +1155,17 @@ class Output:
         """
         homo_data = self.get_homo()
         if homo_data is not None:
-            homo = homo_data[2]
+            homo_energy = homo_data.mo.orbitalenergy
         else:
-            homo = None
+            homo_energy = None
         lumo_data = self.get_lumo()
         if lumo_data is not None:
-            lumo = lumo_data[2]
+            lumo_energy = lumo_data.mo.orbitalenergy
         else:
-            lumo = None
+            lumo_energy = None
 
-        if homo is not None and lumo is not None:
-            if homo.orbitalenergy is not None and lumo.orbitalenergy is not None:
-                return (lumo.orbitalenergy - homo.orbitalenergy) * AU_TO_EV
+        if homo_energy is not None and lumo_energy is not None:
+            return (lumo_energy - homo_energy) * AU_TO_EV
 
         return None
 

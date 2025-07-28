@@ -52,6 +52,6 @@ if __name__ == "__main__":
     mos = output.get_mos()
     homo_data = output.get_homo()
     lumo_data = output.get_lumo()
-    print(f"HOMO {homo_data[0]}({homo_data[1]}) energy: {homo_data[2].orbitalenergy:.8f} Eh")
-    print(f"LUMO {lumo_data[0]}({lumo_data[1]}) energy: {lumo_data[2].orbitalenergy:.8f} Eh")
+    print(f"HOMO {homo_data.index}({homo_data.channel}) energy: {homo_data.orbitalenergy:.8f} Eh")
+    print(f"LUMO {lumo_data.index}({lumo_data.channel}) energy: {lumo_data.orbitalenergy:.8f} Eh")
     print(f"HOMO-LUMO gap: {output.get_hl_gap():.2f} eV")
