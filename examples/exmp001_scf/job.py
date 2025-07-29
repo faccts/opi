@@ -63,3 +63,5 @@ if __name__ == "__main__":
         output.results_properties.geometries[0].energy[0].totalenergy[0][0]
         + output.results_properties.geometries[0].vdw_correction.vdw
     )
+
+    output.print_graph()

@@ -524,6 +524,28 @@ class Output:
         except FileNotFoundError:
             return False
 
+    def print_graph(self, max_length: int = 5) -> None:
+        """
+        Prints a graph of the available properties in the output
+
+        Parameters
+        -------
+        max_length : int, default:= 5
+            Maximum length of lists displayed in the graph printout
+
+        """
+        print("Printing graph of property results:")
+        if self.results_properties is not None:
+            print(self.results_properties.graph(max_list_length=max_length))
+        else:
+            print("No property results are available!")
+
+        print("Printing graph of gbw results:")
+        if self.results_gbw is not None:
+            print(self.results_gbw.graph(max_list_length=max_length))
+        else:
+            print("No gbw results are available!")
+
     def run_orca_plot(
         self, stdin_list: list[str], *, gbw_file: Path | None = None, timeout: int = -1
     ) -> None:

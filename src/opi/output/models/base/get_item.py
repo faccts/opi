@@ -1,3 +1,4 @@
+import re
 import typing
 from typing import Any, Union, get_args, get_origin
 
@@ -12,7 +13,9 @@ def get_clean_type_name(t: Any) -> str:
     elif hasattr(t, "__name__"):
         return str(t.__name__)
     else:
-        return str(t)
+        matches = re.findall(r"\.([^.|\]\s]+)", str(t))
+        result = matches[-1] if matches else str(t)
+        return result
 
 
 class GetItem(BaseModel):
@@ -21,7 +24,7 @@ class GetItem(BaseModel):
     def __getitem__(self, name: str) -> Any:
         return getattr(self, name.lower())
 
-    def graph(self, depth: int = -1, _level: int = 0) -> str:
+    def graph(self, depth: int = -1, _level: int = 0, /, *, max_list_length: int = 5) -> str:
         """ "Graph output of the populated data types"""
         if depth == 0:
             return ""
@@ -50,6 +53,9 @@ class GetItem(BaseModel):
                     if isinstance(item, GetItem):
                         sublines.append(f"{indent}  - [{i}]")
                         sublines.append(item.graph(depth - 1 if depth > 0 else -1, _level + 2))
+                        if len(sublines) > max_list_length:
+                            sublines.append(f"{indent}  - ...\n")
+                            break
                 if sublines:
                     lines.append(header)
                     lines.extend(sublines)
