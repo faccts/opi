@@ -14,7 +14,7 @@ def get_clean_type_name(t: Any) -> str:
         return str(t.__name__)
     else:
         matches = re.findall(r"\.([^.|\]\s]+)", str(t))
-        result = matches[-1] if matches else str(t)
+        result = matches[-1] if matches else str(t).split("|")[0].strip()
         return result
 
 
@@ -49,16 +49,17 @@ class GetItem(BaseModel):
             # List of GetItem
             elif isinstance(value, list):
                 sublines = []
+                counter = 0
                 for i, item in enumerate(value):
                     if isinstance(item, GetItem):
                         sublines.append(f"{indent}  - [{i}]")
+                        counter += 1
                         sublines.append(item.graph(depth - 1 if depth > 0 else -1, _level + 2))
-                        if len(sublines) > max_list_length:
+                        if counter > max_list_length:
                             sublines.append(f"{indent}  - ...\n")
                             break
-                if sublines:
-                    lines.append(header)
-                    lines.extend(sublines)
+                lines.append(header)
+                lines.extend(sublines)
 
             # Dict of GetItem
             elif isinstance(value, dict):
