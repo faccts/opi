@@ -4,6 +4,7 @@ It's mostly based on the ORCA's two JSONs files.
 """
 
 import json
+from itertools import count
 from pathlib import Path
 from typing import Any, cast
 from warnings import warn
@@ -54,7 +55,7 @@ from opi.output.models.json.property.properties.quadrupole_moment import Quadrup
 from opi.output.models.json.property.property_results import (
     PropertyResults,
 )
-from opi.utils.misc import check_minimal_version, lowercase
+from opi.utils.misc import check_minimal_version, is_safe_index, lowercase
 from opi.utils.orca_version import OrcaVersion
 from opi.utils.units import AU_TO_ANGST, AU_TO_EV
 
@@ -132,7 +133,9 @@ class Output:
             raise FileNotFoundError(f"Working dir does not exist: {working_dir}")
 
         # // JSON PATHS
-        self.gbw_json_file = self.get_file(".json")
+        self.gbw_json_files = [self.get_file(".json")]
+        self.gbw_json_files.extend(self.get_gbw_json_files())
+        self.num_gbw_files = len(self.gbw_json_files)
         self.property_json_file = self.get_file(".property.json")
 
         # > // SWITCHES: CREATE JSON FILES
@@ -143,12 +146,12 @@ class Output:
         self.do_redump_jsons: bool = False
 
         # > // RAW JSON TREES
-        self.gbw_json_data: dict[str, Any] | None = None
+        self.gbw_json_data: list[dict[str, Any]] | None = None
         self.property_json_data: dict[str, Any] | None = None
 
         # > // PARSED JSON TREES
         self.results_properties: PropertyResults | None = None
-        self.results_gbw: GbwResults | None = None
+        self.results_gbw: list[GbwResults] | None = None
 
         # // CREATE AND PARSE JSONS FILES
         if parse:
@@ -187,8 +190,8 @@ class Output:
 
         # // GBW JSON file
         if read_gbw_json:
-            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
-            self.results_gbw = GbwResults(**self.gbw_json_data)
+            self.gbw_json_data = [self._process_json_file(file) for file in self.gbw_json_files]
+            self.results_gbw = [GbwResults(**data) for data in self.gbw_json_data]
 
         # > Redump JSON files
         if self.do_redump_jsons:
@@ -239,10 +242,11 @@ class Output:
     def _redump_jsons(self) -> None:
         """Redump both JSON files as read and parse by `PropertyResults` and `GbwResults`."""
 
-        assert self.gbw_json_file
+        assert self.gbw_json_files
         assert self.results_gbw
-        redumped_gbw_json_file = self.gbw_json_file.with_suffix(".interface.json")
-        self._dump_json(self.results_gbw, redumped_gbw_json_file)
+        for i, gbw_json_file in enumerate(self.gbw_json_files):
+            redumped_gbw_json_file = gbw_json_file.with_suffix(".interface.json")
+            self._dump_json(self.results_gbw[i], redumped_gbw_json_file)
 
         assert self.property_json_file
         assert self.results_properties
@@ -263,6 +267,47 @@ class Output:
 
         json_string: str = result.model_dump_json(indent=2)
         json_file.write_text(json_string)
+
+    def get_gbw_json_files(self, suffix: str = ".gbw", /) -> list[Path]:
+        """
+        Checks if other gbw files with indexes from scans or NEB exist and returns a list with their paths.
+        Naming of gbw files from scan and neb is different. There should never be both so we first check for scan
+        and then neb.
+
+        Parameters
+        ----------
+        suffix : str
+            Suffix of file. Must include the leading dot.
+
+        Returns
+        ----------
+        list[Path]
+            Returns list of indexed gbw files, e.g., from relaxed surface scan or neb calculation
+        """
+        scan_list = []
+        # // Check if gbw files with index 1 to 999 from scan exist
+        for i in count(1):
+            gbw_file = self.working_dir / f"{self.basename}.{i:03}{suffix}"
+            if gbw_file.is_file():
+                scan_list.append(gbw_file.with_suffix(".json"))
+            else:
+                break
+
+        # // Check if files from neb exist
+        neb_list = []
+        for i in count(0):
+            gbw_file = self.working_dir / f"{self.basename}_im{i}{suffix}"
+            if gbw_file.is_file():
+                neb_list.append(gbw_file.with_suffix(".json"))
+            else:
+                break
+
+        if neb_list and scan_list:
+            raise ValueError(
+                "Both Scan and NEB type .gbw files found! Only one type should be present."
+            )
+
+        return scan_list or neb_list
 
     def get_file(self, suffix: str, /) -> Path:
         """
@@ -308,7 +353,9 @@ class Output:
         """Create a `Runner` object passing on `self.working_dir`."""
         return Runner(working_dir=self.working_dir)
 
-    def create_gbw_json(self, *, force: bool = False, config: dict[str, Any] | None = None) -> None:
+    def create_gbw_json(
+        self, *, force: bool = False, config: dict[str, Any] | None = None, index: int = 0
+    ) -> None:
         """
         Thin-wrapper around `Runner.create_jsons()`.
         Creates the `<basename>.json` file.
@@ -321,8 +368,10 @@ class Output:
             Determine contents of gbw-json file.
             For details about the configuration refer to the ORCA manual "9.3.2 Configuration file"
         """
-        runner = self._create_runner()
-        runner.create_gbw_json(self.basename, config=config, force=force)
+        for file in self.gbw_json_files:
+            basename = str(file.with_suffix(""))
+            runner = self._create_runner()
+            runner.create_gbw_json(basename, config=config, force=force)
 
     def create_property_json(self, *, force: bool = False) -> None:
         """
@@ -407,7 +456,7 @@ class Output:
             return False
 
     def run_orca_plot(
-        self, stdin_list: list[str], *, suffix: str = ".gbw", timeout: int = -1
+        self, stdin_list: list[str], *, gbw_file: Path | None = None, timeout: int = -1
     ) -> None:
         """
         Executes orca_plot and passes it an input list stdin_list that specifies what to plot.
@@ -416,8 +465,8 @@ class Output:
         ----------
         stdin_list : list[str]
             Input list for interactive orca_plot session
-        suffix : str, default ".gbw"
-            Determines the suffix of the gbw file to use.
+        gbw_file : Path | None, default: None
+            Gbw file used for plotting, if None is given {basename}.gbw in working_dir will be used.
         timeout : int, default: = -1
             Timeout in seconds to wait for ORCA process.
             If value is smaller than zero, wait indefinitely.
@@ -430,16 +479,17 @@ class Output:
             If the gbwfile {basename}{suffix} is not found.
         """
         runner = self._create_runner()
-        gbwfile = self.working_dir / f"{self.basename}{suffix}"
+        if gbw_file is None:
+            gbw_file = self.working_dir / f"{self.basename}.gbw"
 
-        if not gbwfile.is_file():
-            raise FileNotFoundError(f"The requested .gbw file is not available: ({gbwfile})")
+        if not gbw_file.is_file():
+            raise FileNotFoundError(f"The requested .gbw file is not available: ({gbw_file})")
 
         # if no input for orca_plot is given
         if not stdin_list:
             raise ValueError("No input (stdin_list) supplied for orca_plot, but input is required!")
 
-        runner.run_orca_plot(gbwfile, stdin_list, timeout=timeout)
+        runner.run_orca_plot(gbw_file, stdin_list, timeout=timeout)
 
     def plot_mo(
         self,
@@ -450,6 +500,7 @@ class Output:
         resolution: StrictNonNegativeInt = 40,
         timeout: int = 300,
         gbw_type: str | GbwSuffix = GbwSuffix.GBW,
+        gbw_id: int = 0,
     ) -> CubeOutput | None:
         """
         Generates and returns the cube file for a molecular orbital by running the orca_plot binary.
@@ -470,6 +521,8 @@ class Output:
             large is plotted set this to a larger value or to -1 for waiting indefinitely long.
         gbw_type: str | GbwSuffix, default = GbwSuffix.GBW
             Type of the gbw file from which orbitals should be plotted.
+        gbw_id: int = 0
+            Index of gbw file that should be used for plotting
 
         Returns
         -------
@@ -499,10 +552,17 @@ class Output:
         if isinstance(gbw_type, str):
             gbw_type = GbwSuffix(gbw_type)
 
-        self.run_orca_plot(stdin_list, timeout=timeout, suffix=gbw_type)
+        # > determine which gbw file to plot
+        suffix = gbw_type.value
+        gbw_file = self.gbw_json_files[gbw_id].with_suffix(suffix)
+
+        self.run_orca_plot(stdin_list, timeout=timeout, gbw_file=gbw_file)
 
         # > get the resulting cube file as string
-        cube_file = self.working_dir / f"{self.basename}.mo{index}{operator_list[operator]}.cube"
+        cube_file = (
+            self.working_dir
+            / f"{self.gbw_json_files[gbw_id].with_suffix('')}.mo{index}{operator_list[operator]}.cube"
+        )
 
         if not cube_file.is_file():
             return None
@@ -510,7 +570,13 @@ class Output:
         return CubeOutput(cube_file)
 
     def plot_density(
-        self, /, *, resolution: StrictNonNegativeInt = 40, timeout: int = 600, suffix: str = ".scfp"
+        self,
+        /,
+        *,
+        resolution: StrictNonNegativeInt = 40,
+        timeout: int = 600,
+        suffix: str = ".scfp",
+        gbw_id: int = 0,
     ) -> CubeOutput | None:
         """
         Generates and returns the cube file for the density by running the orca_plot binary.
@@ -522,23 +588,28 @@ class Output:
         resolution: StrictNonNegativeInt, default=40
             Resolution of the generated cube file. Higher numbers result in smoother plots, but also in longer orca_plot
             run time and a larger cube file.
-        timeout: int, default = 600
+        timeout: int, default: 600
             Time after which orca_plot will be stopped. 600 seconds should be sufficient for most MOs but when something
             large is plotted set this to a larger value or to -1 for waiting indefinitely long.
-        suffix: str, default = ".scfp"
+        suffix: str, default: ".scfp"
             suffix for selecting different densities, e.g., FOD via ".scfp_fod".
+        gbw_id: int, default: 0
+            Index of gbw file that should be used for plotting
+
         Returns
         -------
         CubeOutput | None
             Returns the cube output object or returns None if the cube file cannot be retrieved.
         """
+        gbw_file = self.gbw_json_files[gbw_id].with_suffix(".gbw")
+
         # > Define input string for orca_plot.
         # > If anything goes wrong orca_plot should exit.
         stdin_list = [
             "1",  # Select type of plot
             "2",  # Enter density plot
             "n",  # Do not use the default density
-            f"{self.basename}{suffix}",  # Select density file
+            f"{self.basename}{suffix}",  # Select density name
             "4",  # Select the resolution (grid size) settings
             str(resolution),  # Enter resolution
             "5",  # Select the output format
@@ -546,10 +617,10 @@ class Output:
             "11",  # Perform the plotting
             "12",  # Exit the program
         ]
-        self.run_orca_plot(stdin_list, timeout=timeout)
+        self.run_orca_plot(stdin_list, timeout=timeout, gbw_file=gbw_file)
 
         # > get the resulting cube file as string
-        cube_file = self.working_dir / f"{self.basename}.eldens.cube"
+        cube_file = self.working_dir / f"{gbw_file.with_suffix('')}.eldens.cube"
 
         if not cube_file.is_file():
             return None
@@ -562,6 +633,8 @@ class Output:
         *,
         resolution: StrictNonNegativeInt = 40,
         timeout: int = 600,
+        suffix: str = ".scfp",
+        gbw_id: int = 0,
     ) -> CubeOutput | None:
         """
         Generates and returns the cube file for the spin-density by running the orca_plot binary. Note that for RHF/RKS
@@ -577,18 +650,24 @@ class Output:
         timeout: int, default = 600
             Time after which orca_plot will be stopped. 600 seconds should be sufficient for most MOs but when something
             large is plotted set this to a larger value or to -1 for waiting indefinitely long.
+        suffix: str, default: ".scfp"
+            suffix for selecting different densities, e.g., FOD via ".scfp_fod".
+        gbw_id: int, default: 0
+            Index of gbw file that should be used for plotting
 
         Returns
         -------
         CubeOutput | None
             Returns the cube output object or returns None if the cube file cannot be retrieved.
         """
+        gbw_file = self.gbw_json_files[gbw_id].with_suffix(".gbw")
         # > Define input string for orca_plot.
         # > If anything goes wrong orca_plot should exit.
         stdin_list = [
             "1",  # Select type of plot
             "3",  # Enter spin density plot
-            "y",  # Use default density
+            "n",  # Do not use the default density
+            f"{self.basename}{suffix}",  # Select density name
             "4",  # Select the resolution (grid size) settings
             str(resolution),  # Enter resolution
             "5",  # Select the output format
@@ -596,10 +675,10 @@ class Output:
             "11",  # Perform the plotting
             "12",  # Exit the program
         ]
-        self.run_orca_plot(stdin_list, timeout=timeout)
+        self.run_orca_plot(stdin_list, timeout=timeout, gbw_file=gbw_file)
 
         # > get the resulting cube file as string
-        cube_file = self.working_dir / f"{self.basename}.spindens.cube"
+        cube_file = self.working_dir / f"{gbw_file.with_suffix('')}.spindens.cube"
 
         if not cube_file.is_file():
             return None
@@ -649,15 +728,20 @@ class Output:
                 return None
         return current
 
-    def get_hftype(self) -> Hftyp | None:
+    def get_hftype(self, index: int = 0) -> Hftyp | None:
         """
         Get the HFType from GBW json file.
+
+        Parameters
+        -------
+        index: int, default: 0
+            Index of geometry for which the hftype should be retrieved.
 
         Returns
         -------
         hftype : Hftyp | None
         """
-        hftype = self._safe_get("results_gbw", "molecule", "hftyp")
+        hftype = self._safe_get("results_gbw", index, "molecule", "hftyp")
         if hftype is not None:
             hftype = cast(str, hftype)
             try:
@@ -987,9 +1071,14 @@ class Output:
 
         return fragments
 
-    def get_mos(self) -> dict[str, list[MO]] | None:
+    def get_mos(self, gbw_id: int = 0) -> dict[str, list[MO]] | None:
         """
         Returns a dictionary with list(s) of molecular orbitals.
+
+        Parameters
+        -------
+        gbw_id : int, default : 0
+            Index of the gbw file from which the MOs should be recovered.
 
         Returns
         -------
@@ -1003,12 +1092,14 @@ class Output:
             - **alpha**   : UHF alpha orbitals
             - **beta**    : UHF beta orbitals
         """
-        molecular_orbitals = self._safe_get("results_gbw", "molecule", "molecularorbitals", "mos")
+        molecular_orbitals = self._safe_get(
+            "results_gbw", gbw_id, "molecule", "molecularorbitals", "mos"
+        )
         if molecular_orbitals is not None:
             mos = {}
             cast(list[MO], molecular_orbitals)
             # > Get the hftype (e.g. rhf / uhf)
-            hftype = self.get_hftype()
+            hftype = self.get_hftype(gbw_id)
             # > Sort for UHF
             if hftype == Hftyp.UHF:
                 offset = len(molecular_orbitals) // 2
@@ -1044,9 +1135,14 @@ class Output:
 
         return None
 
-    def get_homo(self) -> MOData | None:
+    def get_homo(self, gbw_id: int = 0) -> MOData | None:
         """
         Returns the highest occupied molecular orbital (HOMO, or SOMO for UHF).
+
+        Parameters
+        -------
+        gbw_id : int, default : 0
+            Index of the gbw file from which the MOs should be recovered.
 
         Returns
         -------
@@ -1056,19 +1152,19 @@ class Output:
         homo_id: int | None = None
         homo_type: str | None = None
         homo: MO | None = None
-        mos = self.get_mos()
+        mos = self.get_mos(gbw_id)
 
         if mos is not None:
             for channel in mos:
                 # > find homo for spin channel
-                index = self._find_homo(mos[channel])
-                if index is not None:
-                    channel_homo = mos[channel][index]
+                mo_id = self._find_homo(mos[channel])
+                if mo_id is not None:
+                    channel_homo = mos[channel][mo_id]
                     if channel_homo.orbitalenergy is not None:
                         # > Check if spin channel homo is the actual homo
                         if homo is None:
                             homo = channel_homo
-                            homo_id = index
+                            homo_id = mo_id
                             homo_type = channel
                         else:
                             # > Compare energies and pick highest
@@ -1077,7 +1173,7 @@ class Output:
                                 and channel_homo.orbitalenergy > homo.orbitalenergy
                             ):
                                 homo = channel_homo
-                                homo_id = index
+                                homo_id = mo_id
                                 homo_type = channel
         if homo_id is not None and homo_type is not None and homo is not None:
             return MOData(homo_id, homo_type, homo)
@@ -1104,9 +1200,14 @@ class Output:
 
         return None
 
-    def get_lumo(self) -> MOData | None:
+    def get_lumo(self, gbw_id: int = 0) -> MOData | None:
         """
-        Returns the lowest unoccupied molecular orbital (LUMO)
+        Returns the lowest unoccupied molecular orbital (LUMO).
+
+        Parameters
+        -------
+        gbw_id : int, default : 0
+            Index of the gbw file from which the MOs should be recovered.
 
         Returns
         -------
@@ -1116,18 +1217,18 @@ class Output:
         lumo_id: int | None = None
         lumo_type: str | None = None
         lumo: MO | None = None
-        mos = self.get_mos()
+        mos = self.get_mos(gbw_id)
 
         if mos is not None:
             for channel in mos:
                 # > find lumo for spin channel
-                index = self._find_lumo(mos[channel])
-                if index is not None:
-                    channel_lumo = mos[channel][index]
+                mo_id = self._find_lumo(mos[channel])
+                if mo_id is not None:
+                    channel_lumo = mos[channel][mo_id]
                     if channel_lumo.orbitalenergy is not None:
                         # > Check if spin channel lumo is the actual lumo
                         if lumo is None:
-                            lumo_id = index
+                            lumo_id = mo_id
                             lumo_type = channel
                             lumo = channel_lumo
                         else:
@@ -1137,28 +1238,33 @@ class Output:
                                 and channel_lumo.orbitalenergy < lumo.orbitalenergy
                             ):
                                 lumo = channel_lumo
-                                lumo_id = index
+                                lumo_id = mo_id
                                 lumo_type = channel
         if lumo_id is not None and lumo_type is not None and lumo is not None:
             return MOData(lumo_id, lumo_type, lumo)
         else:
             return None
 
-    def get_hl_gap(self) -> float | None:
+    def get_hl_gap(self, gbw_id: int = 0) -> float | None:
         """
         Returns the HOMO-LUMO gap in eV
+
+        Parameters
+        -------
+        gbw_id : int, default : 0
+            Index of the gbw file from which the gap should be recovered.
 
         Returns
         -------
         float | None
             Returns the HOMO-LUMO gap in eV or None if the gap could not be obtained.
         """
-        homo_data = self.get_homo()
+        homo_data = self.get_homo(gbw_id)
         if homo_data is not None:
             homo_energy = homo_data.mo.orbitalenergy
         else:
             homo_energy = None
-        lumo_data = self.get_lumo()
+        lumo_data = self.get_lumo(gbw_id)
         if lumo_data is not None:
             lumo_energy = lumo_data.mo.orbitalenergy
         else:
@@ -1600,7 +1706,17 @@ class Output:
         else:
             return None
 
-    def get_int_overlap(self, recreate_json: bool = False) -> npt.NDArray[np.float64] | None:
+    def recreate_gbw_results(self, config_dict: dict[str, Any], gbw_id: int = 0, /) -> None:
+        """Function for recreating a specific gbw-JSON file with a config dict."""
+        self.create_gbw_json(force=True, config=config_dict, index=gbw_id)
+        if is_safe_index(self.gbw_json_data, gbw_id) and is_safe_index(self.gbw_json_files, gbw_id):
+            self.gbw_json_data[gbw_id] = self._process_json_file(self.gbw_json_files[gbw_id])
+            if is_safe_index(self.results_gbw, gbw_id):
+                self.results_gbw[gbw_id] = GbwResults(**self.gbw_json_data[gbw_id])
+
+    def get_int_overlap(
+        self, recreate_json: bool = False, gbw_id: int = 0
+    ) -> npt.NDArray[np.float64] | None:
         """
         Returns the overlap integral matrix as numpy array.
 
@@ -1608,16 +1724,17 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) the overlap integrals to be included.
+        gbw_id : int, default = 0
+            Geometry for which the integrals are requested, the default 0 refers to the main geometry
+            (no scan or neb step).
         """
 
         if recreate_json:
             config_dict = {"1elIntegrals": ["S"]}
-            self.create_gbw_json(force=True, config=config_dict)
-            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
-            self.results_gbw = GbwResults(**self.gbw_json_data)
+            self.recreate_gbw_results(config_dict, gbw_id)
 
         # > get overlap from gbw json files
-        overlap_list = self._safe_get("results_gbw", "molecule", "s_matrix")
+        overlap_list = self._safe_get("results_gbw", gbw_id, "molecule", "s_matrix")
 
         if overlap_list is not None:
             overlap = np.array(overlap_list)
@@ -1625,7 +1742,9 @@ class Output:
         else:
             return None
 
-    def get_int_hcore(self, recreate_json: bool = False) -> npt.NDArray[np.float64] | None:
+    def get_int_hcore(
+        self, recreate_json: bool = False, gbw_id: int = 0
+    ) -> npt.NDArray[np.float64] | None:
         """
         Returns the core hamiltonian integral matrix as numpy array.
 
@@ -1633,16 +1752,16 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) the hcore integrals to be included.
+        gbw_id : int, default = -1
+            Geometry for which the integrals are requested, the default -1 is the last geometry.
         """
 
         if recreate_json:
             config_dict = {"1elIntegrals": ["H"]}
-            self.create_gbw_json(force=True, config=config_dict)
-            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
-            self.results_gbw = GbwResults(**self.gbw_json_data)
+            self.recreate_gbw_results(config_dict, gbw_id)
 
         # > get hcore from gbw json files
-        hcore_list = self._safe_get("results_gbw", "molecule", "h_matrix")
+        hcore_list = self._safe_get("results_gbw", gbw_id, "molecule", "h_matrix")
 
         if hcore_list is not None:
             hcore = np.array(hcore_list)
@@ -1650,7 +1769,9 @@ class Output:
         else:
             return None
 
-    def get_int_f(self, recreate_json: bool = False) -> npt.NDArray[np.float64] | None:
+    def get_int_f(
+        self, recreate_json: bool = False, gbw_id: int = 0
+    ) -> npt.NDArray[np.float64] | None:
         """
         Returns the two-electron interaction matrix F (often termed G).
 
@@ -1658,16 +1779,16 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) the fock correction integrals to be included.
+        gbw_id : int, default = -1
+            Geometry for which the integrals are requested, the default -1 is the last geometry.
         """
 
         if recreate_json:
             config_dict = {"FockMatrix": ["F"]}
-            self.create_gbw_json(force=True, config=config_dict)
-            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
-            self.results_gbw = GbwResults(**self.gbw_json_data)
+            self.recreate_gbw_results(config_dict, gbw_id)
 
         # > get hcore from gbw json files
-        fock_list = self._safe_get("results_gbw", "molecule", "f_matrix")
+        fock_list = self._safe_get("results_gbw", gbw_id, "molecule", "f_matrix")
 
         if fock_list is not None:
             fock = np.array(fock_list[0])
@@ -1675,7 +1796,9 @@ class Output:
         else:
             return None
 
-    def get_int_j(self, recreate_json: bool = False) -> npt.NDArray[np.float64] | None:
+    def get_int_j(
+        self, recreate_json: bool = False, gbw_id: int = 0
+    ) -> npt.NDArray[np.float64] | None:
         """
         Returns the Coulomb matrix J.
 
@@ -1683,16 +1806,16 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) J to be included.
+        gbw_id : int, default = -1
+            Geometry for which the integrals are requested, the default -1 is the last geometry.
         """
 
         if recreate_json:
             config_dict = {"FockMatrix": ["J"]}
-            self.create_gbw_json(force=True, config=config_dict)
-            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
-            self.results_gbw = GbwResults(**self.gbw_json_data)
+            self.recreate_gbw_results(config_dict, gbw_id)
 
         # > get hcore from gbw json files
-        j_list = self._safe_get("results_gbw", "molecule", "j_matrix")
+        j_list = self._safe_get("results_gbw", gbw_id, "molecule", "j_matrix")
 
         if j_list is not None:
             j = np.array(j_list[0])
@@ -1700,7 +1823,9 @@ class Output:
         else:
             return None
 
-    def get_int_k(self, recreate_json: bool = False) -> npt.NDArray[np.float64] | None:
+    def get_int_k(
+        self, recreate_json: bool = False, gbw_id: int = 0
+    ) -> npt.NDArray[np.float64] | None:
         """
         Returns the Exchange matrix K.
 
@@ -1708,16 +1833,16 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) K to be included.
+        gbw_id : int, default = -1
+            Geometry for which the integrals are requested, the default -1 is the last geometry.
         """
 
         if recreate_json:
             config_dict = {"FockMatrix": ["K"]}
-            self.create_gbw_json(force=True, config=config_dict)
-            self.gbw_json_data = self._process_json_file(self.gbw_json_file)
-            self.results_gbw = GbwResults(**self.gbw_json_data)
+            self.recreate_gbw_results(config_dict, gbw_id)
 
         # > get hcore from gbw json files
-        k_list = self._safe_get("results_gbw", "molecule", "k_matrix")
+        k_list = self._safe_get("results_gbw", gbw_id, "molecule", "k_matrix")
 
         if k_list is not None:
             k = np.array(k_list[0])
