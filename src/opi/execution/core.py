@@ -567,8 +567,7 @@ class Runner:
         config: dict[str, bool | str | list[str | int]] | None = None,
     ) -> None:
         """
-        Create the `<basename>.json` file from `<basename>.gbw`. If an index is supplied create the
-        `<basename>.<index>.json` file from `<basename>.<index>.gbw`.
+        Create the `<basename>.json` file from `<basename>.gbw`.
 
         Parameters
         ----------

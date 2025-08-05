@@ -11,23 +11,23 @@ class DftEnergy(GetItem):
 
     Attributes
     ----------
-    nalphael: StrictNonNegativeInt
+    nalphael: StrictNonNegativeInt | None, default = None
         Number of alpha electrons
-    nbetael: StrictNonNegativeInt
+    nbetael: StrictNonNegativeInt | None, default = None
         Number of beta electrons
-    ntotalel: StrictNonNegativeInt
+    ntotalel: StrictNonNegativeInt | None, default = None
         Total number of electrons
-    eexchange: StrictFiniteFloat
+    eexchange: StrictFiniteFloat | None, default = None
         Calculated exchange energy
-    ecorr: StrictFiniteFloat
+    ecorr: StrictFiniteFloat | None, default = None
         Calculated correlation energy
-    ecnl: StrictFiniteFloat
+    ecnl: StrictFiniteFloat | None, default = None
         Calculated energy of the charge neutral level
-    exc: StrictFiniteFloat
+    exc: StrictFiniteFloat | None, default = None
         Calculated exchange-correlation energy
-    eembed: StrictFiniteFloat
+    eembed: StrictFiniteFloat | None, default = None
         Calculated energy from embedded DFT
-    finalen: StrictFiniteFloat
+    finalen: StrictFiniteFloat | None, default = None
         Total calculated energy
     """
 

@@ -14,21 +14,21 @@ class MbisPopulationAnalysis(PopulationAnalysis):
 
     Attributes
     ----------
-    thresh: PositiveFloat
+    thresh: StrictPositiveFloat | None, default = None
         Threshold for printing orbitals
-    niter: PositiveInt
+    niter: StrictPositiveInt | None, default = None
         Number of iterations
-    largeprint: StrictBool
+    largeprint: StrictBool | None, default = None
         Has "Largeprint" been used
-    densa: PositiveFloat
+    densa: StrictPositiveFloat | None, default = None
         Integrated alpha density
-    densb: PositiveFloat
+    densb: StrictPositiveFloat | None, default = None
         Integrated beta density
-    spin: list[list[StrictFloat]]
+    spin: list[list[StrictFloat]] | None, default = None
         list of the spin populations
-    npopval: list[list[NonNegativeFloat]]
+    npopval: list[list[NonNegativeFloat]] | None, default = None
         Population value of each atom
-    sigmaval: list[list[StrictFloat]]
+    sigmaval: list[list[StrictFloat]] | None, default = None
         list of sigma value of the atoms
     """
 

@@ -8,7 +8,7 @@ class PalFlags(GetItem):
 
     Attributes
     ----------
-    diskflag: StrictPositiveInt
+    diskflag: StrictPositiveInt | None, default = None
         Number of Disk-Flag set
     """
 

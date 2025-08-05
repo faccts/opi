@@ -14,25 +14,25 @@ class DipoleMoment(GetItem):
 
     Attributes
     ----------
-    method: StrictStr
+    method: StrictStr | None, default = None
         Used method: SCF, DFT, CC or similar
-    level: StrictStr
+    level: StrictStr | None, default = None
         Typ and relaxation of the density
-    mult: StrictPositiveInt
+    mult: StrictPositiveInt | None, default = None
         Multiplicity of the molecule
-    state : StrictInt
+    state : StrictInt | None, default = None
         Electronic state
-    irrep : StrictInt
+    irrep : StrictInt | None, default = None
         Irreducible representation of the electronic state
-    doatomicdipole: StrictBool
+    doatomicdipole: StrictBool | None, default = None
         Should the dipole atom calculation be done
-    dipoleeleccontrib: list[list[StrictFiniteFloat]]
+    dipoleeleccontrib: list[list[StrictFiniteFloat]] | None, default = None
         Contribution of the electrons on the dipole moment in all three dimensions - x, y, z
-    dipolenuccontrib: list[list[StrictFiniteFloat]]
+    dipolenuccontrib: list[list[StrictFiniteFloat]] | None, default = None
         Contribution of the nucleus on the dipole moment in all three dimensions - x, y, z
-    dipolemagnitude: StrictNonNegativeFloat
+    dipolemagnitude: StrictNonNegativeFloat | None, default = None
         Float absolute dipole moment independent of direction
-    dipoletotal: list[list[StrictFiniteFloat]]
+    dipoletotal: list[list[StrictFiniteFloat]] | None, default = None
         Total dipole moment in all three dimensions - x, y, z
     """
 

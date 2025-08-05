@@ -12,15 +12,15 @@ class Geometry(GetItem):
 
     Attributes
     ----------
-    natoms: StrictPositiveInt
+    natoms: StrictPositiveInt | None, default = None
         Number of atoms
-    ncorelessecp: StrictNonNegativeInt
+    ncorelessecp: StrictNonNegativeInt | None, default = None
         Number of core-less ECPs
-    nghostatoms: StrictNonNegativeInt
+    nghostatoms: StrictNonNegativeInt | None, default = None
         Number of ghost atoms
-    coordinates: Coordinates
+    coordinates: Coordinates | None, default = None
         Coordinates of all the atoms
-    fragments: list[list[StrictPostivieInt]]
+    fragments: list[list[StrictPostivieInt]] | None, default = None
         Contains Fragment IDs of atoms
     """
 

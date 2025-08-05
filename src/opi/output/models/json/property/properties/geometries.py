@@ -70,71 +70,71 @@ class Geometries(GetItem):
 
     Attributes
     ----------
-    geometry: Geometry | None default = None
+    geometry: Geometry | None, default = None
         Contains information about the molecule
-    energy: EnergyList | None default = None
+    energy: EnergyList | None, default = None
         Contains information about the energies
-    single_point_data: SinglePointData | None default = None
+    single_point_data: SinglePointData | None, default = None
         Contains information about the singlepoint
-    mulliken_population_analysis: list[PopulationAnalysis] | None default = None
+    mulliken_population_analysis: list[PopulationAnalysis] | None, default = None
         Contains information about the Mulliken Population analyse
-    loewdin_population_analysis: list[PopulationAnalysis] | None default = None
+    loewdin_population_analysis: list[PopulationAnalysis] | None, default = None
         Contains information about the Loewdin Population analyse
-    chelpg_population_analysis: list[PopulationAnalysis] | None default = None
+    chelpg_population_analysis: list[PopulationAnalysis] | None, default = None
         Contains the information about the charges from electrostatic potentials using a grid-based population analysis (CHELPG)
-    hirshfeld_population_analysis: list[HirshfeldPopulationAnalysis] | None default = None
+    hirshfeld_population_analysis: list[HirshfeldPopulationAnalysis] | None, default = None
         Contains information about the Hirshfeld population analyse
-    mayer_population_analysis: list[MayerPopulationAnalysis] | None default = None
+    mayer_population_analysis: list[MayerPopulationAnalysis] | None, default = None
         Contains information about the Mayer population analyse
-    mbis_population_analysis: list[MbisPopAnalysis] | None default = None
+    mbis_population_analysis: list[MbisPopAnalysis] | None, default = None
         Contains information about the MBIS population analysis
-    calculation_info: CalcInfo | None default = None
+    calculation_info: CalcInfo | None, default = None
         Contains information of the Calculation
-    dipole_moment: list[Dipole] | None default = None
+    dipole_moment: list[Dipole] | None, default = None
         Contains information about the dipole moment
-    nuclear_gradient: list[NucGradient] | None default = None
+    nuclear_gradient: list[NucGradient] | None, default = None
         Contains information about the nuclear gradients for geometry Optimization
-    dft_energy: list[DftEnergy] | None default = None
+    dft_energy: list[DftEnergy] | None, default = None
         Contains information about all energies calculated for DFT
-    vdw_correction: VdwCorrection | None default = None
+    vdw_correction: VdwCorrection | None, default = None
         Contains information about the Van-der-Waals correction
-    hessian: Hessian | None default = None
+    hessian: Hessian | None, default = None
         Contains information about the Hessian-matrix
-    solvation_details: SolvDetails | None default = None
+    solvation_details: SolvDetails | None, default = None
         Contains information about the used solvent and the solvent model
-    polarizability: list[Polarizability] | None default = None
+    polarizability: list[Polarizability] | None, default = None
         Contains information about the polarizability of the molecule
-    absorption_spectrum: list[Spectrum] | None default = None
+    absorption_spectrum: list[Spectrum] | None, default = None
         Contains the information about the calculated UVVis spectra
-    ecd_spectrum: list[Spectrum] | None default = None
+    ecd_spectrum: list[Spectrum] | None, default = None
         Contains the information about the calculated ecd spectra
-    a_tensor: list[Tensor] | None default = None
+    a_tensor: list[Tensor] | None, default = None
         Contains all the A-Tensor of the EPR calculation
-    efg_tensor: list[EfgTensor] | None default = None
+    efg_tensor: list[EfgTensor] | None, default = None
         Contains all the EFG-Tensor of the EPR calculation
-    g_tensor: list[Gtensor] | None default = None
+    g_tensor: list[Gtensor] | None, default = None
         Contains all the G-Tensor of the EPR calculation
-    spin_spin_coupling: SpinSpinCoupling | None default = None
+    spin_spin_coupling: SpinSpinCoupling | None, default = None
         Contains information about the Spin-SpinCoupling
-    chemical_shift: list[ChemicalShift] | None default = None
+    chemical_shift: list[ChemicalShift] | None, default = None
         Contains information about the chemical shift on SCF level
-    natural_orbitals: NaturalOrbitals | None default = None
+    natural_orbitals: NaturalOrbitals | None, default = None
         Contains information about the natural orbitals
-    mdci_led: Led | None default = None
+    mdci_led: Led | None, default = None
         Contains information about the local energy decomposition (LED)
-    mdci_adld: MdciAdld | None default = None
+    mdci_adld: MdciAdld | None, default = None
         Contains information about the mdci atomic decomposition of London dispersion (ADLD)
-    mdci_adex: MdciAdex | None default = None
+    mdci_adex: MdciAdex | None, default = None
         Contains information about the atomic decomposition of exchange (ADEX)
-    broken_symmetry: BrokenSym | None default = None
+    broken_symmetry: BrokenSym | None, default = None
         Contains information about the broken symmetry calculation
-    quadrupole_moment: list[QuadrupleMoment] | None default = None
+    quadrupole_moment: list[QuadrupleMoment] | None, default = None
         Contains the information about the SCF calculated quadruple moment
-    cipsi_energies: list[CiPsi] | None default = None
+    cipsi_energies: list[CiPsi] | None, default = None
         Contains the information about the CIPSI calculation
-    energy_extrapolation: EnergyExtrapolation | None default = None
+    energy_extrapolation: EnergyExtrapolation | None, default = None
         Contains information about the energy extrapolation
-    roci_energy: list[RoCiEnergy] | None default = None
+    roci_energy: list[RoCiEnergy] | None, default = None
         Contains information about the ROCI energy
     thermochemistry_energies: list[ThermochemistryEnergy] | None = None
         Contains information about thermostatistical corrections

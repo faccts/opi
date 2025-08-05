@@ -13,25 +13,25 @@ class MayerPopulationAnalysis(PopulationAnalysis):
 
     Attributes
     ----------
-    bondthresh: StrictPositiveFiniteFloat
+    bondthresh: StrictPositiveFiniteFloat | None, default = None
         Threshold for the bound order to be printed
-    nbondordersprint: StrictPositiveInt
+    nbondordersprint: StrictPositiveInt | None, default = None
         Number of bounds
-    bondorders: list[list[StrictFiniteFloat]]
+    bondorders: list[list[StrictFiniteFloat]] | None, default = None
         Bound order of each Bound
-    components: list[tuple[StrictNonNegativeInt, StrictPositiveInt, StrictPositiveInt, StrictPositiveInt]]
+    components: list[tuple[StrictNonNegativeInt, StrictPositiveInt, StrictPositiveInt, StrictPositiveInt]] | None, default = None
         The indices and atomic numbers of the bonding atoms
-    na : list[list[StrictFiniteFloat]]
+    na : list[list[StrictFiniteFloat]] | None, default = None
         Mulliken gross atomic population
-    za: list[list[StrictFiniteFloat]]
+    za: list[list[StrictFiniteFloat]] | None, default = None
         Total nuclear charge
-    qa: list[list[StrictFiniteFloat]]
+    qa: list[list[StrictFiniteFloat]] | None, default = None
         Mulliken gross atomic charge
-    va: list[list[StrictFiniteFloat]]
+    va: list[list[StrictFiniteFloat]] | None, default = None
         Mayer's total valence
-    bva: list[list[StrictFiniteFloat]]
+    bva: list[list[StrictFiniteFloat]] | None, default = None
         Mayer's bonded valence
-    fa: list[list[StrictFiniteFloat]]
+    fa: list[list[StrictFiniteFloat]] | None, default = None
         Mayer's free valence
     """
 

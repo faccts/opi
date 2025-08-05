@@ -11,11 +11,11 @@ class HirshfeldPopulationAnalysis(PopulationAnalysis):
 
     Attributes
     ----------
-    densa: StrictNonNegativeFiniteFloat
+    densa: StrictNonNegativeFiniteFloat | None, default = None
         Density of alpha electrons
-    densb: StrictNonNegativeFiniteFloat
+    densb: StrictNonNegativeFiniteFloat | None, default = None
         Density of beta electrons
-    spin: list[list[StrictFiniteFloat]]
+    spin: list[list[StrictFiniteFloat]] | None, default = None
         list of the spin densities, at the atoms
     """
 

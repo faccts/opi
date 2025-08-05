@@ -10,27 +10,27 @@ class QuadrupoleMoment(GetItem):
 
     Attributes
     ----------
-    method: StrictStr
+    method: StrictStr | None, default = None
         Used method: SCF, DFT, CC or similar
-    level: StrictStr
+    level: StrictStr | None, default = None
         Type of density like electron density
-    mult: StrictInt
+    mult: StrictInt | None, default = None
         Multiplicity of the element
-    state: StrictInt
+    state: StrictInt | None, default = None
         Electronic state
-    irrep: StrictInt
+    irrep: StrictInt | None, default = None
         Irreducible representation
-    doatomicquad: StrictBool
+    doatomicquad: StrictBool | None, default = None
         Should the quadrupole atom calculation be done
-    isotropicquadmoment: StrictFloat
+    isotropicquadmoment: StrictFloat | None, default = None
         Isotopic quadruple moment
-    quadeleccontrib: list[list[StrictNegativeFloat]]
+    quadeleccontrib: list[list[StrictNegativeFloat]] | None, default = None
         Contribution of the electrons on the quadrupole moments with 6 components in space - xx, yy, zz, xy, xz, yz
-    quadnuccontrib: list[list[StrictPositiveFloat]]
+    quadnuccontrib: list[list[StrictPositiveFloat]] | None, default = None
         Contribution of the nucleus on the quadrupole moments with 6 components in space - xx, yy, zz, xy, xz, yz
-    quadtotal: list[list[StrictFiniteFloat]]
+    quadtotal: list[list[StrictFiniteFloat]] | None, default = None
         Total quadruple moments with 6 components in space - xx, yy, zz, xy, xz, yz
-    quaddiagonalized: list[list[StrictFinteFloat]]
+    quaddiagonalized: list[list[StrictFinteFloat]] | None, default = None
         Diagonalized quadruple matrix
     """
 

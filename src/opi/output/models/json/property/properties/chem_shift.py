@@ -14,21 +14,21 @@ class ChemicalShift(GetItem):
 
     Attributes
     ----------
-    method: StrictStr
+    method: StrictStr | None, default = None
         Used Method in this calculation
     level: StrictStr
         Type and relaxation of density
-    numofnucs: StrictPositiveInt
+    numofnucs: StrictPositiveInt | None, default = None
         Number of calculated nuclei
-    nuc: list[StrictNonNegativeInt]
+    nuc: list[StrictNonNegativeInt] | None, default = None
         Index of the nuclei
-    elems: list[StrictPositiveInt]
+    elems: list[StrictPositiveInt] | None, default = None
         Number of the place of the Element in the periodic table
-    stot: list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]
+    stot: list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None, default = None
         Total tensor
-    orientation: list[list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]]
+    orientation: list[list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]] | None, default = None
         Eigenvectors
-    stoteigen: list[list[list[StrictFiniteFloat]]]
+    stoteigen: list[list[list[StrictFiniteFloat]]] | None, default = None
         Eigenvalues
     """
 

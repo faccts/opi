@@ -11,15 +11,15 @@ class BrokenSym(GetItem):
 
     Attributes
     ----------
-    enhighspin: StrictFiniteFloat
+    enhighspin: StrictFiniteFloat | None, default = None
         Energy of the high spin case
-    enbrokensym: StrictFiniteFloat
+    enbrokensym: StrictFiniteFloat | None, default = None
         Energy of the broken symmetry case
-    shighspin: StrictPositiveFloat
+    shighspin: StrictPositiveFloat | None, default = None
         Spin of the high spin case
-    s2highspin: StrictPositiveFloat
+    s2highspin: StrictPositiveFloat | None, default = None
         s² of the high spin case
-    s2brokensym: StrictPositiveFloat
+    s2brokensym: StrictPositiveFloat | None, default = None
         s² of the broken symmetry case
     """
 

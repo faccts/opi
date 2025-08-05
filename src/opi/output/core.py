@@ -4,9 +4,8 @@ It's mostly based on the ORCA's two JSONs files.
 """
 
 import json
-from itertools import count
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Callable, cast
 from warnings import warn
 
 import numpy as np
@@ -133,9 +132,7 @@ class Output:
             raise FileNotFoundError(f"Working dir does not exist: {working_dir}")
 
         # // JSON PATHS
-        self.gbw_json_files = [self.get_file(".json")]
-        self.gbw_json_files.extend(self.get_gbw_json_files())
-        self.num_gbw_files = len(self.gbw_json_files)
+        self.gbw_json_files = self.get_gbw_json_files()
         self.property_json_file = self.get_file(".property.json")
 
         # > // SWITCHES: CREATE JSON FILES
@@ -196,6 +193,10 @@ class Output:
         # > Redump JSON files
         if self.do_redump_jsons:
             self._redump_jsons()
+
+    @property
+    def num_gbw_files(self) -> int:
+        return len(self.gbw_json_files)
 
     def _read_json(self, json_file: Path, /) -> dict[str, Any]:
         """
@@ -268,6 +269,19 @@ class Output:
         json_string: str = result.model_dump_json(indent=2)
         json_file.write_text(json_string)
 
+    @staticmethod
+    def collect_json_files(
+        pattern_func: Callable[[int], Path], max_steps: int = 1000
+    ) -> list[Path]:
+        files = []
+        for i in range(max_steps):
+            gbw_file = pattern_func(i)
+            if gbw_file.is_file():
+                files.append(gbw_file.with_suffix(".json"))
+            else:
+                break
+        return files
+
     def get_gbw_json_files(self, suffix: str = ".gbw", /) -> list[Path]:
         """
         Checks if other gbw files with indexes from scans or NEB exist and returns a list with their paths.
@@ -284,32 +298,26 @@ class Output:
         list[Path]
             Returns list of indexed gbw files, e.g., from relaxed surface scan or neb calculation
         """
-        scan_list = []
-        # // Check if gbw files with index 1 to 999 from scan exist
-        for i in count(1):
-            gbw_file = self.working_dir / f"{self.basename}.{i:03}{suffix}"
-            if gbw_file.is_file():
-                scan_list.append(gbw_file.with_suffix(".json"))
-            else:
-                break
 
-        # // Check if files from neb exist
-        neb_list = []
-        for i in count(0):
-            gbw_file = self.working_dir / f"{self.basename}_im{i}{suffix}"
-            if gbw_file.is_file():
-                neb_list.append(gbw_file.with_suffix(".json"))
-            else:
-                break
+        # // Get path to main gbw/json file
+        gbw_json_list = [self.get_file(".json")]
+
+        # // Check for scan files
+        scan_list = self.collect_json_files(lambda i: self.get_file(f".{i + 1:03}{suffix}"))
+
+        # // Check for neb files
+        neb_list = self.collect_json_files(lambda i: self.get_file(f"_im{i}{suffix}"))
 
         if neb_list and scan_list:
-            raise ValueError(
+            raise FileExistsError(
                 "Both Scan and NEB type .gbw files found! Only one type should be present."
             )
 
-        return scan_list or neb_list
+        gbw_json_list.extend(scan_list or neb_list)
 
-    def get_file(self, suffix: str, /) -> Path:
+        return gbw_json_list
+
+    def get_file(self, suffix: str, /, *, basename: str = "") -> Path:
         """
         Get path to file, by specifying file suffix (including the leading dot).
         Fullpath will be inferred from `self.working_dir` and `self.basename`.
@@ -318,8 +326,12 @@ class Output:
         ----------
         suffix : str
             Suffix of file. Must include the leading dot.
+        basename : str, default = ""
+            Optional alternative basename to use instead of `self.basename`.
         """
-        return self.working_dir / (self.basename + suffix)
+        if not basename:
+            basename = self.basename
+        return self.working_dir / (basename + suffix)
 
     def _get_version(self) -> "OrcaVersion":
         """Gets the ORCA version from the property-JSON file."""
@@ -369,7 +381,7 @@ class Output:
             For details about the configuration refer to the ORCA manual "9.3.2 Configuration file"
         """
         for file in self.gbw_json_files:
-            basename = str(file.with_suffix(""))
+            basename = file.stem
             runner = self._create_runner()
             runner.create_gbw_json(basename, config=config, force=force)
 
@@ -480,7 +492,7 @@ class Output:
         """
         runner = self._create_runner()
         if gbw_file is None:
-            gbw_file = self.working_dir / f"{self.basename}.gbw"
+            gbw_file = self.get_file(".gbw")
 
         if not gbw_file.is_file():
             raise FileNotFoundError(f"The requested .gbw file is not available: ({gbw_file})")
@@ -511,9 +523,9 @@ class Output:
         ----------
         index: StrictNonNegativeInt
             Index of the MO to plot.
-        operator : StrictNonNegativeInt, default=0
+        operator : StrictNonNegativeInt, default = 0
             Operator of the MO, alpha MOs are indicated by 0 and beta MOs by 1.
-        resolution: StrictNonNegativeInt, default=40
+        resolution: StrictNonNegativeInt, default = 40
             Resolution of the generated cube file. Higher numbers result in smoother plots, but also in longer orca_plot
             run time and a larger cube file.
         timeout: int, default = 300
@@ -521,8 +533,8 @@ class Output:
             large is plotted set this to a larger value or to -1 for waiting indefinitely long.
         gbw_type: str | GbwSuffix, default = GbwSuffix.GBW
             Type of the gbw file from which orbitals should be plotted.
-        gbw_id: int = 0
-            Index of gbw file that should be used for plotting
+        gbw_id: int, default = 0
+            Index of gbw file in `self.gbw_json_files` that is used for plotting. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -559,9 +571,8 @@ class Output:
         self.run_orca_plot(stdin_list, timeout=timeout, gbw_file=gbw_file)
 
         # > get the resulting cube file as string
-        cube_file = (
-            self.working_dir
-            / f"{self.gbw_json_files[gbw_id].with_suffix('')}.mo{index}{operator_list[operator]}.cube"
+        cube_file = self.get_file(
+            f".mo{index}{operator_list[operator]}.cube", basename=self.gbw_json_files[gbw_id].stem
         )
 
         if not cube_file.is_file():
@@ -593,8 +604,8 @@ class Output:
             large is plotted set this to a larger value or to -1 for waiting indefinitely long.
         suffix: str, default: ".scfp"
             suffix for selecting different densities, e.g., FOD via ".scfp_fod".
-        gbw_id: int, default: 0
-            Index of gbw file that should be used for plotting
+        gbw_id: int, default = 0
+            Index of gbw file in `self.gbw_json_files` that is used for plotting. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -620,7 +631,7 @@ class Output:
         self.run_orca_plot(stdin_list, timeout=timeout, gbw_file=gbw_file)
 
         # > get the resulting cube file as string
-        cube_file = self.working_dir / f"{gbw_file.with_suffix('')}.eldens.cube"
+        cube_file = self.get_file(".eldens.cube", basename=gbw_file.stem)
 
         if not cube_file.is_file():
             return None
@@ -652,8 +663,8 @@ class Output:
             large is plotted set this to a larger value or to -1 for waiting indefinitely long.
         suffix: str, default: ".scfp"
             suffix for selecting different densities, e.g., FOD via ".scfp_fod".
-        gbw_id: int, default: 0
-            Index of gbw file that should be used for plotting
+        gbw_id: int, default = 0
+            Index of gbw file in `self.gbw_json_files` that is used for plotting. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -678,7 +689,7 @@ class Output:
         self.run_orca_plot(stdin_list, timeout=timeout, gbw_file=gbw_file)
 
         # > get the resulting cube file as string
-        cube_file = self.working_dir / f"{gbw_file.with_suffix('')}.spindens.cube"
+        cube_file = self.get_file(".spindens.cube", basename=gbw_file.stem)
 
         if not cube_file.is_file():
             return None
@@ -1077,8 +1088,8 @@ class Output:
 
         Parameters
         -------
-        gbw_id : int, default : 0
-            Index of the gbw file from which the MOs should be recovered.
+        gbw_id: int, default = 0
+            Index of gbw file in `self.gbw_json_files` for which the mos are returned. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -1141,8 +1152,8 @@ class Output:
 
         Parameters
         -------
-        gbw_id : int, default : 0
-            Index of the gbw file from which the MOs should be recovered.
+        gbw_id: int, default = 0
+            Index of gbw file in `self.gbw_json_files` for which the homo is returned. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -1206,8 +1217,8 @@ class Output:
 
         Parameters
         -------
-        gbw_id : int, default : 0
-            Index of the gbw file from which the MOs should be recovered.
+        gbw_id: int, default = 0
+            Index of gbw file in `self.gbw_json_files` for which the lumo is returned. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -1251,8 +1262,8 @@ class Output:
 
         Parameters
         -------
-        gbw_id : int, default : 0
-            Index of the gbw file from which the gap should be recovered.
+        gbw_id: int, default = 0
+            Index of gbw file in `self.gbw_json_files` for which the gap is returned. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -1516,13 +1527,15 @@ class Output:
             Return the expectation value and the ideal value or None if nothing is found.
         """
         outfile = self.get_outfile()
+        # // String for searching the S² expectation value.
         expec_string = "Expectation value of <S**2>"
+        # // String for searching the ideal S² value.
         ideal_string = "Ideal value S*(S+1)"
-        try:
-            expec_s2 = get_float_from_line(outfile, expec_string, index)
-            ideal_s2 = get_float_from_line(outfile, ideal_string, index)
+        expec_s2 = get_float_from_line(outfile, expec_string, index, strict=False)
+        ideal_s2 = get_float_from_line(outfile, ideal_string, index, strict=False)
+        if expec_s2 is not None and ideal_s2 is not None:
             return expec_s2, ideal_s2
-        except FileNotFoundError:
+        else:
             return None
 
     def get_zpe(self, *, index: int = -1) -> StrictPositiveFloat | None:
@@ -1724,9 +1737,8 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) the overlap integrals to be included.
-        gbw_id : int, default = 0
-            Geometry for which the integrals are requested, the default 0 refers to the main geometry
-            (no scan or neb step).
+        gbw_id: int, default = 0
+            Index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -1752,8 +1764,8 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) the hcore integrals to be included.
-        gbw_id : int, default = -1
-            Geometry for which the integrals are requested, the default -1 is the last geometry.
+        gbw_id: int, default = 0
+            Index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -1764,8 +1776,7 @@ class Output:
         hcore_list = self._safe_get("results_gbw", gbw_id, "molecule", "h_matrix")
 
         if hcore_list is not None:
-            hcore = np.array(hcore_list)
-            return hcore
+            return np.array(hcore_list)
         else:
             return None
 
@@ -1779,8 +1790,8 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) the fock correction integrals to be included.
-        gbw_id : int, default = -1
-            Geometry for which the integrals are requested, the default -1 is the last geometry.
+        gbw_id: int, default = 0
+            Index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -1791,8 +1802,7 @@ class Output:
         fock_list = self._safe_get("results_gbw", gbw_id, "molecule", "f_matrix")
 
         if fock_list is not None:
-            fock = np.array(fock_list[0])
-            return fock
+            return np.array(fock_list[0])
         else:
             return None
 
@@ -1806,8 +1816,8 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) J to be included.
-        gbw_id : int, default = -1
-            Geometry for which the integrals are requested, the default -1 is the last geometry.
+        gbw_id: int, default = 0
+            Index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -1818,8 +1828,7 @@ class Output:
         j_list = self._safe_get("results_gbw", gbw_id, "molecule", "j_matrix")
 
         if j_list is not None:
-            j = np.array(j_list[0])
-            return j
+            return np.array(j_list[0])
         else:
             return None
 
@@ -1833,8 +1842,8 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) K to be included.
-        gbw_id : int, default = -1
-            Geometry for which the integrals are requested, the default -1 is the last geometry.
+        gbw_id: int, default = 0
+            Index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -1845,7 +1854,6 @@ class Output:
         k_list = self._safe_get("results_gbw", gbw_id, "molecule", "k_matrix")
 
         if k_list is not None:
-            k = np.array(k_list[0])
-            return k
+            return np.array(k_list[0])
         else:
             return None

@@ -11,15 +11,15 @@ class RoCiEnergy(GetItem):
 
     Attributes
     ----------
-    multiplicities: list[list[StrictPositiveFloat]]
+    multiplicities: list[list[StrictPositiveFloat]] | None, default = None
         list of the multiplicities of the states
-    energies: list[Lis[StrictFiniteFloat]]
+    energies: list[Lis[StrictFiniteFloat]] | None, default = None
         Energies of the stats
-    refenergy: StrictFiniteFloat
+    refenergy: StrictFiniteFloat | None, default = None
         Reference energy
-    correnergy: StrictFiniteFloat
+    correnergy: StrictFiniteFloat | None, default = None
         Correlation energy
-    totalenergy: StrictFiniteFloat
+    totalenergy: StrictFiniteFloat | None, default = None
         Total energy
     """
 

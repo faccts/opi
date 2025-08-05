@@ -9,11 +9,11 @@ class CalculationStatus(GetItem):
 
     Attributes
     ----------
-    progname: StrictStr
+    progname: StrictStr | None, default = None
         Name of the program
-    status: StrictStr
+    status: StrictStr | None, default = None
         gives the status of the Calculation, if it terminated normally or if it get stuck
-    version: StrictStr
+    version: StrictStr | None, default = None
         gives the status of the Calculation, if it terminated normally or if it get stuck
     """
 

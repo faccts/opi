@@ -10,17 +10,17 @@ class CalculationTiming(GetItem):
 
     Attributes
     ----------
-    gstep: StrictNonNegativeFloat
+    gstep: StrictNonNegativeFloat | None, default = None
         Time of geometry steps
-    gtoint: StrictNonNegativeFloat
+    gtoint: StrictNonNegativeFloat | None, default = None
         Time of integral generation
-    prop: StrictNonNegativeFloat
+    prop: StrictNonNegativeFloat | None, default = None
         Time of property generation
-    scf: StrictNonNegativeFloat
+    scf: StrictNonNegativeFloat | None, default = None
         Time of solving the SCF
-    scfgrad: StrictNonNegativeFloat
+    scfgrad: StrictNonNegativeFloat | None, default = None
         Time of gradient calculation
-    sum: StrictNonNegativeFloat
+    sum: StrictNonNegativeFloat | None, default = None
         Total time of the calculation
     """
 

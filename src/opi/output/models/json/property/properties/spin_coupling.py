@@ -15,31 +15,31 @@ class SpinSpinCoupling(GetItem):
 
     Attributes
     ----------
-    method: StrictStr
+    method: StrictStr | None, default = None
         Used Method in this calculation
-    level: StrictStr
+    level: StrictStr | None, default = None
         Type and relaxation of density
-    mult: StrictPositiveInt
+    mult: StrictPositiveInt | None, default = None
         Multiplicity
-    irrep: StrictNonNegativeInt
+    irrep: StrictNonNegativeInt | None, default = None
         Irreducible representation
-    state: StrictInt
+    state: StrictInt | None, default = None
         Electronic state
-    numofnucpairs: StrictPositiveInt
+    numofnucpairs: StrictPositiveInt | None, default = None
         Number of nuclei pairs to calculate
-    numofnucpairsdso: StrictPositiveInt
+    numofnucpairsdso: StrictPositiveInt | None, default = None
         Number of nuclear pairs to calculate DSO
-    numofnucpairspso: StrictPositiveInt
+    numofnucpairspso: StrictPositiveInt | None, default = None
         Number of nuclear pairs to calculate PSO
-    numofnucpairsfc: StrictPositiveInt
+    numofnucpairsfc: StrictPositiveInt | None, default = None
         Number of nuclear pairs to calculate FC
-    numofnucpairssd: StrictPositiveInt
+    numofnucpairssd: StrictPositiveInt | None, default = None
         Number of nuclear pairs to calculate SD
-    pairsinfo: list[tuple[StrictPositiveInt, StrictPositiveInt, StrictPositiveInt, StrictPositiveInt]]
+    pairsinfo: list[tuple[StrictPositiveInt, StrictPositiveInt, StrictPositiveInt, StrictPositiveInt]] | None, default = None
         Index1, atom number 1, index 2 and atom number 2 of atoms that builds a pair
-    pairsdistances: list[list[StrictPositiveFloat]]
+    pairsdistances: list[list[StrictPositiveFloat]] | None, default = None
         Distance of each pair
-    pairstotalssciso: list[list[StrictPositiveFloat]]
+    pairstotalssciso: list[list[StrictPositiveFloat]] | None, default = None
         Spi-Spin coupling constant of each pair
     """
 
