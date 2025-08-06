@@ -20,8 +20,8 @@ class Geometry(GetItem):
         Number of ghost atoms
     coordinates: Coordinates
         Coordinates of all the atoms
-    fragments: list[list[StrictPostivieInt]]
-        Contains Fragment IDs of atoms
+    fragments: list[list[StrictNonNegativeInt]]
+        Contains Fragment IDs of atoms. [0] indicates no fragment data on that atom. May change in future version (Orca >6.1.0) depending on orca_2json output.
     """
 
     natoms: StrictPositiveInt | None = None
