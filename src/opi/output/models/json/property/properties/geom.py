@@ -28,4 +28,5 @@ class Geometry(GetItem):
     ncorelessecp: StrictNonNegativeInt | None = None
     nghostatoms: StrictNonNegativeInt | None = None
     coordinates: Coordinates | None = None
-    fragments: list[list[StrictPositiveInt]] | None = None
+    # Note: This may need to change back to StrictPositiveInt if orca_2json altered 
+    fragments: list[list[StrictNonNegativeInt]] | None = None
