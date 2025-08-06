@@ -1,7 +1,7 @@
 import os
 import sys
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence, TypeGuard, TypeVar, cast
+from typing import Any, Mapping, Sequence, cast
 
 from opi import ORCA_MINIMAL_VERSION
 from opi.utils.orca_version import OrcaVersion
@@ -173,10 +173,3 @@ def check_minimal_version(version: OrcaVersion, /) -> bool:
     version : OrcaVersion
     """
     return cast(bool, version >= ORCA_MINIMAL_VERSION)
-
-
-T = TypeVar("T")
-
-
-def is_safe_index(seq: Optional[list[T]], i: int) -> TypeGuard[list[T]]:
-    return seq is not None and -len(seq) <= i < len(seq)

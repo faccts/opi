@@ -54,7 +54,7 @@ from opi.output.models.json.property.properties.quadrupole_moment import Quadrup
 from opi.output.models.json.property.property_results import (
     PropertyResults,
 )
-from opi.utils.misc import check_minimal_version, is_safe_index, lowercase
+from opi.utils.misc import check_minimal_version, lowercase
 from opi.utils.orca_version import OrcaVersion
 from opi.utils.units import AU_TO_ANGST, AU_TO_EV
 
@@ -195,8 +195,25 @@ class Output:
             self._redump_jsons()
 
     @property
-    def num_gbw_files(self) -> int:
-        return len(self.gbw_json_files)
+    def num_gbw_json_files(self) -> int:
+        if self.gbw_json_files is not None:
+            return len(self.gbw_json_files)
+        else:
+            return 0
+
+    @property
+    def num_gbw_json_data(self) -> int:
+        if self.gbw_json_data is not None:
+            return len(self.gbw_json_data)
+        else:
+            return 0
+
+    @property
+    def num_results_gbw(self) -> int:
+        if self.results_gbw is not None:
+            return len(self.results_gbw)
+        else:
+            return 0
 
     def _read_json(self, json_file: Path, /) -> dict[str, Any]:
         """
@@ -366,11 +383,15 @@ class Output:
         return Runner(working_dir=self.working_dir)
 
     def create_gbw_json(
-        self, *, force: bool = False, config: dict[str, Any] | None = None, index: int = 0
+        self,
+        *,
+        force: bool = False,
+        config: dict[str, Any] | None = None,
+        gbw_id: int | None = None,
     ) -> None:
         """
         Thin-wrapper around `Runner.create_jsons()`.
-        Creates the `<basename>.json` file.
+        Creates all `<basename>.json` file(s).
 
         Parameters
         ----------
@@ -379,8 +400,22 @@ class Output:
         config : dict[str | Any] | None, default = None
             Determine contents of gbw-json file.
             For details about the configuration refer to the ORCA manual "9.3.2 Configuration file"
+        gbw_id: int | None, default = None
+            Non-negative index of gbw file in `self.gbw_json_files` for which json files will be generated. If it is None, all files
+            will be generated. If the index is negative or out of range silently nothing is done.
+
         """
-        for file in self.gbw_json_files:
+        files_to_process: list[Path]
+
+        if gbw_id is not None:
+            if 0 <= gbw_id < self.num_gbw_json_files:
+                files_to_process = [self.gbw_json_files[gbw_id]]
+            else:
+                return
+        else:
+            files_to_process = self.gbw_json_files
+
+        for file in files_to_process:
             basename = file.stem
             runner = self._create_runner()
             runner.create_gbw_json(basename, config=config, force=force)
@@ -534,7 +569,7 @@ class Output:
         gbw_type: str | GbwSuffix, default = GbwSuffix.GBW
             Type of the gbw file from which orbitals should be plotted.
         gbw_id: int, default = 0
-            Index of gbw file in `self.gbw_json_files` that is used for plotting. Default 0 refers to the main gbw file.
+            Non-negative index of gbw file in `self.gbw_json_files` that is used for plotting. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -605,7 +640,7 @@ class Output:
         suffix: str, default: ".scfp"
             suffix for selecting different densities, e.g., FOD via ".scfp_fod".
         gbw_id: int, default = 0
-            Index of gbw file in `self.gbw_json_files` that is used for plotting. Default 0 refers to the main gbw file.
+            Non-negative index of gbw file in `self.gbw_json_files` that is used for plotting. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -664,7 +699,7 @@ class Output:
         suffix: str, default: ".scfp"
             suffix for selecting different densities, e.g., FOD via ".scfp_fod".
         gbw_id: int, default = 0
-            Index of gbw file in `self.gbw_json_files` that is used for plotting. Default 0 refers to the main gbw file.
+            Non-negative index of gbw file in `self.gbw_json_files` that is used for plotting. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -1089,7 +1124,7 @@ class Output:
         Parameters
         -------
         gbw_id: int, default = 0
-            Index of gbw file in `self.gbw_json_files` for which the mos are returned. Default 0 refers to the main gbw file.
+            Non-negative index of gbw file in `self.gbw_json_files` for which the mos are returned. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -1153,7 +1188,7 @@ class Output:
         Parameters
         -------
         gbw_id: int, default = 0
-            Index of gbw file in `self.gbw_json_files` for which the homo is returned. Default 0 refers to the main gbw file.
+            Non-negative index of gbw file in `self.gbw_json_files` for which the homo is returned. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -1218,7 +1253,7 @@ class Output:
         Parameters
         -------
         gbw_id: int, default = 0
-            Index of gbw file in `self.gbw_json_files` for which the lumo is returned. Default 0 refers to the main gbw file.
+            Non-negative index of gbw file in `self.gbw_json_files` for which the lumo is returned. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -1263,7 +1298,7 @@ class Output:
         Parameters
         -------
         gbw_id: int, default = 0
-            Index of gbw file in `self.gbw_json_files` for which the gap is returned. Default 0 refers to the main gbw file.
+            Non-negative index of gbw file in `self.gbw_json_files` for which the gap is returned. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -1720,12 +1755,22 @@ class Output:
             return None
 
     def recreate_gbw_results(self, config_dict: dict[str, Any], gbw_id: int = 0, /) -> None:
-        """Function for recreating a specific gbw-JSON file with a config dict."""
-        self.create_gbw_json(force=True, config=config_dict, index=gbw_id)
-        if is_safe_index(self.gbw_json_data, gbw_id) and is_safe_index(self.gbw_json_files, gbw_id):
-            self.gbw_json_data[gbw_id] = self._process_json_file(self.gbw_json_files[gbw_id])
-            if is_safe_index(self.results_gbw, gbw_id):
-                self.results_gbw[gbw_id] = GbwResults(**self.gbw_json_data[gbw_id])
+        """
+        Function for recreating a specific gbw-JSON file with a config dict. Silently does nothing if `gbw_id` is
+        not valid.
+
+        Parameters
+        ----------
+        gbw_id: int, default = 0
+            Non-negative index of gbw file in `self.gbw_json_files` for which the json file should be created. Default 0 refers to the main gbw file.
+
+        """
+        self.create_gbw_json(force=True, config=config_dict, gbw_id=gbw_id)
+        if self.gbw_json_data is not None and self.gbw_json_files is not None:
+            if 0 <= gbw_id < self.num_gbw_json_data and 0 <= gbw_id < self.num_gbw_json_files:
+                self.gbw_json_data[gbw_id] = self._process_json_file(self.gbw_json_files[gbw_id])
+                if self.results_gbw is not None and 0 <= gbw_id < self.num_results_gbw:
+                    self.results_gbw[gbw_id] = GbwResults(**self.gbw_json_data[gbw_id])
 
     def get_int_overlap(
         self, recreate_json: bool = False, gbw_id: int = 0
@@ -1738,7 +1783,7 @@ class Output:
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) the overlap integrals to be included.
         gbw_id: int, default = 0
-            Index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -1765,7 +1810,7 @@ class Output:
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) the hcore integrals to be included.
         gbw_id: int, default = 0
-            Index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -1791,7 +1836,7 @@ class Output:
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) the fock correction integrals to be included.
         gbw_id: int, default = 0
-            Index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -1817,7 +1862,7 @@ class Output:
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) J to be included.
         gbw_id: int, default = 0
-            Index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -1843,7 +1888,7 @@ class Output:
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) K to be included.
         gbw_id: int, default = 0
-            Index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
