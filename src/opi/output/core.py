@@ -285,6 +285,26 @@ class Output:
         end: int = 1_000,
         step: int = 1,
     ) -> list[Path]:
+        """
+        Searches for available gbw files according to a pattern in `working_dir` and returns a list of corresponding `.json` file paths.
+
+        Parameters
+        ----------
+        pattern: str | Callable[[int], str]
+            Search pattern. If a string is provided, only a single file is checked. If a callable is provided,
+            files are searched based on the generated pattern over a specified range.
+        start: int, default = 0
+            Start of the range. Only used if `pattern` is a callable.
+        end: int, default = 1_000
+            End of the range. Only used if `pattern` is a callable.
+        step: int, default = 1
+            Step size of the range. Only used if `pattern` is a callable.
+
+        Returns
+        ----------
+        list[Path]
+            Paths to the `.json` files corresponding to the `.gbw` files found.
+        """
         files = []
         if isinstance(pattern, str):
             # > String pattern must not end with ".json"!
@@ -294,7 +314,7 @@ class Output:
             return files
         else:
             for i in range(start, end, step):
-                gbw_file = self.get_file(str(pattern(i)))
+                gbw_file = self.get_file(pattern(i))
                 if gbw_file.is_file():
                     files.append(gbw_file.with_suffix(".json"))
                 else:
