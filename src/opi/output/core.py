@@ -196,24 +196,15 @@ class Output:
 
     @property
     def num_gbw_json_files(self) -> int:
-        if self.gbw_json_files is not None:
-            return len(self.gbw_json_files)
-        else:
-            return 0
+        return len(self.gbw_json_files) if self.gbw_json_files else 0
 
     @property
     def num_gbw_json_data(self) -> int:
-        if self.gbw_json_data is not None:
-            return len(self.gbw_json_data)
-        else:
-            return 0
+        return len(self.gbw_json_data) if self.gbw_json_data else 0
 
     @property
     def num_results_gbw(self) -> int:
-        if self.results_gbw is not None:
-            return len(self.results_gbw)
-        else:
-            return 0
+        return len(self.results_gbw) if self.results_gbw else 0
 
     def _read_json(self, json_file: Path, /) -> dict[str, Any]:
         """
