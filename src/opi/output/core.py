@@ -277,23 +277,29 @@ class Output:
         json_string: str = result.model_dump_json(indent=2)
         json_file.write_text(json_string)
 
-    @staticmethod
     def collect_json_files(
-        pattern: str | Callable[[int], Path], *, start: int = 0, end: int = 1_000, step: int = 1
+        self,
+        pattern: str | Callable[[int], str],
+        *,
+        start: int = 0,
+        end: int = 1_000,
+        step: int = 1,
     ) -> list[Path]:
-        if isinstance(pattern, str)
+        files = []
+        if isinstance(pattern, str):
             # > String pattern must not end with ".json"!
             gbw_file = self.get_file(pattern + ".json")
-            return gbw_file if gbw_file.is_file() elese None
+            if gbw_file.is_file():
+                files.append(gbw_file)
+            return files
         else:
-            files = []
             for i in range(start, end, step):
-                 gbw_file = self.get_file(pattern(i))
+                gbw_file = self.get_file(str(pattern(i)))
                 if gbw_file.is_file():
-                     files.append(gbw_file.with_suffix(".json"))
+                    files.append(gbw_file.with_suffix(".json"))
                 else:
                     break
-            return files
+        return files
 
     def get_gbw_json_files(self, suffix: str = ".gbw", /) -> list[Path]:
         """

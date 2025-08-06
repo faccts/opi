@@ -39,12 +39,12 @@ if __name__ == "__main__":
     # > Plot mos for scan
     for index, gbw in enumerate(output_bond.results_gbw[1:], start=1):
         homo_id = output_bond.get_homo().index
-        cube_output = output_bond.plot_mo(homo_id,gbw_id=index)
+        cube_output = output_bond.plot_mo(homo_id,gbw_index=index)
         print(index,cube_output)
 
     # > Plot density for scan
     for index, gbw in enumerate(output_bond.results_gbw[1:], start=1):
-        cube_output = output_bond.plot_density(gbw_id=index)
+        cube_output = output_bond.plot_density(gbw_index=index)
         print(index,cube_output)
 
     # > Access energies for scan
