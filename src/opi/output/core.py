@@ -378,7 +378,7 @@ class Output:
         *,
         force: bool = False,
         config: dict[str, Any] | None = None,
-        gbw_id: int | None = None,
+        gbw_index: int | None = None,
     ) -> None:
         """
         Thin-wrapper around `Runner.create_jsons()`.
@@ -391,16 +391,16 @@ class Output:
         config : dict[str | Any] | None, default = None
             Determine contents of gbw-json file.
             For details about the configuration refer to the ORCA manual "9.3.2 Configuration file"
-        gbw_id: int | None, default = None
+        gbw_index: int | None, default = None
             Non-negative index of gbw file in `self.gbw_json_files` for which json files will be generated. If it is None, all files
             will be generated. If the index is negative or out of range silently nothing is done.
 
         """
         files_to_process: list[Path]
 
-        if gbw_id is not None:
-            if 0 <= gbw_id < self.num_gbw_json_files:
-                files_to_process = [self.gbw_json_files[gbw_id]]
+        if gbw_index is not None:
+            if 0 <= gbw_index < self.num_gbw_json_files:
+                files_to_process = [self.gbw_json_files[gbw_index]]
             else:
                 return
         else:
@@ -538,7 +538,7 @@ class Output:
         resolution: StrictNonNegativeInt = 40,
         timeout: int = 300,
         gbw_type: str | GbwSuffix = GbwSuffix.GBW,
-        gbw_id: int = 0,
+        gbw_index: int = 0,
     ) -> CubeOutput | None:
         """
         Generates and returns the cube file for a molecular orbital by running the orca_plot binary.
@@ -559,7 +559,7 @@ class Output:
             large is plotted set this to a larger value or to -1 for waiting indefinitely long.
         gbw_type: str | GbwSuffix, default = GbwSuffix.GBW
             Type of the gbw file from which orbitals should be plotted.
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` that is used for plotting. Default 0 refers to the main gbw file.
 
         Returns
@@ -592,13 +592,14 @@ class Output:
 
         # > determine which gbw file to plot
         suffix = gbw_type.value
-        gbw_file = self.gbw_json_files[gbw_id].with_suffix(suffix)
+        gbw_file = self.gbw_json_files[gbw_index].with_suffix(suffix)
 
         self.run_orca_plot(stdin_list, timeout=timeout, gbw_file=gbw_file)
 
         # > get the resulting cube file as string
         cube_file = self.get_file(
-            f".mo{index}{operator_list[operator]}.cube", basename=self.gbw_json_files[gbw_id].stem
+            f".mo{index}{operator_list[operator]}.cube",
+            basename=self.gbw_json_files[gbw_index].stem,
         )
 
         if not cube_file.is_file():
@@ -613,7 +614,7 @@ class Output:
         resolution: StrictNonNegativeInt = 40,
         timeout: int = 600,
         suffix: str = ".scfp",
-        gbw_id: int = 0,
+        gbw_index: int = 0,
     ) -> CubeOutput | None:
         """
         Generates and returns the cube file for the density by running the orca_plot binary.
@@ -630,7 +631,7 @@ class Output:
             large is plotted set this to a larger value or to -1 for waiting indefinitely long.
         suffix: str, default: ".scfp"
             suffix for selecting different densities, e.g., FOD via ".scfp_fod".
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` that is used for plotting. Default 0 refers to the main gbw file.
 
         Returns
@@ -638,7 +639,7 @@ class Output:
         CubeOutput | None
             Returns the cube output object or returns None if the cube file cannot be retrieved.
         """
-        gbw_file = self.gbw_json_files[gbw_id].with_suffix(".gbw")
+        gbw_file = self.gbw_json_files[gbw_index].with_suffix(".gbw")
 
         # > Define input string for orca_plot.
         # > If anything goes wrong orca_plot should exit.
@@ -671,7 +672,7 @@ class Output:
         resolution: StrictNonNegativeInt = 40,
         timeout: int = 600,
         suffix: str = ".scfp",
-        gbw_id: int = 0,
+        gbw_index: int = 0,
     ) -> CubeOutput | None:
         """
         Generates and returns the cube file for the spin-density by running the orca_plot binary. Note that for RHF/RKS
@@ -689,7 +690,7 @@ class Output:
             large is plotted set this to a larger value or to -1 for waiting indefinitely long.
         suffix: str, default: ".scfp"
             suffix for selecting different densities, e.g., FOD via ".scfp_fod".
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` that is used for plotting. Default 0 refers to the main gbw file.
 
         Returns
@@ -697,7 +698,7 @@ class Output:
         CubeOutput | None
             Returns the cube output object or returns None if the cube file cannot be retrieved.
         """
-        gbw_file = self.gbw_json_files[gbw_id].with_suffix(".gbw")
+        gbw_file = self.gbw_json_files[gbw_index].with_suffix(".gbw")
         # > Define input string for orca_plot.
         # > If anything goes wrong orca_plot should exit.
         stdin_list = [
@@ -1108,13 +1109,13 @@ class Output:
 
         return fragments
 
-    def get_mos(self, gbw_id: int = 0) -> dict[str, list[MO]] | None:
+    def get_mos(self, gbw_index: int = 0) -> dict[str, list[MO]] | None:
         """
         Returns a dictionary with list(s) of molecular orbitals.
 
         Parameters
         -------
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which the mos are returned. Default 0 refers to the main gbw file.
 
         Returns
@@ -1130,13 +1131,13 @@ class Output:
             - **beta**    : UHF beta orbitals
         """
         molecular_orbitals = self._safe_get(
-            "results_gbw", gbw_id, "molecule", "molecularorbitals", "mos"
+            "results_gbw", gbw_index, "molecule", "molecularorbitals", "mos"
         )
         if molecular_orbitals is not None:
             mos = {}
             cast(list[MO], molecular_orbitals)
             # > Get the hftype (e.g. rhf / uhf)
-            hftype = self.get_hftype(gbw_id)
+            hftype = self.get_hftype(gbw_index)
             # > Sort for UHF
             if hftype == Hftyp.UHF:
                 offset = len(molecular_orbitals) // 2
@@ -1172,13 +1173,13 @@ class Output:
 
         return None
 
-    def get_homo(self, gbw_id: int = 0) -> MOData | None:
+    def get_homo(self, gbw_index: int = 0) -> MOData | None:
         """
         Returns the highest occupied molecular orbital (HOMO, or SOMO for UHF).
 
         Parameters
         -------
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which the homo is returned. Default 0 refers to the main gbw file.
 
         Returns
@@ -1189,7 +1190,7 @@ class Output:
         homo_id: int | None = None
         homo_type: str | None = None
         homo: MO | None = None
-        mos = self.get_mos(gbw_id)
+        mos = self.get_mos(gbw_index)
 
         if mos is not None:
             for channel in mos:
@@ -1237,13 +1238,13 @@ class Output:
 
         return None
 
-    def get_lumo(self, gbw_id: int = 0) -> MOData | None:
+    def get_lumo(self, gbw_index: int = 0) -> MOData | None:
         """
         Returns the lowest unoccupied molecular orbital (LUMO).
 
         Parameters
         -------
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which the lumo is returned. Default 0 refers to the main gbw file.
 
         Returns
@@ -1254,7 +1255,7 @@ class Output:
         lumo_id: int | None = None
         lumo_type: str | None = None
         lumo: MO | None = None
-        mos = self.get_mos(gbw_id)
+        mos = self.get_mos(gbw_index)
 
         if mos is not None:
             for channel in mos:
@@ -1282,13 +1283,13 @@ class Output:
         else:
             return None
 
-    def get_hl_gap(self, gbw_id: int = 0) -> float | None:
+    def get_hl_gap(self, gbw_index: int = 0) -> float | None:
         """
         Returns the HOMO-LUMO gap in eV
 
         Parameters
         -------
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which the gap is returned. Default 0 refers to the main gbw file.
 
         Returns
@@ -1296,12 +1297,12 @@ class Output:
         float | None
             Returns the HOMO-LUMO gap in eV or None if the gap could not be obtained.
         """
-        homo_data = self.get_homo(gbw_id)
+        homo_data = self.get_homo(gbw_index)
         if homo_data is not None:
             homo_energy = homo_data.mo.orbitalenergy
         else:
             homo_energy = None
-        lumo_data = self.get_lumo(gbw_id)
+        lumo_data = self.get_lumo(gbw_index)
         if lumo_data is not None:
             lumo_energy = lumo_data.mo.orbitalenergy
         else:
@@ -1745,26 +1746,28 @@ class Output:
         else:
             return None
 
-    def recreate_gbw_results(self, config_dict: dict[str, Any], gbw_id: int = 0, /) -> None:
+    def recreate_gbw_results(self, config_dict: dict[str, Any], gbw_index: int = 0, /) -> None:
         """
-        Function for recreating a specific gbw-JSON file with a config dict. Silently does nothing if `gbw_id` is
+        Function for recreating a specific gbw-JSON file with a config dict. Silently does nothing if `gbw_index` is
         not valid.
 
         Parameters
         ----------
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which the json file should be created. Default 0 refers to the main gbw file.
 
         """
-        self.create_gbw_json(force=True, config=config_dict, gbw_id=gbw_id)
+        self.create_gbw_json(force=True, config=config_dict, gbw_index=gbw_index)
         if self.gbw_json_data is not None and self.gbw_json_files is not None:
-            if 0 <= gbw_id < self.num_gbw_json_data and 0 <= gbw_id < self.num_gbw_json_files:
-                self.gbw_json_data[gbw_id] = self._process_json_file(self.gbw_json_files[gbw_id])
-                if self.results_gbw is not None and 0 <= gbw_id < self.num_results_gbw:
-                    self.results_gbw[gbw_id] = GbwResults(**self.gbw_json_data[gbw_id])
+            if 0 <= gbw_index < self.num_gbw_json_data and 0 <= gbw_index < self.num_gbw_json_files:
+                self.gbw_json_data[gbw_index] = self._process_json_file(
+                    self.gbw_json_files[gbw_index]
+                )
+                if self.results_gbw is not None and 0 <= gbw_index < self.num_results_gbw:
+                    self.results_gbw[gbw_index] = GbwResults(**self.gbw_json_data[gbw_index])
 
     def get_int_overlap(
-        self, recreate_json: bool = False, gbw_id: int = 0
+        self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
         """
         Returns the overlap integral matrix as numpy array.
@@ -1773,16 +1776,16 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) the overlap integrals to be included.
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
             config_dict = {"1elIntegrals": ["S"]}
-            self.recreate_gbw_results(config_dict, gbw_id)
+            self.recreate_gbw_results(config_dict, gbw_index)
 
         # > get overlap from gbw json files
-        overlap_list = self._safe_get("results_gbw", gbw_id, "molecule", "s_matrix")
+        overlap_list = self._safe_get("results_gbw", gbw_index, "molecule", "s_matrix")
 
         if overlap_list is not None:
             overlap = np.array(overlap_list)
@@ -1791,7 +1794,7 @@ class Output:
             return None
 
     def get_int_hcore(
-        self, recreate_json: bool = False, gbw_id: int = 0
+        self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
         """
         Returns the core hamiltonian integral matrix as numpy array.
@@ -1800,16 +1803,16 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) the hcore integrals to be included.
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
             config_dict = {"1elIntegrals": ["H"]}
-            self.recreate_gbw_results(config_dict, gbw_id)
+            self.recreate_gbw_results(config_dict, gbw_index)
 
         # > get hcore from gbw json files
-        hcore_list = self._safe_get("results_gbw", gbw_id, "molecule", "h_matrix")
+        hcore_list = self._safe_get("results_gbw", gbw_index, "molecule", "h_matrix")
 
         if hcore_list is not None:
             return np.array(hcore_list)
@@ -1817,7 +1820,7 @@ class Output:
             return None
 
     def get_int_f(
-        self, recreate_json: bool = False, gbw_id: int = 0
+        self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
         """
         Returns the two-electron interaction matrix F (often termed G).
@@ -1826,16 +1829,16 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) the fock correction integrals to be included.
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
             config_dict = {"FockMatrix": ["F"]}
-            self.recreate_gbw_results(config_dict, gbw_id)
+            self.recreate_gbw_results(config_dict, gbw_index)
 
         # > get hcore from gbw json files
-        fock_list = self._safe_get("results_gbw", gbw_id, "molecule", "f_matrix")
+        fock_list = self._safe_get("results_gbw", gbw_index, "molecule", "f_matrix")
 
         if fock_list is not None:
             return np.array(fock_list[0])
@@ -1843,7 +1846,7 @@ class Output:
             return None
 
     def get_int_j(
-        self, recreate_json: bool = False, gbw_id: int = 0
+        self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
         """
         Returns the Coulomb matrix J.
@@ -1852,16 +1855,16 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) J to be included.
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
             config_dict = {"FockMatrix": ["J"]}
-            self.recreate_gbw_results(config_dict, gbw_id)
+            self.recreate_gbw_results(config_dict, gbw_index)
 
         # > get hcore from gbw json files
-        j_list = self._safe_get("results_gbw", gbw_id, "molecule", "j_matrix")
+        j_list = self._safe_get("results_gbw", gbw_index, "molecule", "j_matrix")
 
         if j_list is not None:
             return np.array(j_list[0])
@@ -1869,7 +1872,7 @@ class Output:
             return None
 
     def get_int_k(
-        self, recreate_json: bool = False, gbw_id: int = 0
+        self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
         """
         Returns the Exchange matrix K.
@@ -1878,16 +1881,16 @@ class Output:
         ----------
         recreate_json : bool, default = False
             If True, recreate the gbw json file and request (exclusively) K to be included.
-        gbw_id: int, default = 0
+        gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
             config_dict = {"FockMatrix": ["K"]}
-            self.recreate_gbw_results(config_dict, gbw_id)
+            self.recreate_gbw_results(config_dict, gbw_index)
 
         # > get hcore from gbw json files
-        k_list = self._safe_get("results_gbw", gbw_id, "molecule", "k_matrix")
+        k_list = self._safe_get("results_gbw", gbw_index, "molecule", "k_matrix")
 
         if k_list is not None:
             return np.array(k_list[0])
