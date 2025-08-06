@@ -279,16 +279,21 @@ class Output:
 
     @staticmethod
     def collect_json_files(
-        pattern_func: Callable[[int], Path], max_steps: int = 1000
+        pattern: str | Callable[[int], Path], *, start: int = 0, end: int = 1_000, step: int = 1
     ) -> list[Path]:
-        files = []
-        for i in range(max_steps):
-            gbw_file = pattern_func(i)
-            if gbw_file.is_file():
-                files.append(gbw_file.with_suffix(".json"))
-            else:
-                break
-        return files
+        if isinstance(pattern, str)
+            # > String pattern must not end with ".json"!
+            gbw_file = self.get_file(pattern + ".json")
+            return gbw_file if gbw_file.is_file() elese None
+        else:
+            files = []
+            for i in range(start, end, step):
+                 gbw_file = self.get_file(pattern(i))
+                if gbw_file.is_file():
+                     files.append(gbw_file.with_suffix(".json"))
+                else:
+                    break
+            return files
 
     def get_gbw_json_files(self, suffix: str = ".gbw", /) -> list[Path]:
         """
@@ -311,10 +316,10 @@ class Output:
         gbw_json_list = [self.get_file(".json")]
 
         # // Check for scan files
-        scan_list = self.collect_json_files(lambda i: self.get_file(f".{i + 1:03}{suffix}"))
+        scan_list = self.collect_json_files(lambda i: f".{i:03}{suffix}", start=1)
 
         # // Check for neb files
-        neb_list = self.collect_json_files(lambda i: self.get_file(f"_im{i}{suffix}"))
+        neb_list = self.collect_json_files(lambda i: f"_im{i}{suffix}")
 
         if neb_list and scan_list:
             raise FileExistsError(
@@ -399,9 +404,9 @@ class Output:
         files_to_process: list[Path]
 
         if gbw_index is not None:
-            if 0 <= gbw_index < self.num_gbw_json_files:
+            try:
                 files_to_process = [self.gbw_json_files[gbw_index]]
-            else:
+            except IndexError:
                 return
         else:
             files_to_process = self.gbw_json_files
@@ -1126,9 +1131,9 @@ class Output:
         Notes
         -----
         The keys are:
-            - **mo**     : RHF/ROHF orbitals
-            - **alpha**   : UHF alpha orbitals
-            - **beta**    : UHF beta orbitals
+           - **mo**      : RHF/ROHF orbitals
+           - **alpha**   : UHF alpha orbitals
+           - **beta**    : UHF beta orbitals
         """
         molecular_orbitals = self._safe_get(
             "results_gbw", gbw_index, "molecule", "molecularorbitals", "mos"
