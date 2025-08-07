@@ -1,7 +1,7 @@
 import re
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
+from typing import TYPE_CHECKING, Any, Iterable, Protocol, Sequence, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -25,6 +25,15 @@ __all__ = ("Structure",)
 
 if TYPE_CHECKING:
     from rdkit.Chem import Mol as RdkitMol
+
+
+class ASELike(Protocol):
+    """Avoid the ASE import by using this ASELike class for type checking"""
+
+    def get_chemical_symbols(self) -> list[str]: ...
+    def get_positions(self) -> npt.NDArray[np.float64]: ...
+    @property
+    def info(self) -> dict[str, Any]: ...
 
 
 class Structure:
@@ -550,3 +559,26 @@ class Structure:
 
     def __len__(self) -> int:
         return len(self.atoms)
+
+    @classmethod
+    def from_ase(cls, obj: ASELike) -> "Structure":
+        required_method = ["get_chemical_symbols", "get_positions"]
+        if not all(hasattr(obj, m) for m in required_method):
+            raise TypeError("Object is not ASE-like: missing required method(s)")
+
+        symbols = obj.get_chemical_symbols()
+        positions = obj.get_positions()
+
+        atoms = []
+
+        for ase_atom in zip(symbols, positions):
+            element = ase_atom[0]
+            coordinates = ase_atom[1]
+            atoms.append(Atom(element=element, coordinates=coordinates))
+
+        # > Optionally get info
+        info = getattr(obj, "info", {})
+        charge = info.get("charge", 0)
+        multiplicity = info.get("multiplicity", 1)
+
+        return Structure(atoms=atoms, charge=charge, multiplicity=multiplicity)
