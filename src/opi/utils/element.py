@@ -618,3 +618,268 @@ class Element(StringEnum):
                 return cls.OGANESSON
             case _:
                 raise ValueError(f"Atomic number {atomic_number} out of range: 1 <= x <= 118")
+
+    @classmethod
+    def to_atomic_number(cls, elem: "str | Element") -> int:
+        """
+        Get atomic number from element label.
+
+        Parameters
+        -------
+        elem: Element
+            Element for which the atomic number should be returned.
+
+        Returns
+        -------
+        atomic_number: int
+            Returns the corresponding atomic number.
+
+        Raises
+        ------
+        ValueError: Is raised if element is unknown.
+        """
+        if isinstance(elem, str):
+            try:
+                elem = cls(elem)
+            except ValueError:
+                raise ValueError(f"Element {elem} not known")
+
+        match elem:
+            case cls.HYDROGEN:
+                return 1
+            case cls.HELIUM:
+                return 2
+            case cls.LITHIUM:
+                return 3
+            case cls.BERYLLIUM:
+                return 4
+            case cls.BORON:
+                return 5
+            case cls.CARBON:
+                return 6
+            case cls.NITROGEN:
+                return 7
+            case cls.OXYGEN:
+                return 8
+            case cls.FLUORINE:
+                return 9
+            case cls.NEON:
+                return 10
+            case cls.SODIUM:
+                return 11
+            case cls.MAGNESIUM:
+                return 12
+            case cls.ALUMINUM:
+                return 13
+            case cls.SILICON:
+                return 14
+            case cls.PHOSPHORUS:
+                return 15
+            case cls.SULFUR:
+                return 16
+            case cls.CHLORINE:
+                return 17
+            case cls.ARGON:
+                return 18
+            case cls.POTASSIUM:
+                return 19
+            case cls.CALCIUM:
+                return 20
+            case cls.SCANDIUM:
+                return 21
+            case cls.TITANIUM:
+                return 22
+            case cls.VANADIUM:
+                return 23
+            case cls.CHROMIUM:
+                return 24
+            case cls.MANGANESE:
+                return 25
+            case cls.IRON:
+                return 26
+            case cls.COBALT:
+                return 27
+            case cls.NICKEL:
+                return 28
+            case cls.COPPER:
+                return 29
+            case cls.ZINC:
+                return 30
+            case cls.GALLIUM:
+                return 31
+            case cls.GERMANIUM:
+                return 32
+            case cls.ARSENIC:
+                return 33
+            case cls.SELENIUM:
+                return 34
+            case cls.BROMINE:
+                return 35
+            case cls.KRYPTON:
+                return 36
+            case cls.RUBIDIUM:
+                return 37
+            case cls.STRONTIUM:
+                return 38
+            case cls.YTTRIUM:
+                return 39
+            case cls.ZIRCONIUM:
+                return 40
+            case cls.NIOBIUM:
+                return 41
+            case cls.MOLYBDENUM:
+                return 42
+            case cls.TECHNETIUM:
+                return 43
+            case cls.RUTHENIUM:
+                return 44
+            case cls.RHODIUM:
+                return 45
+            case cls.PALLADIUM:
+                return 46
+            case cls.SILVER:
+                return 47
+            case cls.CADMIUM:
+                return 48
+            case cls.INDIUM:
+                return 49
+            case cls.TIN:
+                return 50
+            case cls.ANTIMONY:
+                return 51
+            case cls.TELLURIUM:
+                return 52
+            case cls.IODINE:
+                return 53
+            case cls.XENON:
+                return 54
+            case cls.CESIUM:
+                return 55
+            case cls.BARIUM:
+                return 56
+            case cls.LANTHANUM:
+                return 57
+            case cls.CERIUM:
+                return 58
+            case cls.PRASEODYMIUM:
+                return 59
+            case cls.NEODYMIUM:
+                return 60
+            case cls.PROMETHIUM:
+                return 61
+            case cls.SAMARIUM:
+                return 62
+            case cls.EUROPIUM:
+                return 63
+            case cls.GADOLINIUM:
+                return 64
+            case cls.TERBIUM:
+                return 65
+            case cls.DYSPROSIUM:
+                return 66
+            case cls.HOLMIUM:
+                return 67
+            case cls.ERBIUM:
+                return 68
+            case cls.THULIUM:
+                return 69
+            case cls.YTTERBIUM:
+                return 70
+            case cls.LUTETIUM:
+                return 71
+            case cls.HAFNIUM:
+                return 72
+            case cls.TANTALUM:
+                return 73
+            case cls.WOLFRAM:
+                return 74
+            case cls.RHENIUM:
+                return 75
+            case cls.OSMIUM:
+                return 76
+            case cls.IRIDIUM:
+                return 77
+            case cls.PLATINUM:
+                return 78
+            case cls.GOLD:
+                return 79
+            case cls.MERCURY:
+                return 80
+            case cls.THALLIUM:
+                return 81
+            case cls.LEAD:
+                return 82
+            case cls.BISMUTH:
+                return 83
+            case cls.POLONIUM:
+                return 84
+            case cls.ASTATINE:
+                return 85
+            case cls.RADON:
+                return 86
+            case cls.FRANCIUM:
+                return 87
+            case cls.RADIUM:
+                return 88
+            case cls.ACTINIUM:
+                return 89
+            case cls.THORIUM:
+                return 90
+            case cls.PROTACTINIUM:
+                return 91
+            case cls.URANIUM:
+                return 92
+            case cls.NEPTUNIUM:
+                return 93
+            case cls.PLUTONIUM:
+                return 94
+            case cls.AMERICIUM:
+                return 95
+            case cls.CURIUM:
+                return 96
+            case cls.BERKELIUM:
+                return 97
+            case cls.CALIFORNIUM:
+                return 98
+            case cls.EINSTEINIUM:
+                return 99
+            case cls.FERMIUM:
+                return 100
+            case cls.MENDELEVIUM:
+                return 101
+            case cls.NOBELIUM:
+                return 102
+            case cls.LAWRENCIUM:
+                return 103
+            case cls.RUTHERFORDIUM:
+                return 104
+            case cls.DUBNIUM:
+                return 105
+            case cls.SEABORGIUM:
+                return 106
+            case cls.BOHRIUM:
+                return 107
+            case cls.HASSIUM:
+                return 108
+            case cls.MEITNERIUM:
+                return 109
+            case cls.DARMSTADTIUM:
+                return 110
+            case cls.ROENTGENIUM:
+                return 111
+            case cls.COPERNICIUM:
+                return 112
+            case cls.NIHONIUM:
+                return 113
+            case cls.FLEROVIUM:
+                return 114
+            case cls.MOSCOVIUM:
+                return 115
+            case cls.LIVERMORIUM:
+                return 116
+            case cls.TENNESSINE:
+                return 117
+            case cls.OGANESSON:
+                return 118
+            case _:
+                raise ValueError(f"Element {elem} not known")
