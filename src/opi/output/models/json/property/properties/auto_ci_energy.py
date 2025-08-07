@@ -16,17 +16,17 @@ class AutoCiEnergy(Energy):
     method: Literal["AUTOCI"]
     String that identifies the method that was used for the energy calculation.
     Is used for identifying different energy types.
-    numofel: StrictNonNegativeInt
+    numofel: StrictNonNegativeInt | None, default = None
         Number of electrons
-    numofcorrel: StrictNonNegativeInt
+    numofcorrel: StrictNonNegativeInt | None, default = None
         Number of corr-electrons
-    numofalphacorrel: StrictNonNegativeInt
+    numofalphacorrel: StrictNonNegativeInt | None, default = None
         Number of corr-electrons with an alpha spin
-    numofbetacorell: StrictNonNegativeInt
+    numofbetacorell: StrictNonNegativeInt | None, default = None
         Number of corr-electrons with a beta spin
-    refenergy: StrictFiniteFloat
+    refenergy: StrictFiniteFloat | None, default = None
         Energy reference
-    correnergy: StrictFiniteFloat
+    correnergy: StrictFiniteFloat | None, default = None
         Total energy contribution of the electron-correlation
     """
 

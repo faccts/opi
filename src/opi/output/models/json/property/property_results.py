@@ -6,7 +6,7 @@ from opi.output.models.json.property.properties.calc_status import (
 from opi.output.models.json.property.properties.calc_time import (
     CalculationTiming,
 )
-from opi.output.models.json.property.properties.geometry import Geometries
+from opi.output.models.json.property.properties.geometries import Geometries
 from opi.output.models.json.property.properties.pal import PalFlags
 
 

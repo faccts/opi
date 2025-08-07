@@ -22,13 +22,35 @@ if __name__ == "__main__":
     calc_bond.input.add_simple_keywords(
         Scf.NOAUTOSTART,
         Method.HF,
-        BasisSet.DEF2_SVP,
+        BasisSet.MINIX,
         Task.OPT,
     )
 
     calc_bond.input.add_blocks(BlockGeom(scan="B  0  1 = 1.1, 2.1, 5"))
     calc_bond.write_input()
     calc_bond.run()
+    output_bond = calc_bond.get_output(create_gbw_json=True)
+    output_bond.parse()
+
+    # > Print hl gap for scan
+    for index, gbw in enumerate(output_bond.results_gbw[1:], start=1):
+        print(index,output_bond.get_hl_gap(index))
+
+    # > Plot mos for scan
+    for index, gbw in enumerate(output_bond.results_gbw[1:], start=1):
+        homo_id = output_bond.get_homo().index
+        cube_output = output_bond.plot_mo(homo_id,gbw_index=index)
+        print(index,cube_output)
+
+    # > Plot density for scan
+    for index, gbw in enumerate(output_bond.results_gbw[1:], start=1):
+        cube_output = output_bond.plot_density(gbw_index=index)
+        print(index,cube_output)
+
+    # > Access energies for scan
+    for index, gbw in enumerate(output_bond.results_properties.geometries[1:], start=1):
+        print(index,output_bond.get_final_energy(index=index))
+
 
     # > Scan an angle with a relaxed surface scan
     calc_angle = Calculator(basename="scan_angle", working_dir=wd)

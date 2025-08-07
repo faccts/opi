@@ -1,7 +1,7 @@
 from pydantic import StrictStr
 
 from opi.output.models.base.get_item import GetItem
-from opi.output.models.json.gbw.properties.mos import MO
+from opi.output.models.json.gbw.properties.mo import MO
 
 
 class MolecularOrbitals(GetItem):

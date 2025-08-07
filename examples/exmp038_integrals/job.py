@@ -8,8 +8,8 @@ from opi.core import Calculator
 from opi.input.simple_keywords import BasisSet
 from opi.input.simple_keywords import Method
 from opi.input.simple_keywords import Scf
+
 from opi.input.simple_keywords import Task
-from opi.input.simple_keywords import Dft
 from opi.input.structures import Structure
 
 if __name__ == "__main__":
@@ -19,14 +19,13 @@ if __name__ == "__main__":
 
     calc = Calculator(basename="job", working_dir=wd)
     calc.structure = Structure.from_xyz("inp.xyz")
-    calc.structure.charge = 1
-    calc.structure.multiplicity = 2
     calc.input.add_simple_keywords(
         Scf.NOAUTOSTART,
-        Dft.PBE0,
+        Method.HF,
         BasisSet.DEF2_SVP,
         Task.SP,
     )
+
 
     calc.write_input()
     calc.run()
@@ -47,11 +46,14 @@ if __name__ == "__main__":
         print("SCF DID NOT CONVERGE")
         sys.exit(1)
 
-    print(output.get_hftype())
-    print(output.get_nelectrons())
-    mos = output.get_mos()
-    homo_data = output.get_homo()
-    lumo_data = output.get_lumo()
-    print(f"HOMO {homo_data.index}({homo_data.channel}) energy: {homo_data.orbitalenergy:.8f} Eh")
-    print(f"LUMO {lumo_data.index}({lumo_data.channel}) energy: {lumo_data.orbitalenergy:.8f} Eh")
-    print(f"HOMO-LUMO gap: {output.get_hl_gap():.2f} eV")
+    print("Printing overlap integrals")
+    print(output.get_int_overlap(recreate_json=True))
+    print("Printing Hcore integrals")
+    print(output.get_int_hcore(recreate_json=True))
+    print("Printing F two-electron integrals")
+    print(output.get_int_f(recreate_json=True))
+    print("Printing Coulomb matrix J")
+    print(output.get_int_j(recreate_json=True))
+    print("Printing Exchange matrix K")
+    print(output.get_int_k(recreate_json=True))
+

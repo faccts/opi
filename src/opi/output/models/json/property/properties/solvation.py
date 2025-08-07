@@ -14,21 +14,21 @@ class SolvDetails(GetItem):
 
     Attributes
     ---------
-    solvent: StrictStr
+    solvent: StrictStr | None, default = None
         Name of the solvent
-    epsilon: StrictPositiveFloat
+    epsilon: StrictPositiveFloat | None, default = None
         Dielectric constant of the solvent
-    refrac: StrictPositiveFloat
+    refrac: StrictPositiveFloat | None, default = None
         Refraction index of the solvent
-    rsolv: StrictPositiveFloat
+    rsolv: StrictPositiveFloat | None, default = None
         Radiation of the solvent
-    surfacetype: StrictStr
+    surfacetype: StrictStr | None, default = None
         Type of the solvation surface
-    npoints: StrictPositiveInt
+    npoints: StrictPositiveInt | None, default = None
         Number of points
-    surfacearea: StrictPositiveFloat
+    surfacearea: StrictPositiveFloat | None, default = None
         Surface area
-    cpcmdielenergy: StricFinitetFloat
+    cpcmdielenergy: StricFinitetFloat | None, default = None
         Total solvation energy
     """
 

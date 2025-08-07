@@ -15,29 +15,29 @@ class EfgTensor(GetItem):
 
     Attributes
     ----------
-    method: StrictStr
+    method: StrictStr | None, default = None
         Used method in this calculation
-    level: StrictStr
+    level: StrictStr | None, default = None
         Type and relaxation of density
-    numofnucs: StrictPositiveInt
+    numofnucs: StrictPositiveInt | None, default = None
         Number of calculated nuclei
-    nuc: list[StrictPositiveInt]
+    nuc: list[StrictPositiveInt] | None, default = None
         list of used nuclei
-    elems: list[StrictPositiveInt]
+    elems: list[StrictPositiveInt] | None, default = None
         Atomic number of the nucleus
-    isotope: list[StrictPositiveFloat]
+    isotope: list[StrictPositiveFloat] | None, default = None
         Used isotope of the element
-    i: list[StrictNonNegativeFloat]
+    i: list[StrictNonNegativeFloat] | None, default = None
         Spin of nucleus
-    qfac: list[StrictFiniteFloat]
+    qfac: list[StrictFiniteFloat] | None, default = None
         Prefactor in MHz
-    v: list[list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]]
+    v: list[list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]] | None, default = None
         Possible raw tensors of each tensor
-    veigenvalues: list[list[StrictFiniteFloat]]
+    veigenvalues: list[list[StrictFiniteFloat]] | None, default = None
         eigenvalue of each tensor
-    viso: list[tuple[StrictFiniteFloat]]
+    viso: list[tuple[StrictFiniteFloat]] | None, default = None
         iso value of each tensor
-    orientation: list[list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]]
+    orientation: list[list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]] | None, default = None
         eigenvectors of each tensor
     """
 

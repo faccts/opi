@@ -15,35 +15,35 @@ class Tensor(GetItem):
 
     Attributes
     ----------
-    method: StrictStr
+    method: StrictStr | None, default = None
         Used method in this calculation
-    level: StrictStr
+    level: StrictStr | None, default = None
         Type and relaxation of density
-    mult : StrictPositiveInt
+    mult : StrictPositiveInt | None, default = None
         Multiplicity of the electronic state
-    state : int
+    state : int | None, default = None
         Electronic state
-    irrep : int
+    irrep : int | None, default = None
         Irreducible representation of the electronic state
-    numofnucs: StrictPositiveInt
+    numofnucs: StrictPositiveInt | None, default = None
         Number of calculated nuclei
-    nuc: list[StrictPositiveInt]
+    nuc: list[StrictPositiveInt] | None, default = None
         list of used nuclei
-    elem: list[StrictPositiveInt]
+    elem: list[StrictPositiveInt] | None, default = None
         Atomic number of the nucleus
-    isotope: list[StrictPositiveFloat]
+    isotope: list[StrictPositiveFloat] | None, default = None
         Used isotope of the element
-    i: list[StrictNonNegativeFloat]
+    i: list[StrictNonNegativeFloat] | None, default = None
         Spin of nucleus
-    pfac: list[StrictPositiveFloat]
+    pfac: list[StrictPositiveFloat] | None, default = None
         Prefactor in MHz
-    araw: list[list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]]
+    araw: list[list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]] | None, default = None
         Raw tensors of each tensor
-    aeigenvalues: list[list[list[StrictFiniteFloat]]]
+    aeigenvalues: list[list[list[StrictFiniteFloat]]] | None, default = None
         Eigenvalue of each tensor
-    aiso: list[StrictFiniteFloat]
+    aiso: list[StrictFiniteFloat] | None, default = None
         Iso value of each tensor
-    orientation: list[list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]]
+    orientation: list[list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]] | None, default = None
         Eigenvectors of each tensor
     """
 

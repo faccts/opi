@@ -1,7 +1,7 @@
 from opi.models.string_enum import StringEnum
 
 
-class Hftypes(StringEnum):
+class Hftyp(StringEnum):
     """Enumeration to keep track of the different wavefunction types available in ORCA"""
 
     RHF = "rhf"

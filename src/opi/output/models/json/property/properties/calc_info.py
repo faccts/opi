@@ -13,27 +13,27 @@ class CalcInfo(GetItem):
 
     Attributes
     ----------
-    charge: StrictInt
+    charge: StrictInt | None, default = None
         Charge of the molecule
-    mult: StrictPositiveInt
+    mult: StrictPositiveInt | None, default = None
         Multiplicity of the molecule
-    numofatoms: StrictPositiveInt
+    numofatoms: StrictPositiveInt | None, default = None
         Numbers of atoms in the molecule
-    numofelectrons: StrictNonNegativeInt
+    numofelectrons: StrictNonNegativeInt | None, default = None
         Number of electrons in the molecule
-    numoffcelectrons: StrictNonNegativeInt
+    numoffcelectrons: StrictNonNegativeInt | None, default = None
         Number of fc electrons
-    numofcorrelectrons: StrictNonNegativeInt
+    numofcorrelectrons: StrictNonNegativeInt | None, default = None
         Number of corr electrons
-    numofbasisfuncts: PositiveInt
+    numofbasisfuncts: PositiveInt | None, default = None
         Number of basis function
-    numofauxcbasisfuncts: StrictNonNegativeInt
+    numofauxcbasisfuncts: StrictNonNegativeInt | None, default = None
         Number of auxiliary C basis function
-    numofauxjbasisfuncts: StrictNonNegativeInt
+    numofauxjbasisfuncts: StrictNonNegativeInt | None, default = None
         Number of auxiliary J basis function
-    numofauxjkbasisfuncts: StrictNonNegativeInt
+    numofauxjkbasisfuncts: StrictNonNegativeInt | None, default = None
         Number of auxiliary JK basis function
-    numofcabsbasisfuncts: StrictNonNegativeInt
+    numofcabsbasisfuncts: StrictNonNegativeInt | None, default = None
         Number of CABs basis function
     """
 

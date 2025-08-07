@@ -14,21 +14,21 @@ class PopulationAnalysis(GetItem):
 
     Attributes
     ----------
-    natoms: StrictPositiveInt
+    natoms: StrictPositiveInt | None, default = None
         Numbers of atoms
-    atno : list[list[StrictPositiveInt]]
+    atno : list[list[StrictPositiveInt]] | None, default = None
         Atom-number according to the position in the periodic table
-    method : StrictStr
+    method : StrictStr | None, default = None
         Underlying electronic structure method
-    level : StrictStr
+    level : StrictStr | None, default = None
         Source of density e.g. linearized, un-relaxed, relaxed
-    mult : StrictPositiveInt
+    mult : StrictPositiveInt | None, default = None
         Multiplicity of the electronic state
-    state : StrictInt
+    state : StrictInt | None, default = None
         Electronic state
-    irrep : StrictInt
+    irrep : StrictInt | None, default = None
         Irreducible representation of the electronic state
-    atomiccharges: list[list[StrictFiniteFloat]]
+    atomiccharges: list[list[StrictFiniteFloat]] | None, default = None
         Charges of the atoms according to the population analysis
     """
 
@@ -40,3 +40,15 @@ class PopulationAnalysis(GetItem):
     state: StrictInt | None = None
     irrep: StrictInt | None = None
     atomiccharges: list[list[StrictFiniteFloat]] | None = None
+
+
+class MullikenPopulationAnalysis(PopulationAnalysis):
+    """This class contains the information about the Mulliken population analysis"""
+
+
+class LoewdinPopulationAnalysis(PopulationAnalysis):
+    """This class contains the information about the Loewdin population analysis"""
+
+
+class ChelpgPopulationAnalysis(PopulationAnalysis):
+    """This class contains the information about the CHELPG population analysis"""

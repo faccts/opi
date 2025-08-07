@@ -8,9 +8,9 @@ class VdwCorrection(GetItem):
 
     Attributes
     ----------
-    vdw: StrictFiniteFloat
+    vdw: StrictFiniteFloat | None, default = None
         Used correction for the VDW effect
-    vdw_atomic: list[list[StrictFiniteFloat]]
+    vdw_atomic: list[list[StrictFiniteFloat]] | None, default = None
         atomic decomposition of London dispersion energy (ADLD)
     """
 

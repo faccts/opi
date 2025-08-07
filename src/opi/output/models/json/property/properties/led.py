@@ -11,19 +11,19 @@ class Led(GetItem):
 
     Attributes
     ----------
-    numoffragments: StrictPositiveInt
+    numoffragments: StrictPositiveInt | None, default = None
         Number of used fragments
-    electrostref: list[tuple[StrictFiniteFloat, StrictFiniteFloat]]
+    electrostref: list[tuple[StrictFiniteFloat, StrictFiniteFloat]] | None, default = None
         Electrostatics reference
-    exchangeref: list[tuple[StrictFiniteFloat, StrictFiniteFloat]]
+    exchangeref: list[tuple[StrictFiniteFloat, StrictFiniteFloat]] | None, default = None
         Exchange reference
-    dispcontr: list[tuple[StrictFiniteFloat, StrictFiniteFloat]]
+    dispcontr: list[tuple[StrictFiniteFloat, StrictFiniteFloat]] | None, default = None
         Strong Pair Dispersion contribution
-    dispweak: list[tuple[StrictFiniteFloat, StrictFiniteFloat]]
+    dispweak: list[tuple[StrictFiniteFloat, StrictFiniteFloat]] | None, default = None
         Dispersion Weak pairs
-    sumnondisstrong: StrictFiniteFloat
+    sumnondisstrong: StrictFiniteFloat | None, default = None
         Sum of non dispersive correlation strong pairs
-    sumnondisweak: StrictFiniteFloat
+    sumnondisweak: StrictFiniteFloat | None, default = None
         Sum of non dispersive correlation weak pairs
     """
 

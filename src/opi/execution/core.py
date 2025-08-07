@@ -581,6 +581,7 @@ class Runner:
         """
         gbw_json_file = self.working_dir / f"{basename}.json"
         config_file = gbw_json_file.with_suffix(".json.conf")
+
         if gbw_json_file.is_file() and not force:
             return
         else:

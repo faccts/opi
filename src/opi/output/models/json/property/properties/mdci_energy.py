@@ -14,33 +14,33 @@ class MdciEnergies(Energy):
 
     Attributes
     ----------
-    numofel: PositiveInt
+    numofel: StrictPositiveInt | None, default = None
         Number of electrons
-    numofcorrel: StrictPositiveInt
+    numofcorrel: StrictPositiveInt | None, default = None
         Number of corr-electrons
-    numofalphacorrel: StrictNonNegativeInt
+    numofalphacorrel: StrictNonNegativeInt | None, default = None
         Number of corr-electrons with an alpha spin
-    numofbetacorell: StrictNonNegativeInt
+    numofbetacorell: StrictNonNegativeInt | None, default = None
         Number of corr-electrons with a beta spin
-    refenergy: list[list[StrictFiniteFloat]]
+    refenergy: list[list[StrictFiniteFloat]] | None, default = None
         Energy reference
-    correnergy: list[list[StrictFiniteFloat]]
+    correnergy: list[list[StrictFiniteFloat]] | None, default = None
         Total energy contribution of the electron-correlation
-    aacorren: list[list[StrictFiniteFloat]]
+    aacorren: list[list[StrictFiniteFloat]] | None, default = None
         Energy contribution of the alpha alpha electron-correlation
-    bbcorren: list[list[StrictFiniteFloat]]
+    bbcorren: list[list[StrictFiniteFloat]] | None, default = None
         Energy contribution of the beta beta electron-correlation
-    abcorren: list[list[StrictFiniteFloat]]
+    abcorren: list[list[StrictFiniteFloat]] | None, default = None
         Energy contribution of the alpha beta electron-correlation
-    corrds: list[list[StrictFiniteFloat]]
+    corrds: list[list[StrictFiniteFloat]] | None, default = None
         singlet pair energy of double amplitudes
-    corrdt: list[list[StrictFiniteFloat]]
+    corrdt: list[list[StrictFiniteFloat]] | None, default = None
         Triplet pair energy of double amplitudes
-    corrss: list[list[StrictFiniteFloat]]
+    corrss: list[list[StrictFiniteFloat]] | None, default = None
         Singlet pair energy of quadratic single amplitudes
-    corrst: list[list[StrictFiniteFloat]]
+    corrst: list[list[StrictFiniteFloat]] | None, default = None
         Triplet pair energy of quadratic single amplitudes
-    triplesenergy: list[list[StrictFiniteFloat]]
+    triplesenergy: list[list[StrictFiniteFloat]] | None, default = None
         Triplets correlation energy
     """
 
