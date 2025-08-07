@@ -35,6 +35,7 @@ class GetItem(BaseModel):
 
         for key, value in self.__dict__.items():
             if value is None:
+                lines.append(f"{indent}- {key} (None)")
                 continue
 
             hint = hints.get(key, type(value))

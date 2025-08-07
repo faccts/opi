@@ -1,6 +1,5 @@
 from opi.output.models.base.get_item import GetItem
 from opi.output.models.json.property.properties.bs import BrokenSym
-from opi.output.models.json.property.properties.calc_info import CalcInfo
 from opi.output.models.json.property.properties.chem_shift import (
     ChemicalShift,
 )
@@ -88,8 +87,6 @@ class Geometries(GetItem):
         Contains information about the Mayer population analyse
     mbis_population_analysis: list[MbisPopAnalysis] | None, default = None
         Contains information about the MBIS population analysis
-    calculation_info: CalcInfo | None, default = None
-        Contains information of the Calculation
     dipole_moment: list[Dipole] | None, default = None
         Contains information about the dipole moment
     nuclear_gradient: list[NucGradient] | None, default = None
@@ -150,7 +147,6 @@ class Geometries(GetItem):
     hirshfeld_population_analysis: list[HirshfeldPopulationAnalysis] | None = None
     mayer_population_analysis: list[MayerPopulationAnalysis] | None = None
     mbis_population_analysis: list[MbisPopulationAnalysis] | None = None
-    calculation_info: CalcInfo | None = None
     dipole_moment: list[DipoleMoment] | None = None
     nuclear_gradient: list[NucGradient] | None = None
     dft_energy: DftEnergy | None = None
