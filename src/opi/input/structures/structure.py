@@ -1,7 +1,7 @@
 import re
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Protocol, Sequence, cast
+from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -24,16 +24,8 @@ __all__ = ("Structure",)
 
 
 if TYPE_CHECKING:
+    from ase import Atoms as AseAtoms  # noqa: F401
     from rdkit.Chem import Mol as RdkitMol
-
-
-class ASELike(Protocol):
-    """Avoid the ASE import by using this ASELike class for type checking"""
-
-    def get_chemical_symbols(self) -> list[str]: ...
-    def get_positions(self) -> npt.NDArray[np.float64]: ...
-    @property
-    def info(self) -> dict[str, Any]: ...
 
 
 class Structure:
@@ -397,13 +389,13 @@ class Structure:
                 # // X
                 try:
                     coord_x = float(coords_cols[0])
-                except (ValueError, IndexError):
-                    raise ValueError(f"Line {iline}: Invalid X coordinate: {coords_cols[1]}")
+                except (ValueError, IndexError) as err:
+                    raise ValueError(f"Line {iline}: Invalid X coordinate: {atom_cols[1]}") from err
                 # // Y
                 try:
                     coord_y = float(coords_cols[1])
-                except (ValueError, IndexError):
-                    raise ValueError(f"Line {iline}: Invalid Y coordinate: {coords_cols[2]}")
+                except (ValueError, IndexError) as err:
+                    raise ValueError(f"Line {iline}: Invalid Y coordinate: {atom_cols[2]}") from err
                 # // Z
                 try:
                     coord_z = float(coords_cols[2])
@@ -561,24 +553,133 @@ class Structure:
         return len(self.atoms)
 
     @classmethod
-    def from_ase(cls, obj: ASELike) -> "Structure":
-        required_method = ["get_chemical_symbols", "get_positions"]
-        if not all(hasattr(obj, m) for m in required_method):
-            raise TypeError("Object is not ASE-like: missing required method(s)")
+    def from_ase(
+        cls, obj: "AseAtoms", *, charge: int | None = None, multiplicity: int | None = None
+    ) -> "Structure":
+        """
+        Function to convert ASE-like object to Structure object.
 
+        Parameters
+        ----------
+        obj : AseAtoms
+            The object "Atoms" object from ase
+        charge : int | None, default = None
+            Optional charge of the molecule, will overwrite charge from ASE-like object
+        multiplicity : int | None, default = None
+            Optional multiplicity of the molecule, will overwrite multiplicity from ASE-like object
+
+        Returns
+        ----------
+        Structure
+            OPI´s Structure object generated from AseAtoms object
+
+        Raises
+        ----------
+        ValueError
+            If the ASE object does not include a usable structure.
+        """
         symbols = obj.get_chemical_symbols()
-        positions = obj.get_positions()
+
+        if len(symbols) == 0:
+            raise ValueError("No atoms in ASE object.")
+
+        try:
+            positions = np.asarray(obj.get_positions(), dtype=np.float64)
+        except (TypeError, ValueError) as err:
+            raise TypeError("Could not convert positions to a float64 NumPy array") from err
+
+        if positions.ndim < 2:
+            raise TypeError("Positions array has to be at least two-dimensional")
+
+        if len(symbols) != positions.shape[0]:
+            raise ValueError(f"{len(symbols)} symbols and {positions.shape[0]} positions")
 
         atoms = []
+        for iatom, ase_atom in enumerate(zip(symbols, positions)):
+            symbol, raw_position = ase_atom
+            # > Indicate the type for static type checking with mypy
+            position = np.asarray(raw_position, dtype=np.float64)
 
-        for ase_atom in zip(symbols, positions):
-            element = ase_atom[0]
-            coordinates = ase_atom[1]
-            atoms.append(Atom(element=element, coordinates=coordinates))
+            # > Get Element symbol
+            try:
+                element = Element(symbol)
+            except (ValueError, IndexError):
+                raise ValueError(f"Atom {iatom}: Could not convert {ase_atom[0]} to element symbol")
+
+            coords_cols: list[float] = position.tolist()
+
+            if len(coords_cols) < 3:
+                raise ValueError(f"Invalid coordinates for atom {iatom}")
+
+            # > Pass coordinates
+            # // X
+            try:
+                coord_x = float(coords_cols[0])
+            except (ValueError, IndexError):
+                raise ValueError(f"Atom {iatom}: Invalid X coordinate: {coords_cols[1]}")
+            # // Y
+            try:
+                coord_y = float(coords_cols[1])
+            except (ValueError, IndexError):
+                raise ValueError(f"Atom {iatom}: Invalid Y coordinate: {coords_cols[2]}")
+            # // Z
+            try:
+                coord_z = float(coords_cols[2])
+            except (ValueError, IndexError) as err:
+                raise ValueError(f"Atom {iatom}: Invalid Z coordinate: {coords_cols[3]}") from err
+
+            # > Adding atom
+            atoms.append(
+                Atom(
+                    element=element,
+                    coordinates=Coordinates(coordinates=(coord_x, coord_y, coord_z)),
+                )
+            )
 
         # > Optionally get info
         info = getattr(obj, "info", {})
-        charge = info.get("charge", 0)
-        multiplicity = info.get("multiplicity", 1)
+        if charge is None:
+            charge = info.get("charge", 0)
+        if multiplicity is None:
+            multiplicity = info.get("multiplicity", 1)
 
-        return Structure(atoms=atoms, charge=charge, multiplicity=multiplicity)
+        return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)
+
+    @classmethod
+    def from_lists(
+        cls,
+        symbols: list[str] | list[int],
+        positions: list[tuple[float, float, float]],
+        charge: int = 0,
+        multiplicity: int = 1,
+    ) -> "Structure":
+        """
+        Function for generating the Structure object from symbols and position lists.
+
+        Parameters
+        ----------
+        symbols : list[str] | list[int]
+            List of atomic symbols either as string or as atomic numbers
+        positions: list[tuple[float, float, float]]
+            List of tuples containing coordinates
+        charge : int, default = 0
+            Optional charge for the structure
+        multiplicity : int, default = 1
+            Optional multiplicity for the structure
+
+        Returns
+        ----------
+        Structure
+            The Structure object initialized from given lists.
+
+        """
+        atoms = []
+        if len(symbols) != len(positions):
+            raise ValueError(f"{len(symbols)} symbols and {len(positions)} positions")
+
+        for list_atom in zip(symbols, positions):
+            element = str(list_atom[0])
+            coordinates = list_atom[1]
+            atoms.append(Atom(element=element, coordinates=coordinates))
+
+        return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)
