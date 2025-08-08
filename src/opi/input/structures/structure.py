@@ -1,7 +1,8 @@
 import re
+from io import StringIO
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
+from typing import TYPE_CHECKING, Any, Iterable, Sequence, TextIO, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -324,102 +325,152 @@ class Structure:
         if not xyzfile.exists():
             raise FileNotFoundError(f"XYZ file not found: {xyzfile}")
 
-        # > Try reading the file
+        with xyzfile.open() as f_xyz:
+            return cls._from_xyz_textio(
+                f_xyz, xyzfile=xyzfile, charge=charge, multiplicity=multiplicity
+            )
+
+    @classmethod
+    def from_xyz_string(
+        cls,
+        xyz_string: str,
+        /,
+        *,
+        charge: int = 0,
+        multiplicity: int = 1,
+    ) -> "Structure":
+        """
+        Function for reading a xyz file from a string and converting it to a molecular Structure
+
+        Parameters
+        ----------
+        xyz_string: str
+            String that contains xyz file data
+        charge : int, default: 0
+            Charge of the molecule
+        multiplicity : int, default: 1
+            Electron spin multiplicity of the molecule
+
+        Returns
+        --------
+        Structure
+            The `Structure` object extracted from file
+        """
+        with StringIO(xyz_string) as f_xyz:
+            return cls._from_xyz_textio(f_xyz, charge=charge, multiplicity=multiplicity)
+
+    @classmethod
+    def _from_xyz_textio(
+        cls,
+        xyz_textio: TextIO,
+        *,
+        xyzfile: Path | None = None,
+        charge: int = 0,
+        multiplicity: int = 1,
+    ) -> "Structure":
+        """
+        Function for reading a xyz file from textio and converting it to a molecular Structure.
+
+        Parameters
+        ----------
+        xyz_textio : TextIO
+            A text-mode file-like object opened for reading which contains the xyz data. This can be a real file
+            (e.g., from `open("structure.xyz")`) or an in-memory stream (e.g., `io.StringIO`).
+
+        Returns
+        --------
+        The `Structure` object extracted from TextIO.
+        """
+        # > Try reading the string
         atoms = []
         rgx_frag_id = re.compile(r"(?<=\()\d+(?=\))")
         rgx_atom_symbol_frag_id = re.compile(r"(?P<elem>[A-Za-z]{1,2})(\((?P<frag_id>\d+)\))?")
 
-        with xyzfile.open() as f_xyz:
-            # > Fetch number of atoms
+        # > Fetch number of atoms
+        try:
+            natoms = int(xyz_textio.readline().split()[0])
+        except (ValueError, IndexError) as err:
+            raise ValueError("Could not read number of atoms in line 1 from xyz data") from err
+        # > Skipping comment line
+        xyz_textio.readline()
+
+        # > Read atoms
+        # >> This is just a helper variable for error reporting. Coordinates start from line 3
+        iline = 2
+        while line := xyz_textio.readline().rstrip():
+            iline += 1
+            # > Line should have at least 4 columns
+            atom_cols = line.split()
+            if len(atom_cols) < 4:
+                raise ValueError(f"Line {iline}: Invalidly formatted coordinate line")
+
+            # > Get atom symbol. > Titlelizing symbol, so the first letter is capitalized, any others are in lowercase.
+            # >> First check if we have combination of atom symbol + fragment id
+            match_atom_sym_frag_id = rgx_atom_symbol_frag_id.match(line.lstrip())
+            if not match_atom_sym_frag_id:
+                raise ValueError(f"Line {iline}: Could not find atom symbol.")
+
+            atom_sym = match_atom_sym_frag_id.group("elem")
             try:
-                natoms = int(f_xyz.readline().split()[0])
+                element = Element(atom_sym)
+            except Exception as err:
+                raise ValueError(f"Line {iline}: Invalid atom symbol: {atom_sym}") from err
+
+            # > Fragment id
+            # >> First, let's assume columns 2 through 4 are the coordinates.
+            coords_cols = atom_cols[1:4]
+
+            # > Check if the fragment id follows the atom symbol directly or is in a column of its own.
+            if not (match_frag_id := match_atom_sym_frag_id.group("frag_id")):
+                if match_frag_id := rgx_frag_id.match(atom_cols[1]):
+                    # > Coordinates are in columns 3 through 5
+                    coords_cols = atom_cols[2:5]
+
+            # > Convert string fragment id to integer
+            frag_id = None
+            if match_frag_id:
+                try:
+                    frag_id = int(match_frag_id)
+                except ValueError as err:
+                    raise ValueError(f"Line {iline}: Invalid fragment id: {match_frag_id}") from err
+
+            # > Pass coordinates
+            # // X
+            try:
+                coord_x = float(coords_cols[0])
             except (ValueError, IndexError) as err:
-                raise ValueError(
-                    f"Could not read number of atoms in line 1 from: {xyzfile}"
-                ) from err
+                raise ValueError(f"Line {iline}: Invalid X coordinate: {atom_cols[1]}") from err
+            # // Y
+            try:
+                coord_y = float(coords_cols[1])
+            except (ValueError, IndexError) as err:
+                raise ValueError(f"Line {iline}: Invalid Y coordinate: {atom_cols[2]}") from err
+            # // Z
+            try:
+                coord_z = float(coords_cols[2])
+            except (ValueError, IndexError) as err:
+                raise ValueError(f"Line {iline}: Invalid Z coordinate: {atom_cols[3]}") from err
 
-            # > Skipping comment line
-            f_xyz.readline()
-
-            # > Read atoms
-            # >> This is just a helper variable for error reporting. Coordinates start from line 3
-            iline = 2
-            while line := f_xyz.readline().rstrip():
-                iline += 1
-                # > Line should have at least 4 columns
-                atom_cols = line.split()
-                if len(atom_cols) < 4:
-                    raise ValueError(
-                        f"Line {iline}: Invalidly formatted coordinate line in: {xyzfile}"
-                    )
-
-                # > Get atom symbol. > Titlelizing symbol, so the first letter is capitalized, any others are in lowercase.
-                # >> First check if we have combination of atom symbol + fragment id
-                match_atom_sym_frag_id = rgx_atom_symbol_frag_id.match(line.lstrip())
-                if not match_atom_sym_frag_id:
-                    raise ValueError(f"Line {iline}: Could not find atom symbol.")
-
-                atom_sym = match_atom_sym_frag_id.group("elem")
-                try:
-                    element = Element(atom_sym)
-                except Exception as err:
-                    raise ValueError(f"Line {iline}: Invalid atom symbol: {atom_sym}") from err
-
-                # > Fragment id
-                # >> First, let's assume columns 2 through 4 are the coordinates.
-                coords_cols = atom_cols[1:4]
-
-                # > Check if the fragment id follows the atom symbol directly or is in a column of its own.
-                if not (match_frag_id := match_atom_sym_frag_id.group("frag_id")):
-                    if match_frag_id := rgx_frag_id.match(atom_cols[1]):
-                        # > Coordinates are in columns 3 through 5
-                        coords_cols = atom_cols[2:5]
-
-                # > Convert string fragment id to integer
-                frag_id = None
-                if match_frag_id:
-                    try:
-                        frag_id = int(match_frag_id)
-                    except ValueError as err:
-                        raise ValueError(
-                            f"Line {iline}: Invalid fragment id: {match_frag_id}"
-                        ) from err
-
-                # > Pass coordinates
-                # // X
-                try:
-                    coord_x = float(coords_cols[0])
-                except (ValueError, IndexError) as err:
-                    raise ValueError(f"Line {iline}: Invalid X coordinate: {atom_cols[1]}") from err
-                # // Y
-                try:
-                    coord_y = float(coords_cols[1])
-                except (ValueError, IndexError) as err:
-                    raise ValueError(f"Line {iline}: Invalid Y coordinate: {atom_cols[2]}") from err
-                # // Z
-                try:
-                    coord_z = float(coords_cols[2])
-                except (ValueError, IndexError) as err:
-                    raise ValueError(f"Line {iline}: Invalid Z coordinate: {atom_cols[3]}") from err
-
-                # > Adding atom
-                atoms.append(
-                    Atom(
-                        element=element,
-                        coordinates=Coordinates(coordinates=(coord_x, coord_y, coord_z)),
-                        fragment_id=frag_id,
-                    )
+            # > Adding atom
+            atoms.append(
+                Atom(
+                    element=element,
+                    coordinates=Coordinates(coordinates=(coord_x, coord_y, coord_z)),
+                    fragment_id=frag_id,
                 )
-            # << END OF LOOP
-        # << END of WITH
+            )
+        # << END OF LOOP
 
         # > Check number of atoms declared in file agrees with apparent number of atoms.
         if natoms != len(atoms):
-            raise ValueError(f"{natoms} were expected but {len(atoms)} were found in: {xyzfile}")
+            raise ValueError(f"{natoms} were expected but {len(atoms)} were found")
+
+        if xyzfile is not None:
+            xyzfile = xyzfile.expanduser().resolve()
 
         return Structure(
             atoms=atoms,
-            origin=xyzfile.expanduser().resolve(),
+            origin=xyzfile,
             charge=charge,
             multiplicity=multiplicity,
         )
@@ -557,12 +608,12 @@ class Structure:
         cls, obj: "AseAtoms", *, charge: int | None = None, multiplicity: int | None = None
     ) -> "Structure":
         """
-        Function to convert ASE-like object to Structure object.
+        Function to generate Structure from `Atoms` object from the Atomic Simulation Environment (ASE).
 
         Parameters
         ----------
         obj : AseAtoms
-            The object "Atoms" object from ase
+            The object "Atoms" from ase
         charge : int | None, default = None
             Optional charge of the molecule, will overwrite charge from ASE-like object
         multiplicity : int | None, default = None
@@ -571,7 +622,7 @@ class Structure:
         Returns
         ----------
         Structure
-            OPI´s Structure object generated from AseAtoms object
+            The Structure object generated from AseAtoms object
 
         Raises
         ----------
@@ -579,9 +630,6 @@ class Structure:
             If the ASE object does not include a usable structure.
         """
         symbols = obj.get_chemical_symbols()
-
-        if len(symbols) == 0:
-            raise ValueError("No atoms in ASE object.")
 
         try:
             positions = np.asarray(obj.get_positions(), dtype=np.float64)
@@ -609,24 +657,24 @@ class Structure:
             coords_cols: list[float] = position.tolist()
 
             if len(coords_cols) < 3:
-                raise ValueError(f"Invalid coordinates for atom {iatom}")
+                raise ValueError(f"Invalid coordinates for atom number: {iatom}")
 
             # > Pass coordinates
             # // X
             try:
                 coord_x = float(coords_cols[0])
-            except (ValueError, IndexError):
-                raise ValueError(f"Atom {iatom}: Invalid X coordinate: {coords_cols[1]}")
+            except (ValueError, IndexError) as err:
+                raise ValueError(f"Atom {iatom}: Invalid X coordinate") from err
             # // Y
             try:
                 coord_y = float(coords_cols[1])
-            except (ValueError, IndexError):
-                raise ValueError(f"Atom {iatom}: Invalid Y coordinate: {coords_cols[2]}")
+            except (ValueError, IndexError) as err:
+                raise ValueError(f"Atom {iatom}: Invalid Y coordinate") from err
             # // Z
             try:
                 coord_z = float(coords_cols[2])
             except (ValueError, IndexError) as err:
-                raise ValueError(f"Atom {iatom}: Invalid Z coordinate: {coords_cols[3]}") from err
+                raise ValueError(f"Atom {iatom}: Invalid Z coordinate") from err
 
             # > Adding atom
             atoms.append(
@@ -654,7 +702,8 @@ class Structure:
         multiplicity: int = 1,
     ) -> "Structure":
         """
-        Function for generating the Structure object from symbols and position lists.
+        Function for generating the Structure object from symbols and position lists. They are required to have the
+        same length and need fulfill the typing.
 
         Parameters
         ----------
