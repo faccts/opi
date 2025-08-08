@@ -29,16 +29,15 @@ if __name__ == "__main__":
         Method.HF,
         BasisSet.DEF2_SVP,
         Task.SP,
-        SolvationModel.CPCM(Solvent.WATER),
-        DispersionCorrection.D3,
     )
-
-    calc.input.add_blocks(BlockMethod(d3s6=0.64, d3a1=0.3065, d3s8=0.9147, d3a2=5.0570))
 
     calc.write_input()
     calc.run()
 
     output = calc.get_output()
+
+    print("Print graph with nothing populated:")
+    output.print_graph()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
         sys.exit(1)
@@ -54,12 +53,5 @@ if __name__ == "__main__":
         print("SCF DID NOT CONVERGE")
         sys.exit(1)
 
-    print("FINAL SINGLE POINT ENERGY")
-    print(output.get_final_energy())
-    # > is (for this calculation) equal to
-    print(output.results_properties.geometries[0].single_point_data.finalenergy)
-    # > is (for this calculation) equal to
-    print(
-        output.results_properties.geometries[0].energy[0].totalenergy[0][0]
-        + output.results_properties.geometries[0].vdw_correction.vdw
-    )
+    print("Print graph after parsing:")
+    output.print_graph()
