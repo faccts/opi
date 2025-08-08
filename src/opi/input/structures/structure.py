@@ -696,7 +696,7 @@ class Structure:
     @classmethod
     def from_lists(
         cls,
-        symbols: list[str] | list[int],
+        symbols: list[str | int],
         positions: list[tuple[float, float, float]],
         charge: int = 0,
         multiplicity: int = 1,
@@ -707,7 +707,7 @@ class Structure:
 
         Parameters
         ----------
-        symbols : list[str] | list[int]
+        symbols : list[str | int]
             List of atomic symbols either as string or as atomic numbers
         positions: list[tuple[float, float, float]]
             List of tuples containing coordinates
@@ -727,7 +727,13 @@ class Structure:
             raise ValueError(f"{len(symbols)} symbols and {len(positions)} positions")
 
         for list_atom in zip(symbols, positions):
-            element = str(list_atom[0])
+            element = list_atom[0]
+            if isinstance(element, int):
+                element = Element.from_atomic_number(element)
+            elif isinstance(element, str):
+                element = Element(element)
+            # > assert to make mypy happy
+            assert isinstance(element, Element)
             coordinates = list_atom[1]
             atoms.append(Atom(element=element, coordinates=coordinates))
 
