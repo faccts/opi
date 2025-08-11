@@ -97,7 +97,7 @@ class BlockFrag(Block):
     printinputflags: bool | None = None
     topolfile: InputFilePath | None = None
     definition: FragDefinition | None = None
-    xyzfraglib: InputString | None = None
+    xzyfraglib: InputString | None = None
 
     @field_validator("definition", mode="before")
     @classmethod
@@ -130,7 +130,7 @@ class BlockFrag(Block):
         else:
             return path
 
-    @field_validator("xyzfraglib", mode="before")
+    @field_validator("xzyfraglib", mode="before")
     @classmethod
     def init_inputstring(cls, string: str | InputString) -> InputString:
         """
