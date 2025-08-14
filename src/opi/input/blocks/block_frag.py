@@ -89,15 +89,16 @@ class BlockFrag(Block):
     """Class to model %frag block in ORCA"""
 
     _name: str = "frag"
+
     printlevel: int | None = None
     storefrags: bool | None = None
     dointerfragbonds: bool | None = None
-    fragproc: FragProc | None = None
+    fragproc: FragProc | str | None = None
     usetopology: bool | None = None
     printinputflags: bool | None = None
     topolfile: InputFilePath | None = None
     definition: FragDefinition | None = None
-    xzyfraglib: InputString | None = None
+    xzyfraglib: InputString | str | None = None
 
     @field_validator("definition", mode="before")
     @classmethod
