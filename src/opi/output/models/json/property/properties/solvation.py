@@ -5,6 +5,7 @@ from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
     StrictPositiveFloat,
     StrictPositiveInt,
+    StrictPositiveFloatOrMinusOne
 )
 
 
@@ -33,7 +34,7 @@ class SolvDetails(GetItem):
     """
 
     solvent: StrictStr | None = None
-    epsilon: StrictPositiveFloat | None = None
+    epsilon: StrictPositiveFloatOrMinusOne | None = None
     refrac: StrictPositiveFloat | None = None
     rsolv: StrictPositiveFloat | None = None
     surfacetype: StrictStr | None = None
