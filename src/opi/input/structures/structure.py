@@ -1,8 +1,9 @@
 import re
+from collections.abc import Iterator
 from io import StringIO
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Sequence, TextIO, cast
+from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -27,6 +28,9 @@ __all__ = ("Structure",)
 if TYPE_CHECKING:
     from ase import Atoms as AseAtoms  # noqa: F401
     from rdkit.Chem import Mol as RdkitMol
+
+RGX_FRAG_ID = re.compile(r"(?<=\()\d+(?=\))")
+RGX_ATOM_SYMBOL_FRAG_ID = re.compile(r"(?P<elem>[A-Za-z]{1,2})(\((?P<frag_id>\d+)\))?")
 
 
 class Structure:
@@ -326,12 +330,12 @@ class Structure:
             raise FileNotFoundError(f"XYZ file not found: {xyzfile}")
 
         with xyzfile.open() as f_xyz:
-            return cls._from_xyz_textio(
-                f_xyz, xyzfile=xyzfile, charge=charge, multiplicity=multiplicity
-            )
+            structure = cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
+            structure.origin = xyzfile.expanduser().resolve()
+            return structure
 
     @classmethod
-    def from_xyz_string(
+    def from_xyz_block(
         cls,
         xyz_string: str,
         /,
@@ -357,56 +361,58 @@ class Structure:
             The `Structure` object extracted from file
         """
         with StringIO(xyz_string) as f_xyz:
-            return cls._from_xyz_textio(f_xyz, charge=charge, multiplicity=multiplicity)
+            return cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
 
     @classmethod
-    def _from_xyz_textio(
+    def from_xyz_buffer(
         cls,
-        xyz_textio: TextIO,
+        xyz_lines: Iterator[str],
         *,
-        xyzfile: Path | None = None,
         charge: int = 0,
         multiplicity: int = 1,
     ) -> "Structure":
         """
-        Function for reading a xyz file from textio and converting it to a molecular Structure.
+        Function for reading a xyz file from a buffer and converting it to a molecular Structure.
 
         Parameters
         ----------
-        xyz_textio : TextIO
-            A text-mode file-like object opened for reading which contains the xyz data. This can be a real file
-            (e.g., from `open("structure.xyz")`) or an in-memory stream (e.g., `io.StringIO`).
+        xyz_lines: Iterator[str]
+            A buffer that contains xyz file data
+        charge : int, default = 0
+            Molecular charge of the structure.
+        multiplicity: int, default = 1
+            Electron spin multiplicity of the structure.
 
         Returns
         --------
-        The `Structure` object extracted from TextIO.
+        The `Structure` object extracted from the buffer
         """
         # > Try reading the string
         atoms = []
-        rgx_frag_id = re.compile(r"(?<=\()\d+(?=\))")
-        rgx_atom_symbol_frag_id = re.compile(r"(?P<elem>[A-Za-z]{1,2})(\((?P<frag_id>\d+)\))?")
 
         # > Fetch number of atoms
         try:
-            natoms = int(xyz_textio.readline().split()[0])
-        except (ValueError, IndexError) as err:
+            natoms = int(next(xyz_lines).split()[0])
+        except (ValueError, IndexError, StopIteration) as err:
             raise ValueError("Could not read number of atoms in line 1 from xyz data") from err
         # > Skipping comment line
-        xyz_textio.readline()
+        try:
+            next(xyz_lines)
+        except StopIteration as err:
+            raise ValueError("Comment line is not present in xyz data") from err
 
         # > Read atoms
-        # >> This is just a helper variable for error reporting. Coordinates start from line 3
         iline = 2
-        while line := xyz_textio.readline().rstrip():
+        for line in xyz_lines:
             iline += 1
             # > Line should have at least 4 columns
             atom_cols = line.split()
             if len(atom_cols) < 4:
                 raise ValueError(f"Line {iline}: Invalidly formatted coordinate line")
 
-            # > Get atom symbol. > Titlelizing symbol, so the first letter is capitalized, any others are in lowercase.
+            # > Get atom symbol.
             # >> First check if we have combination of atom symbol + fragment id
-            match_atom_sym_frag_id = rgx_atom_symbol_frag_id.match(line.lstrip())
+            match_atom_sym_frag_id = RGX_ATOM_SYMBOL_FRAG_ID.match(line.lstrip())
             if not match_atom_sym_frag_id:
                 raise ValueError(f"Line {iline}: Could not find atom symbol.")
 
@@ -422,7 +428,7 @@ class Structure:
 
             # > Check if the fragment id follows the atom symbol directly or is in a column of its own.
             if not (match_frag_id := match_atom_sym_frag_id.group("frag_id")):
-                if match_frag_id := rgx_frag_id.match(atom_cols[1]):
+                if match_frag_id := RGX_FRAG_ID.match(atom_cols[1]):
                     # > Coordinates are in columns 3 through 5
                     coords_cols = atom_cols[2:5]
 
@@ -465,12 +471,8 @@ class Structure:
         if natoms != len(atoms):
             raise ValueError(f"{natoms} were expected but {len(atoms)} were found")
 
-        if xyzfile is not None:
-            xyzfile = xyzfile.expanduser().resolve()
-
         return Structure(
             atoms=atoms,
-            origin=xyzfile,
             charge=charge,
             multiplicity=multiplicity,
         )
@@ -605,14 +607,14 @@ class Structure:
 
     @classmethod
     def from_ase(
-        cls, obj: "AseAtoms", *, charge: int | None = None, multiplicity: int | None = None
+        cls, ase_atoms: "AseAtoms", *, charge: int | None = None, multiplicity: int | None = None
     ) -> "Structure":
         """
         Function to generate Structure from `Atoms` object from the Atomic Simulation Environment (ASE).
 
         Parameters
         ----------
-        obj : AseAtoms
+        ase_atoms : AseAtoms
             The object "Atoms" from ase
         charge : int | None, default = None
             Optional charge of the molecule, will overwrite charge from ASE-like object
@@ -629,20 +631,24 @@ class Structure:
         ValueError
             If the ASE object does not include a usable structure.
         """
-        symbols = obj.get_chemical_symbols()
+        symbols = ase_atoms.get_chemical_symbols()
 
+        # > Try to get the positions from AseAtoms object as Numpy array.
         try:
-            positions = np.asarray(obj.get_positions(), dtype=np.float64)
+            positions = np.asarray(ase_atoms.get_positions(), dtype=np.float64)
         except (TypeError, ValueError) as err:
             raise TypeError("Could not convert positions to a float64 NumPy array") from err
 
+        # > Check that the positions array has at least two dimensions
         if positions.ndim < 2:
             raise TypeError("Positions array has to be at least two-dimensional")
 
+        # > Check that the number of element symbols matches the number of atomic coordinates
         if len(symbols) != positions.shape[0]:
             raise ValueError(f"{len(symbols)} symbols and {positions.shape[0]} positions")
 
         atoms = []
+        # > Build a list of atoms from element symbols and positions
         for iatom, ase_atom in enumerate(zip(symbols, positions)):
             symbol, raw_position = ase_atom
             # > Indicate the type for static type checking with mypy
@@ -685,7 +691,7 @@ class Structure:
             )
 
         # > Optionally get info
-        info = getattr(obj, "info", {})
+        info = getattr(ase_atoms, "info", {})
         if charge is None:
             charge = info.get("charge", 0)
         if multiplicity is None:
@@ -697,7 +703,7 @@ class Structure:
     def from_lists(
         cls,
         symbols: list[str | int],
-        positions: list[tuple[float, float, float]],
+        coordinates: list[tuple[float, float, float]],
         charge: int = 0,
         multiplicity: int = 1,
     ) -> "Structure":
@@ -708,8 +714,8 @@ class Structure:
         Parameters
         ----------
         symbols : list[str | int]
-            List of atomic symbols either as string or as atomic numbers
-        positions: list[tuple[float, float, float]]
+            List of symbols for elements, either as string or as atomic number
+        coordinates: list[tuple[float, float, float]]
             List of tuples containing coordinates
         charge : int, default = 0
             Optional charge for the structure
@@ -723,18 +729,18 @@ class Structure:
 
         """
         atoms = []
-        if len(symbols) != len(positions):
-            raise ValueError(f"{len(symbols)} symbols and {len(positions)} positions")
+        if len(symbols) != len(coordinates):
+            raise ValueError(f"{len(symbols)} symbols and {len(coordinates)} coordinates")
 
-        for list_atom in zip(symbols, positions):
-            element = list_atom[0]
+        for element, coords in zip(symbols, coordinates):
             if isinstance(element, int):
                 element = Element.from_atomic_number(element)
             elif isinstance(element, str):
                 element = Element(element)
+            else:
+                raise ValueError(f"{element} cannot be converted to an element.")
             # > assert to make mypy happy
             assert isinstance(element, Element)
-            coordinates = list_atom[1]
-            atoms.append(Atom(element=element, coordinates=coordinates))
+            atoms.append(Atom(element=element, coordinates=coords))
 
         return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)
