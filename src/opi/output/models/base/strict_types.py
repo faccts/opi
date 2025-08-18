@@ -1,5 +1,5 @@
 from pydantic import Field, FiniteFloat, NonNegativeInt, PositiveInt, Strict
-from typing import Union
+from typing import Literal, Union
 from typing_extensions import Annotated
 
 StrictPositiveInt = Annotated[PositiveInt, Strict()]
@@ -17,7 +17,7 @@ StrictNegativeFloat = Annotated[FiniteFloat, Strict(), Field(lt=0)]
 StrictPositiveFloatOrMinusOne = Annotated[
     Union[
         Annotated[FiniteFloat, Strict(), Field(gt=0)],  # Positive float
-        Annotated[FiniteFloat, Strict(), Field(ge=-1, le=-1)]   # Exactly -1
+        Literal[-1]
     ],
     Field(description="Positive float or -1")
 ]

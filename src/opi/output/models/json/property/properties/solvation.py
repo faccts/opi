@@ -17,7 +17,7 @@ class SolvDetails(GetItem):
     ---------
     solvent: StrictStr | None, default = None
         Name of the solvent
-    epsilon: StrictPositiveFloat | None, default = None
+    epsilon: StrictPositiveFloatOrMinusOne | None, default = None
         Dielectric constant of the solvent
     refrac: StrictPositiveFloat | None, default = None
         Refraction index of the solvent
