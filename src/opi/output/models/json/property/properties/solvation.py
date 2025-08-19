@@ -5,6 +5,7 @@ from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
     StrictPositiveFloat,
     StrictPositiveInt,
+    StrictPositiveFloatOrMinusOne
 )
 
 
@@ -16,7 +17,7 @@ class SolvDetails(GetItem):
     ---------
     solvent: StrictStr | None, default = None
         Name of the solvent
-    epsilon: StrictPositiveFloat | None, default = None
+    epsilon: StrictPositiveFloatOrMinusOne | None, default = None
         Dielectric constant of the solvent
     refrac: StrictPositiveFloat | None, default = None
         Refraction index of the solvent
@@ -33,7 +34,7 @@ class SolvDetails(GetItem):
     """
 
     solvent: StrictStr | None = None
-    epsilon: StrictPositiveFloat | None = None
+    epsilon: StrictPositiveFloatOrMinusOne | None = None
     refrac: StrictPositiveFloat | None = None
     rsolv: StrictPositiveFloat | None = None
     surfacetype: StrictStr | None = None
