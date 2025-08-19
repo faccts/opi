@@ -72,6 +72,7 @@ contents/notebooks/ir_spectrum.ipynb
 contents/notebooks/extopt.ipynb
 contents/notebooks/opencosmors.ipynb
 contents/notebooks/moplot.ipynb
+contents/notebooks/deep_learning_barrier_heights.ipynb
 ```
 
 ```{toctree}
