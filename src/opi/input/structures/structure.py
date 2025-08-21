@@ -686,12 +686,17 @@ class Structure:
                 )
             )
 
-        # > Optionally get info
-        info = getattr(ase_atoms, "info", {})
+        # > Get charge if not supplied
         if charge is None:
-            charge = info.get("charge", 0)
+            charges = ase_atoms.get_initial_charges()
+            charge = int(round(np.sum(charges)))
+
+        # > Get magnetic moment if no multiplicity supplied
         if multiplicity is None:
-            multiplicity = info.get("multiplicity", 1)
+            magmoms = ase_atoms.get_initial_magnetic_moments()
+            total_magnetization = np.sum(magmoms)
+            spin = int(round(abs(total_magnetization)))
+            multiplicity = spin + 1
 
         return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)
 

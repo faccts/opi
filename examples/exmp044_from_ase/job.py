@@ -27,9 +27,13 @@ if __name__ == "__main__":
     # Create ASE Atoms object
     water = Atoms(symbols=symbols, positions=positions)
 
-    # Optionally set info
-    water.info["charge"] = -1
-    water.info["multiplicity"] = 2
+    # Set initial charges and magnetic moments
+    # Example: O has -1 charge, H are neutral → total -1
+    water.set_initial_charges([-1.0, 0.0, 0.0])
+
+    # Example: assign 1 unpaired electron → doublet (S=1/2 → 2S=1)
+    water.set_initial_magnetic_moments([1.0, 0.0, 0.0])
+    
     wd = Path("RUN")
     shutil.rmtree(wd, ignore_errors=True)
     wd.mkdir()
