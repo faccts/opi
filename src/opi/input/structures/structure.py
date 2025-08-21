@@ -130,6 +130,23 @@ class Structure:
             raise ValueError(f"{self.__class__.__name__}.multiplicity: must be positive")
         self._multiplicity = value
 
+    @property
+    def nelectrons(self) -> int:
+        nelectrons = 0
+        for atom in self.atoms:
+            if isinstance(atom, Atom):
+                nelectrons += atom.element.atomic_number
+        nelectrons -= self.charge
+        return nelectrons
+
+    @property
+    def nelec_is_odd(self) -> bool:
+        return self.nelectrons % 2 == 1
+
+    @property
+    def nelec_is_even(self) -> bool:
+        return self.nelectrons % 2 == 0
+
     @classmethod
     def combine_molecules(cls, structure1: "Structure", structure2: "Structure") -> "Structure":
         """
