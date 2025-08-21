@@ -5,42 +5,30 @@ import sys
 from pathlib import Path
 
 from opi.core import Calculator
+from opi.input.blocks import BlockMethod
 from opi.input.simple_keywords import BasisSet
+from opi.input.simple_keywords import (
+    DispersionCorrection,
+)
 from opi.input.simple_keywords import Method
 from opi.input.simple_keywords import Scf
+from opi.input.simple_keywords import SolvationModel
+from opi.input.simple_keywords import Solvent
 from opi.input.simple_keywords import Task
 from opi.input.structures import Structure
 
-from ase import Atoms
-
 if __name__ == "__main__":
-    
-    # Create a water molecule (H2O)
-    # Positions in Ångström
-    positions = [
-        [0.000, 0.000, 0.000],     # O
-        [0.757, 0.586, 0.000],     # H
-        [-0.757, 0.586, 0.000],    # H
-    ]
-    symbols = ['O', 'H', 'H']
-
-    # Create ASE Atoms object
-    water = Atoms(symbols=symbols, positions=positions)
-
-    # Optionally set info
-    water.info["charge"] = -1
-    water.info["multiplicity"] = 2
     wd = Path("RUN")
     shutil.rmtree(wd, ignore_errors=True)
     wd.mkdir()
 
     calc = Calculator(basename="job", working_dir=wd)
-    calc.structure = Structure.from_ase(water)
+    calc.structure = Structure.from_xyz("inp.xyz")
     calc.input.add_simple_keywords(
         Scf.NOAUTOSTART,
         Method.HF,
         BasisSet.DEF2_SVP,
-        Task.SP
+        Task.SP,
     )
 
     calc.write_input()

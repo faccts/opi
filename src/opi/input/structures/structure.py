@@ -14,7 +14,6 @@ from rdkit.Chem.rdDistGeom import EmbedMolecule
 
 from opi.input.structures.atom import (
     Atom,
-    DummyAtom,
     EmbeddingPotential,
     GhostAtom,
     PointCharge,
@@ -39,7 +38,7 @@ class Structure:
 
     Attributes
     ----------
-    atoms: list[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge]
+    atoms: list[Atom | EmbeddingPotential | GhostAtom | PointCharge]
         Atoms in the molecule
     charge: int
         Charge of structure
@@ -53,21 +52,18 @@ class Structure:
     def __init__(
         self,
         atoms: Atom
-        | DummyAtom
         | EmbeddingPotential
         | GhostAtom
         | PointCharge
-        | Sequence[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge]
-        | Iterable[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge],
+        | Sequence[Atom | EmbeddingPotential | GhostAtom | PointCharge]
+        | Iterable[Atom | EmbeddingPotential | GhostAtom | PointCharge],
         charge: int = 0,
         multiplicity: int = 1,
         origin: Path | str | None = None,
     ) -> None:
         # // Atoms
-        self._atoms: list[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge] = []
-        self.atoms = cast(
-            list[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge], atoms
-        )
+        self._atoms: list[Atom | EmbeddingPotential | GhostAtom | PointCharge] = []
+        self.atoms = cast(list[Atom | EmbeddingPotential | GhostAtom | PointCharge], atoms)
         # // Charge
         self._charge: int
         self.charge = charge
@@ -79,24 +75,23 @@ class Structure:
         self.origin: Any | None = origin
 
     @property
-    def atoms(self) -> list[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge]:
+    def atoms(self) -> list[Atom | EmbeddingPotential | GhostAtom | PointCharge]:
         return self._atoms
 
     @atoms.setter
     def atoms(
         self,
         value: Atom
-        | DummyAtom
         | EmbeddingPotential
         | GhostAtom
         | PointCharge
-        | Sequence[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge]
-        | Iterable[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge],
+        | Sequence[Atom | EmbeddingPotential | GhostAtom | PointCharge]
+        | Iterable[Atom | EmbeddingPotential | GhostAtom | PointCharge],
     ) -> None:
         """
         Parameters
         ----------
-        value : Atom | DummyAtom| EmbeddingPotential | GhostAtom | PointCharge | Sequence[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge]| Iterable[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge]
+        value : Atom | DummyAtom| EmbeddingPotential | GhostAtom | PointCharge | Sequence[Atom | EmbeddingPotential | GhostAtom | PointCharge]| Iterable[Atom | EmbeddingPotential | GhostAtom | PointCharge]
         """
         if not isinstance(value, (Sequence, Iterable)):
             # > Assume a single Atom object
@@ -175,7 +170,7 @@ class Structure:
 
     def add_atom(
         self,
-        new_atom: Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge,
+        new_atom: Atom | EmbeddingPotential | GhostAtom | PointCharge,
         position: int | None = None,
     ) -> None:
         """
@@ -225,14 +220,14 @@ class Structure:
             raise ValueError("Invalid index")
 
     def replace_atom(
-        self, new_atom: Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge, index: int
+        self, new_atom: Atom | EmbeddingPotential | GhostAtom | PointCharge, index: int
     ) -> None:
         """
         replaces Atom at index with a new Atom object
 
         Parameters
         ----------
-        new_atom : Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge
+        new_atom : Atom | EmbeddingPotential | GhostAtom | PointCharge
             new Atom object to replace the old Atom object
         index : int
             index of Atom to be replaced
@@ -611,15 +606,16 @@ class Structure:
     ) -> "Structure":
         """
         Function to generate Structure from `Atoms` object from the Atomic Simulation Environment (ASE).
+        Since ORCA and OPI do not support structures with periodic boundary conditions these are ignored.
 
         Parameters
         ----------
         ase_atoms : AseAtoms
             The object "Atoms" from ase
         charge : int | None, default = None
-            Optional charge of the molecule, will overwrite charge from ASE-like object
+            Optional charge of the molecule, will overwrite charge from ase.
         multiplicity : int | None, default = None
-            Optional multiplicity of the molecule, will overwrite multiplicity from ASE-like object
+            Optional multiplicity of the molecule, will overwrite multiplicity from ase.
 
         Returns
         ----------
