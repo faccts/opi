@@ -226,8 +226,12 @@ class Output:
             If the Path leads to no file
         """
 
+        # > If the gbw file does not exist we try to create it
         if not json_file.is_file():
-            raise FileNotFoundError(f"JSON file does not exist: {json_file}")
+            try:
+                self.create_gbw_json()
+            except:
+                raise FileNotFoundError(f"JSON file does not exist: {json_file}")
 
         with json_file.open() as f_json:
             json_data: dict[str, Any] = json.load(f_json)
