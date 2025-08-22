@@ -41,6 +41,8 @@ regarding individual and known issues with ORCA itself.
 :caption: Documentation
 :maxdepth: 2
 
+contents/versions
+contents/how_to_cite
 contents/install
 contents/api/index
 ```
@@ -67,13 +69,16 @@ contents/notebooks/adld_dftd4.ipynb
 contents/notebooks/adld_hfld.ipynb
 contents/notebooks/atomic_fukui_indices.ipynb
 contents/notebooks/ir_spectrum.ipynb
+contents/notebooks/extopt.ipynb
+contents/notebooks/opencosmors.ipynb
+contents/notebooks/moplot.ipynb
 ```
 
 ```{toctree}
 :caption: Community Examples
 :maxdepth: 1
 
-contents/notebooks/how_to_opi.ipynb
+contents/notebooks/chemeleon_orca.ipynb
 ```
 
 [documentation]: index.html
