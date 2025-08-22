@@ -69,6 +69,9 @@ contents/notebooks/adld_dftd4.ipynb
 contents/notebooks/adld_hfld.ipynb
 contents/notebooks/atomic_fukui_indices.ipynb
 contents/notebooks/ir_spectrum.ipynb
+contents/notebooks/extopt.ipynb
+contents/notebooks/opencosmors.ipynb
+contents/notebooks/moplot.ipynb
 ```
 
 ```{toctree}
