@@ -639,14 +639,14 @@ class Element(StringEnum):
         """
         if isinstance(value, str):
             value = value.upper()
-            if value in aliases:
-                value = aliases[value]
+            if value in ALIASES:
+                value = ALIASES[value]
         # > Can raise TypeError and ValueError
         return super()._missing_(value)
 
 
 # /// Alternative names for dummy atoms
-aliases = {"DA": Element.X, "XX": Element.X}
+ALIASES: dict[str, Element] = {"DA": Element.X, "XX": Element.X}
 
 ATOMIC_NUMBERS_FROM_ELEMENT: dict[Element, int] = {
     # Dummy atom
