@@ -47,9 +47,9 @@ More details about the installation can be found in the [documentation](https://
 ### ORCA and Open MPI
 
 OPI requires ORCA and for parallel calculations also Open MPI.
-Details on how to install ORCA can be found its manual or tutorials. See [Helpful Links](#Helpful-Links).
+Details on how to install ORCA can be found in its manual or tutorials. See [Helpful Links](#Helpful-Links).
 For most modern operating system Open MPI can usually be installed directly with the systems package manager.
-Otherwise, a suitable version has be obtained and compiled from their [website](https://www.open-mpi.org/).
+Otherwise, a suitable version has to be obtained and compiled from their [website](https://www.open-mpi.org/).
 
 **Note that OPI is first introduced with ORCA 6.1 and is not compatible with earlier versions.
 The minimal supported ORCA version is always stored in [ORCA_MINIMAL_VERSION](https://github.com/faccts/opi/blob/main/src/opi/__init__.py)**

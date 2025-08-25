@@ -8,11 +8,11 @@ class Cite(GetItem):
 
     Attributes
     ----------
-    ORCA2022: Paper | None, default None
+    RN231: Paper | None, default None
         Key for the ORCA 2022 paper
-    SHARK: Paper | None, default None
+    RN232: Paper | None, default None
         Key for the SHARK paper
     """
 
-    ORCA2022: Paper | None = None
-    SHARK: Paper | None = None
+    rn231: Paper | None = None
+    rn232: Paper | None = None
