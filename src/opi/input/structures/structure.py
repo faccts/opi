@@ -1,4 +1,6 @@
 import re
+from collections.abc import Iterator
+from io import StringIO
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
@@ -12,7 +14,6 @@ from rdkit.Chem.rdDistGeom import EmbedMolecule
 
 from opi.input.structures.atom import (
     Atom,
-    DummyAtom,
     EmbeddingPotential,
     GhostAtom,
     PointCharge,
@@ -24,7 +25,11 @@ __all__ = ("Structure",)
 
 
 if TYPE_CHECKING:
+    from ase import Atoms as AseAtoms  # noqa: F401
     from rdkit.Chem import Mol as RdkitMol
+
+RGX_FRAG_ID = re.compile(r"(?<=\()\d+(?=\))")
+RGX_ATOM_SYMBOL_FRAG_ID = re.compile(r"(?P<elem>[A-Za-z]{1,2})(\((?P<frag_id>\d+)\))?")
 
 
 class Structure:
@@ -33,7 +38,7 @@ class Structure:
 
     Attributes
     ----------
-    atoms: list[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge]
+    atoms: list[Atom | EmbeddingPotential | GhostAtom | PointCharge]
         Atoms in the molecule
     charge: int
         Charge of structure
@@ -47,21 +52,18 @@ class Structure:
     def __init__(
         self,
         atoms: Atom
-        | DummyAtom
         | EmbeddingPotential
         | GhostAtom
         | PointCharge
-        | Sequence[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge]
-        | Iterable[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge],
+        | Sequence[Atom | EmbeddingPotential | GhostAtom | PointCharge]
+        | Iterable[Atom | EmbeddingPotential | GhostAtom | PointCharge],
         charge: int = 0,
         multiplicity: int = 1,
         origin: Path | str | None = None,
     ) -> None:
         # // Atoms
-        self._atoms: list[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge] = []
-        self.atoms = cast(
-            list[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge], atoms
-        )
+        self._atoms: list[Atom | EmbeddingPotential | GhostAtom | PointCharge] = []
+        self.atoms = cast(list[Atom | EmbeddingPotential | GhostAtom | PointCharge], atoms)
         # // Charge
         self._charge: int
         self.charge = charge
@@ -73,24 +75,23 @@ class Structure:
         self.origin: Any | None = origin
 
     @property
-    def atoms(self) -> list[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge]:
+    def atoms(self) -> list[Atom | EmbeddingPotential | GhostAtom | PointCharge]:
         return self._atoms
 
     @atoms.setter
     def atoms(
         self,
         value: Atom
-        | DummyAtom
         | EmbeddingPotential
         | GhostAtom
         | PointCharge
-        | Sequence[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge]
-        | Iterable[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge],
+        | Sequence[Atom | EmbeddingPotential | GhostAtom | PointCharge]
+        | Iterable[Atom | EmbeddingPotential | GhostAtom | PointCharge],
     ) -> None:
         """
         Parameters
         ----------
-        value : Atom | DummyAtom| EmbeddingPotential | GhostAtom | PointCharge | Sequence[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge]| Iterable[Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge]
+        value : Atom | DummyAtom| EmbeddingPotential | GhostAtom | PointCharge | Sequence[Atom | EmbeddingPotential | GhostAtom | PointCharge]| Iterable[Atom | EmbeddingPotential | GhostAtom | PointCharge]
         """
         if not isinstance(value, (Sequence, Iterable)):
             # > Assume a single Atom object
@@ -169,7 +170,7 @@ class Structure:
 
     def add_atom(
         self,
-        new_atom: Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge,
+        new_atom: Atom | EmbeddingPotential | GhostAtom | PointCharge,
         position: int | None = None,
     ) -> None:
         """
@@ -219,14 +220,14 @@ class Structure:
             raise ValueError("Invalid index")
 
     def replace_atom(
-        self, new_atom: Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge, index: int
+        self, new_atom: Atom | EmbeddingPotential | GhostAtom | PointCharge, index: int
     ) -> None:
         """
         replaces Atom at index with a new Atom object
 
         Parameters
         ----------
-        new_atom : Atom | DummyAtom | EmbeddingPotential | GhostAtom | PointCharge
+        new_atom : Atom | EmbeddingPotential | GhostAtom | PointCharge
             new Atom object to replace the old Atom object
         index : int
             index of Atom to be replaced
@@ -323,102 +324,150 @@ class Structure:
         if not xyzfile.exists():
             raise FileNotFoundError(f"XYZ file not found: {xyzfile}")
 
-        # > Try reading the file
-        atoms = []
-        rgx_frag_id = re.compile(r"(?<=\()\d+(?=\))")
-        rgx_atom_symbol_frag_id = re.compile(r"(?P<elem>[A-Za-z]{1,2})(\((?P<frag_id>\d+)\))?")
-
         with xyzfile.open() as f_xyz:
-            # > Fetch number of atoms
+            structure = cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
+            structure.origin = xyzfile.expanduser().resolve()
+            return structure
+
+    @classmethod
+    def from_xyz_block(
+        cls,
+        xyz_string: str,
+        /,
+        *,
+        charge: int = 0,
+        multiplicity: int = 1,
+    ) -> "Structure":
+        """
+        Function for reading a xyz file from a string and converting it to a molecular Structure
+
+        Parameters
+        ----------
+        xyz_string: str
+            String that contains xyz file data
+        charge : int, default: 0
+            Charge of the molecule
+        multiplicity : int, default: 1
+            Electron spin multiplicity of the molecule
+
+        Returns
+        --------
+        Structure
+            The `Structure` object extracted from file
+        """
+        with StringIO(xyz_string) as f_xyz:
+            return cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
+
+    @classmethod
+    def from_xyz_buffer(
+        cls,
+        xyz_lines: Iterator[str],
+        *,
+        charge: int = 0,
+        multiplicity: int = 1,
+    ) -> "Structure":
+        """
+        Function for reading a xyz file from a buffer and converting it to a molecular Structure.
+
+        Parameters
+        ----------
+        xyz_lines: Iterator[str]
+            A buffer that contains xyz file data
+        charge : int, default = 0
+            Molecular charge of the structure.
+        multiplicity: int, default = 1
+            Electron spin multiplicity of the structure.
+
+        Returns
+        --------
+        The `Structure` object extracted from the buffer
+        """
+        # > Try reading the string
+        atoms = []
+
+        # > Fetch number of atoms
+        try:
+            natoms = int(next(xyz_lines).split()[0])
+        except (ValueError, IndexError, StopIteration) as err:
+            raise ValueError("Could not read number of atoms in line 1 from xyz data") from err
+        # > Skipping comment line
+        try:
+            next(xyz_lines)
+        except StopIteration as err:
+            raise ValueError("Comment line is not present in xyz data") from err
+
+        # > Read atoms
+        iline = 2
+        for line in xyz_lines:
+            iline += 1
+            # > Line should have at least 4 columns
+            atom_cols = line.split()
+            if len(atom_cols) < 4:
+                raise ValueError(f"Line {iline}: Invalidly formatted coordinate line")
+
+            # > Get atom symbol.
+            # >> First check if we have combination of atom symbol + fragment id
+            match_atom_sym_frag_id = RGX_ATOM_SYMBOL_FRAG_ID.match(line.lstrip())
+            if not match_atom_sym_frag_id:
+                raise ValueError(f"Line {iline}: Could not find atom symbol.")
+
+            atom_sym = match_atom_sym_frag_id.group("elem")
             try:
-                natoms = int(f_xyz.readline().split()[0])
+                element = Element(atom_sym)
+            except Exception as err:
+                raise ValueError(f"Line {iline}: Invalid atom symbol: {atom_sym}") from err
+
+            # > Fragment id
+            # >> First, let's assume columns 2 through 4 are the coordinates.
+            coords_cols = atom_cols[1:4]
+
+            # > Check if the fragment id follows the atom symbol directly or is in a column of its own.
+            if not (match_frag_id := match_atom_sym_frag_id.group("frag_id")):
+                if match_frag_id := RGX_FRAG_ID.match(atom_cols[1]):
+                    # > Coordinates are in columns 3 through 5
+                    coords_cols = atom_cols[2:5]
+
+            # > Convert string fragment id to integer
+            frag_id = None
+            if match_frag_id:
+                try:
+                    frag_id = int(match_frag_id)
+                except ValueError as err:
+                    raise ValueError(f"Line {iline}: Invalid fragment id: {match_frag_id}") from err
+
+            # > Pass coordinates
+            # // X
+            try:
+                coord_x = float(coords_cols[0])
             except (ValueError, IndexError) as err:
-                raise ValueError(
-                    f"Could not read number of atoms in line 1 from: {xyzfile}"
-                ) from err
+                raise ValueError(f"Line {iline}: Invalid X coordinate: {atom_cols[1]}") from err
+            # // Y
+            try:
+                coord_y = float(coords_cols[1])
+            except (ValueError, IndexError) as err:
+                raise ValueError(f"Line {iline}: Invalid Y coordinate: {atom_cols[2]}") from err
+            # // Z
+            try:
+                coord_z = float(coords_cols[2])
+            except (ValueError, IndexError) as err:
+                raise ValueError(f"Line {iline}: Invalid Z coordinate: {atom_cols[3]}") from err
 
-            # > Skipping comment line
-            f_xyz.readline()
-
-            # > Read atoms
-            # >> This is just a helper variable for error reporting. Coordinates start from line 3
-            iline = 2
-            while line := f_xyz.readline().rstrip():
-                iline += 1
-                # > Line should have at least 4 columns
-                atom_cols = line.split()
-                if len(atom_cols) < 4:
-                    raise ValueError(
-                        f"Line {iline}: Invalidly formatted coordinate line in: {xyzfile}"
-                    )
-
-                # > Get atom symbol. > Titlelizing symbol, so the first letter is capitalized, any others are in lowercase.
-                # >> First check if we have combination of atom symbol + fragment id
-                match_atom_sym_frag_id = rgx_atom_symbol_frag_id.match(line.lstrip())
-                if not match_atom_sym_frag_id:
-                    raise ValueError(f"Line {iline}: Could not find atom symbol.")
-
-                atom_sym = match_atom_sym_frag_id.group("elem")
-                try:
-                    element = Element(atom_sym)
-                except Exception as err:
-                    raise ValueError(f"Line {iline}: Invalid atom symbol: {atom_sym}") from err
-
-                # > Fragment id
-                # >> First, let's assume columns 2 through 4 are the coordinates.
-                coords_cols = atom_cols[1:4]
-
-                # > Check if the fragment id follows the atom symbol directly or is in a column of its own.
-                if not (match_frag_id := match_atom_sym_frag_id.group("frag_id")):
-                    if match_frag_id := rgx_frag_id.match(atom_cols[1]):
-                        # > Coordinates are in columns 3 through 5
-                        coords_cols = atom_cols[2:5]
-
-                # > Convert string fragment id to integer
-                frag_id = None
-                if match_frag_id:
-                    try:
-                        frag_id = int(match_frag_id)
-                    except ValueError as err:
-                        raise ValueError(
-                            f"Line {iline}: Invalid fragment id: {match_frag_id}"
-                        ) from err
-
-                # > Pass coordinates
-                # // X
-                try:
-                    coord_x = float(coords_cols[0])
-                except (ValueError, IndexError):
-                    raise ValueError(f"Line {iline}: Invalid X coordinate: {coords_cols[1]}")
-                # // Y
-                try:
-                    coord_y = float(coords_cols[1])
-                except (ValueError, IndexError):
-                    raise ValueError(f"Line {iline}: Invalid Y coordinate: {coords_cols[2]}")
-                # // Z
-                try:
-                    coord_z = float(coords_cols[2])
-                except (ValueError, IndexError) as err:
-                    raise ValueError(f"Line {iline}: Invalid Z coordinate: {atom_cols[3]}") from err
-
-                # > Adding atom
-                atoms.append(
-                    Atom(
-                        element=element,
-                        coordinates=Coordinates(coordinates=(coord_x, coord_y, coord_z)),
-                        fragment_id=frag_id,
-                    )
+            # > Adding atom
+            atoms.append(
+                Atom(
+                    element=element,
+                    coordinates=Coordinates(coordinates=(coord_x, coord_y, coord_z)),
+                    fragment_id=frag_id,
                 )
-            # << END OF LOOP
-        # << END of WITH
+            )
+        # << END OF LOOP
 
         # > Check number of atoms declared in file agrees with apparent number of atoms.
         if natoms != len(atoms):
-            raise ValueError(f"{natoms} were expected but {len(atoms)} were found in: {xyzfile}")
+            raise ValueError(f"{natoms} were expected but {len(atoms)} were found")
 
         return Structure(
             atoms=atoms,
-            origin=xyzfile.expanduser().resolve(),
             charge=charge,
             multiplicity=multiplicity,
         )
@@ -550,3 +599,149 @@ class Structure:
 
     def __len__(self) -> int:
         return len(self.atoms)
+
+    @classmethod
+    def from_ase(
+        cls, ase_atoms: "AseAtoms", *, charge: int | None = None, multiplicity: int | None = None
+    ) -> "Structure":
+        """
+        Function to generate Structure from `Atoms` object from the Atomic Simulation Environment (ASE).
+        Since ORCA and OPI do not support structures with periodic boundary conditions these are ignored.
+
+        Parameters
+        ----------
+        ase_atoms : AseAtoms
+            The object "Atoms" from ase
+        charge : int | None, default = None
+            Optional charge of the molecule, will overwrite charge from ase.
+        multiplicity : int | None, default = None
+            Optional multiplicity of the molecule, will overwrite multiplicity from ase.
+
+        Returns
+        ----------
+        Structure
+            The Structure object generated from AseAtoms object
+
+        Raises
+        ----------
+        ValueError
+            If the ASE object does not include a usable structure.
+        """
+        symbols = ase_atoms.get_chemical_symbols()
+
+        # > Try to get the positions from AseAtoms object as Numpy array.
+        try:
+            positions = np.asarray(ase_atoms.get_positions(), dtype=np.float64)
+        except (TypeError, ValueError) as err:
+            raise TypeError("Could not convert positions to a float64 NumPy array") from err
+
+        # > Check that the positions array has at least two dimensions
+        if positions.ndim < 2:
+            raise TypeError("Positions array has to be at least two-dimensional")
+
+        # > Check that the number of element symbols matches the number of atomic coordinates
+        if len(symbols) != positions.shape[0]:
+            raise ValueError(f"{len(symbols)} symbols and {positions.shape[0]} positions")
+
+        atoms = []
+        # > Build a list of atoms from element symbols and positions
+        for iatom, ase_atom in enumerate(zip(symbols, positions)):
+            symbol, raw_position = ase_atom
+            # > Indicate the type for static type checking with mypy
+            position = np.asarray(raw_position, dtype=np.float64)
+
+            # > Get Element symbol
+            try:
+                element = Element(symbol)
+            except (ValueError, IndexError):
+                raise ValueError(f"Atom {iatom}: Could not convert {ase_atom[0]} to element symbol")
+
+            coords_cols: list[float] = position.tolist()
+
+            if len(coords_cols) < 3:
+                raise ValueError(f"Invalid coordinates for atom number: {iatom}")
+
+            # > Pass coordinates
+            # // X
+            try:
+                coord_x = float(coords_cols[0])
+            except (ValueError, IndexError) as err:
+                raise ValueError(f"Atom {iatom}: Invalid X coordinate") from err
+            # // Y
+            try:
+                coord_y = float(coords_cols[1])
+            except (ValueError, IndexError) as err:
+                raise ValueError(f"Atom {iatom}: Invalid Y coordinate") from err
+            # // Z
+            try:
+                coord_z = float(coords_cols[2])
+            except (ValueError, IndexError) as err:
+                raise ValueError(f"Atom {iatom}: Invalid Z coordinate") from err
+
+            # > Adding atom
+            atoms.append(
+                Atom(
+                    element=element,
+                    coordinates=Coordinates(coordinates=(coord_x, coord_y, coord_z)),
+                )
+            )
+
+        # > Get charge if not supplied
+        if charge is None:
+            charges = ase_atoms.get_initial_charges()
+            charge = int(round(np.sum(charges)))
+
+        # > Get magnetic moment if no multiplicity supplied
+        if multiplicity is None:
+            magmoms = ase_atoms.get_initial_magnetic_moments()
+            total_magnetization = np.sum(magmoms)
+            spin = int(round(abs(total_magnetization)))
+            multiplicity = spin + 1
+
+        return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)
+
+    @classmethod
+    def from_lists(
+        cls,
+        symbols: list[str | int],
+        coordinates: list[tuple[float, float, float]],
+        charge: int = 0,
+        multiplicity: int = 1,
+    ) -> "Structure":
+        """
+        Function for generating the Structure object from symbols and position lists. They are required to have the
+        same length and need fulfill the typing.
+
+        Parameters
+        ----------
+        symbols : list[str | int]
+            List of symbols for elements, either as string or as atomic number
+        coordinates: list[tuple[float, float, float]]
+            List of tuples containing coordinates
+        charge : int, default = 0
+            Optional charge for the structure
+        multiplicity : int, default = 1
+            Optional multiplicity for the structure
+
+        Returns
+        ----------
+        Structure
+            The Structure object initialized from given lists.
+
+        """
+        atoms = []
+        if len(symbols) != len(coordinates):
+            raise ValueError(f"{len(symbols)} symbols and {len(coordinates)} coordinates")
+
+        for element, coords in zip(symbols, coordinates):
+            if isinstance(element, int):
+                element = Element.from_atomic_number(element)
+            elif isinstance(element, str):
+                element = Element(element)
+            else:
+                raise ValueError(f"{element} cannot be converted to an element.")
+            # > assert to make mypy happy
+            assert isinstance(element, Element)
+            atoms.append(Atom(element=element, coordinates=coords))
+
+        return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)

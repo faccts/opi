@@ -524,6 +524,32 @@ class Output:
         except FileNotFoundError:
             return False
 
+    def print_graph(self, *, max_length: int = 3, depth: int = -1) -> None:
+        """
+        Prints a graph of the available properties in the output
+
+        Parameters
+        -------
+        max_length : int, default = 3
+            Maximum length of lists displayed in the graph printout
+        depth : int, default = -1
+            Maximum depth of the output tree that is printed. With the default -1 everything is printed.
+
+        """
+        print("Printing graph of property results:")
+        if self.results_properties is not None:
+            print(self.results_properties.graph(depth, max_list_length=max_length))
+        else:
+            print("No property results are available!")
+
+        print("Printing graph of gbw results:")
+        if self.results_gbw is not None:
+            for i, result_gbw in enumerate(self.results_gbw):
+                print(f"gbw results [{i}]:")
+                print(result_gbw.graph(depth, max_list_length=max_length))
+        else:
+            print("No gbw results are available!")
+
     def run_orca_plot(
         self, stdin_list: list[str], *, gbw_file: Path | None = None, timeout: int = -1
     ) -> None:
