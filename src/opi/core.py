@@ -315,16 +315,12 @@ class Calculator:
         runner = self._create_runner()
         runner.create_jsons(self.basename, force=force)
 
-    def get_output(self, create_gbw_json: bool = False) -> "Output":
+    def get_output(self) -> "Output":
         """
         Get an instance of `Output` setup for the current job.
         Can be called before execution of job.
-
-        Parameters
-        ----------
-        create_gbw_json : bool, default: False
-            Call orca2json to generate the gbw json file. Required for results with multiple gbw files, e.g., scans
         """
         return Output(
-            basename=self.basename, working_dir=self.working_dir, create_gbw_json=create_gbw_json
+            basename=self.basename,
+            working_dir=self.working_dir,
         )
