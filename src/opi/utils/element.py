@@ -7,6 +7,8 @@ class Element(StringEnum):
     When an element is required as an input, it is to be selected from this class to avoid user error
     """
 
+    # /// DUMMY ATOM (see ALIASES below)
+    X = "X"
     # /// HYDROGEN
     HYDROGEN = "H"
     H = "H"
@@ -380,6 +382,8 @@ class Element(StringEnum):
         ValueError: Is raised if atomic number is out of range.
         """
         match atomic_number:
+            case 0:
+                return cls.X
             case 1:
                 return cls.HYDROGEN
             case 2:
@@ -623,8 +627,30 @@ class Element(StringEnum):
     def atomic_number(self) -> int:
         return ATOMIC_NUMBERS_FROM_ELEMENT[self]
 
+    @classmethod
+    def _missing_(cls, value: object, /) -> "Element":
+        """
+        Check if the given symbol is an alias. If so use the original symbol for the base method.
+
+        Raises
+        ------
+        TypeError: If input value cannot be cast to string.
+        ValueError: If input value is not part of the Enum.
+        """
+        if isinstance(value, str):
+            value = value.upper()
+            if value in ALIASES:
+                value = ALIASES[value]
+        # > Can raise TypeError and ValueError
+        return super()._missing_(value)
+
+
+# /// Alternative names for dummy atoms
+ALIASES: dict[str, Element] = {"DA": Element.X, "XX": Element.X}
 
 ATOMIC_NUMBERS_FROM_ELEMENT: dict[Element, int] = {
+    # Dummy atom
+    Element.X: 0,
     # 1–10
     Element.H: 1,
     Element.HYDROGEN: 1,

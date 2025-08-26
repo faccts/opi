@@ -72,6 +72,7 @@ lint = [
     "ruff>=0.11.12",
 ]
 type-check = [
+    "ase-stubs>=0.0.2",
     "mypy>=1.16.0,<2",
     "rdkit-stubs>=0.8",
 ]

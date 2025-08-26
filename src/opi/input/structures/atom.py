@@ -6,7 +6,7 @@ import numpy.typing as npt
 from opi.input.structures.coordinates import Coordinates
 from opi.utils.element import Element
 
-__all__ = ("Atom", "GhostAtom", "DummyAtom", "PointCharge", "EmbeddingPotential")
+__all__ = ("Atom", "GhostAtom", "PointCharge", "EmbeddingPotential")
 
 FMT_COORD = "30.16f"
 
@@ -282,17 +282,6 @@ class Atom(_CoordLineWithElementBase):
         if not value:
             raise ValueError(f"{self.__class__.__name__}.element: cannot be empty")
         self._element = Element(value)
-
-
-class DummyAtom(_CoordLineWithElementBase):
-    """
-    Class to model dummy atom.
-    """
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-
-        self._element: Any | None = "DA"
 
 
 class GhostAtom(Atom):
