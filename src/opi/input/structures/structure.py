@@ -132,6 +132,16 @@ class Structure:
 
     @property
     def nelectrons(self) -> int:
+        """
+        Returns the number of electrons based on the cardinal numbers of atoms in the structure and the overall
+        molecular charge. Note that the number of electrons returned by this function can be negative and should be
+        checked!
+
+        Parameters
+        ----------
+        nelectrons : int
+            Returns the number of electrons based on the
+        """
         nelectrons = 0
         for atom in self.atoms:
             if isinstance(atom, Atom):
@@ -141,10 +151,12 @@ class Structure:
 
     @property
     def nelec_is_odd(self) -> bool:
+        """Returns a boolean indicating if the number of electrons is odd. Does not check for negative electrons."""
         return self.nelectrons % 2 == 1
 
     @property
     def nelec_is_even(self) -> bool:
+        """Returns a boolean indicating if the number of electrons is even. Does not check for negative electrons."""
         return self.nelectrons % 2 == 0
 
     @classmethod
