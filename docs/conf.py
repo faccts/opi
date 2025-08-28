@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os
+import sys
+from subprocess import check_output, CalledProcessError, TimeoutExpired
+from pathlib import Path
+import traceback
 
 from docutils import nodes
 from sphinx.transforms import SphinxTransform
+from semantic_version import Version
 
 # needs_sphinx = '1.0'
 
@@ -63,10 +68,35 @@ project = "ORCA Python Interface Documentation"
 copyright = "2025, FACCTs"
 author = "FACCTs"
 
+
+origin = Path(__file__).resolve().parent
+full_version = ""
 # > The short X.Y version.
-version = "1.0"
-# > The full version, including alpha/beta/rc tags.
-release = "1.0"
+version_short = ""
+# > Using "main" as fallback
+release_branch = "main"
+try:
+    output = check_output(
+        ["git", "--no-advice", "--no-pager", "describe", "--always"],
+        timeout=5,
+        cwd=origin,
+        text=True,
+    )
+except (CalledProcessError, TimeoutExpired, OSError):
+    traceback.print_exc()
+    sys.exit(1)
+else:
+    try:
+        full_version = Version(version_string=output.strip().removeprefix("v"))
+        # > The short X.Y version.
+        version_short = f"{full_version.major}.{full_version.minor}"
+        # > If version is '1.0.0-*' assume we are on "main" branch or some feature branch based off "main" directly
+        if not (full_version.major == 1 and full_version.minor == 0 and full_version.patch == 0):
+            release_branch = f"release/{version_short}"
+    except:
+        traceback.print_exc()
+        sys.exit(1)
+
 
 # > Language
 language = "English"
@@ -98,10 +128,6 @@ suppress_warnings = [
 ]
 
 # > -- Options for HTML output ----------------------------------------------
-
-html_title = f"OPI {version} Docs"
-html_logo = "img/assets/opi_logo_thumbnail.svg"
-
 # > The theme to use for HTML and HTML Help pages.  See the documentation for
 # > a list of builtin themes.
 html_theme = "furo"
@@ -109,7 +135,7 @@ html_theme = "furo"
 # > Theme options are theme-specific and customize the look and feel of a theme
 # > further.  For a list of options available for each theme, see the
 # > documentation.
-html_title = f"OPI {version} Docs"
+html_title = f"OPI {version_short} Docs"
 html_logo = "img/assets/opi_logo_thumbnail.svg"
 
 html_show_sphinx = False
@@ -208,7 +234,7 @@ class InjectNotebookButtons(SphinxTransform):
         html = ""
         if docname.startswith("contents/notebooks/"):
             ipynb_file = f"_static/{docname}.ipynb"
-            github_url = f"https://github.com/faccts/opi/blob/main/docs/{docname}.ipynb"
+            github_url = f"https://github.com/faccts/opi/blob/{release_branch}/docs/{docname}.ipynb"
             html = f"""
             <div class="button-row">
                 <a href="{github_url}" class="orca-btn">View on GitHub <i class="fab fa-github"></i></a>
