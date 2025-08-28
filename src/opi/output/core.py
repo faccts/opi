@@ -110,6 +110,11 @@ class Output:
             True: Create (if turned on by `create_gbw_json/create_property_json`) and parse JSONs files at the end of the initialization.
             False: Only return an Output object. In order to use the object to access the JSON data,
                    `Output.parse()` has to be called first.
+
+        Raises
+        ----------
+        FileExistsError
+            If multi-gbw files from different multi-gbw runs exist (e.g., scan and neb).
         """
         self.basename = basename
         self.do_version_check = version_check
@@ -146,32 +151,41 @@ class Output:
     ) -> None:
         """
         Create property- and gbw-JSON file (according to `do_create_property_json` and `do_create_gbw_json`).
-        Creates the required files with the default `None`.
-        Skips the parsing for the gbw or prop json file when the respective bool is false. It defaults to True.
+        Creates the required files with the default `None` without overwriting any JSON files.
 
         Parameters
         ----------
         do_create_property_json: bool | None, default: None
-            Whether to create the property json files. If None only missing files are created. Default is None.
+            Whether to create the property JSON file. If None, the file is only created if it is missing. If True,
+            the existing file will be overwritten. If False, the file will not be created. Default is None.
         do_create_gbw_json: bool | None, default: None
-            Whether to create the gbw json files. If None only missing files are created. Default is None.
+            Whether to create the gbw JSON files. If None, the files are only created if they are missing. If True,
+            the existing files will be overwritten. If False, the files will not be created. Default is None.
         read_prop_json: bool, default: True
-            Whether or not to read the property JSON file
+            Whether to read the property JSON file. If True, the file will be read. If False, the file will not
+            be read. If the file should be read but is not present, a FileNotFoundError is raised.
         read_gbw_json: bool, default: True
-            Whether or not to read the gbw JSON file
+            Whether to read the gbw JSON files. If True, the base gbw JSON file and any gbw JSON files from multi gbw
+            runs (e.g., scan or neb) will be read. If False, none of these files will be read.
+            If any of the JSON files that should be read are not present, a FileNotFoundError is raised.
+
+        Raises
+        ----------
+        FileNotFoundError
+            If any JSON file should be read that is not present.
         """
         # // Create JSONs files
         # // GBW JSON files
         if do_create_gbw_json is None:
             self.create_missing_gbw_json()
         elif do_create_gbw_json:
-            self.create_gbw_json()
+            self.create_gbw_json(force=True)
 
         # // Property JSON file
         if do_create_property_json is None:
             self.create_missing_property_json()
         elif do_create_property_json:
-            self.create_property_json()
+            self.create_property_json(force=True)
 
         # // PARSE JSONS
         # // Property JSON
@@ -336,6 +350,11 @@ class Output:
         ----------
         list[Path]
             Returns list of indexed gbw files, e.g., from relaxed surface scan or neb calculation
+
+        Raises
+        ----------
+        FileExistsError
+            If multi-gbw files from scan and neb calculations exist.
         """
 
         # // Get path to main gbw/json file
@@ -404,12 +423,28 @@ class Output:
         """Create a `Runner` object passing on `self.working_dir`."""
         return Runner(working_dir=self.working_dir)
 
-    def create_missing_gbw_json(self, *, config: dict[str, Any] | None = None) -> None:
-        """Check if gbw JSON files are available and try to create missing files"""
+    def create_missing_gbw_json(self, *, config: dict[str, Any] | None = None) -> bool:
+        """
+        Check if gbw JSON files are available and try to create missing files
+
+        Parameters
+        ----------
+        config : dict[str | Any] | None, default = None
+            Determine contents of gbw-json file.
+            For details about the configuration refer to the ORCA manual "9.3.2 Configuration file"
+
+        Returns
+        ----------
+        was_create : bool
+            A boolean indicating if any file was created.
+        """
         # // loop over files, check if present and create if missing
+        was_created = False
         for index, file in enumerate(self.gbw_json_files):
             if not file.is_file():
                 self.create_gbw_json(config=config, gbw_index=index)
+                was_created = True
+        return was_created
 
     def create_gbw_json(
         self,
@@ -449,12 +484,19 @@ class Output:
             runner = self._create_runner()
             runner.create_gbw_json(basename, config=config, force=force)
 
-    def create_missing_property_json(self) -> None:
+    def create_missing_property_json(self) -> bool:
         """
         Check if the property json file is available and try to create it if it is missing.
+
+        Returns
+        ----------
+        was_create : bool
+            A boolean indicating if the file was created.
         """
         if not self.property_json_file.is_file():
             self.create_property_json()
+            return True
+        return False
 
     def create_property_json(self, *, force: bool = False) -> None:
         """
