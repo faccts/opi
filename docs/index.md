@@ -82,6 +82,7 @@ contents/notebooks/extrapolate_cps_cbs.ipynb
 contents/notebooks/extrapolate_ep1.ipynb
 contents/notebooks/wb97m2.ipynb
 contents/notebooks/chemeleon_orca.ipynb
+contents/notebooks/deep_learning_barrier_heights.ipynb
 ```
 
 [documentation]: index.html
