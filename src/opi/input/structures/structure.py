@@ -137,7 +137,7 @@ class Structure:
         molecular charge. Note that the number of electrons returned by this function can be negative and should be
         checked!
 
-        Parameters
+        Returns
         ----------
         nelectrons : int
             Returns the number of electrons based on the
