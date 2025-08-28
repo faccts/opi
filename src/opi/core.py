@@ -43,7 +43,11 @@ class Calculator:
     """
 
     def __init__(
-        self, basename: str, working_dir: Path | str | PathLike[str] | None = None
+        self,
+        basename: str,
+        working_dir: Path | str | PathLike[str] | None = None,
+        *,
+        version_check: bool = True,
     ) -> None:
         """
         Parameters
@@ -52,6 +56,9 @@ class Calculator:
             Basename of the calculation. Each file created by ORCA starts with this prefix.
         working_dir : Path | str | None, default=None
             Optional working direction. Is passed on to `Runner` and `Output` classes.
+        version_check : bool, default: True
+            Check ORCA's binary version upon initialization.
+            Important: May create significant computational overhead if many `Calculators` are initialized concurrently.
         """
 
         # -----------------------------
@@ -84,6 +91,13 @@ class Calculator:
         # > ORCA INPUT
         # -----------------------------
         self._input: Input = Input()
+
+        # ----------------------------
+        # > BINARY VERSION CHECK
+        # ----------------------------
+        if version_check:
+            # > Raises RuntimeError if version is not compatible or cannot be determined.
+            self.check_version()
 
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     # PROPERTIES
@@ -324,3 +338,19 @@ class Calculator:
             basename=self.basename,
             working_dir=self.working_dir,
         )
+
+    def check_version(self) -> None:
+        """
+        Check if the ORCA version of the binary is compatible with the current OPI version.
+        Soft-wrapper around Runner.check_version().
+
+        Raises
+        ------
+        RuntimeError: If version could not be determined or is not compatible.
+        """
+        runner = self._create_runner()
+        # > Can raise RuntimeError
+        try:
+            runner.check_version(ignore_errors=False)
+        except RuntimeError:
+            raise
