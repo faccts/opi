@@ -15,10 +15,13 @@ from contextlib import nullcontext
 from enum import StrEnum
 from io import TextIOWrapper
 from pathlib import Path
+from subprocess import CompletedProcess
 from typing import Any, Callable, Sequence, TypeVar, cast
 
+from opi import ORCA_MINIMAL_VERSION
 from opi.utils.config import get_config
-from opi.utils.misc import add_to_env, delete_empty_file
+from opi.utils.misc import add_to_env, check_minimal_version, delete_empty_file
+from opi.utils.orca_version import OrcaVersion
 
 
 class OrcaBinary(StrEnum):
@@ -189,6 +192,8 @@ class Runner:
         ------
         FileNotFound:
           Error if path to ORCA binary cannot be resolved.
+        subprocess.TimeoutExpired:
+            If `timeout>-1` and the process times out.
         """
 
         # ------------------------------------------------------------
@@ -359,6 +364,81 @@ class Runner:
             silent=silent,
             timeout=timeout,
         )
+
+    def get_version(self) -> OrcaVersion | None:
+        """
+        Get the ORCA version from the main ORCA binary.
+
+        Returns
+        -------
+        OrcaVersion:
+            Version of the ORCA.
+        None:
+            If the version could not be determined.
+        """
+
+        try:
+            # > May raise subprocess.TimeoutExpired
+            orca_proc = self.run(OrcaBinary.ORCA, ["--version"], capture=True, timeout=5)
+
+            # > Pleasing type checker
+            assert isinstance(orca_proc, CompletedProcess)
+            return OrcaVersion.from_output(orca_proc.stdout)
+
+        except (subprocess.TimeoutExpired, ValueError, AssertionError):
+            return None
+
+    def check_version(self, *, ignore_errors: bool = False) -> bool | None:
+        """
+        Check if the ORCA version of the binary is compatible with the current OPI version.
+
+        Parameters
+        ----------
+        ignore_errors : bool, default: False
+            False: Raises RuntimeError if version is not compatible or could not be determined.
+            True: Return True if version is compatible, else return False. Also if the version could not be determined.
+
+        Returns
+        -------
+        bool :
+            True: If version is compatible.
+            False: If version is not compatible.
+        None :
+            If version could not be determined.
+
+        Raises
+        ------
+        RuntimeError: If `ignore_errors` is False and version is not compatible or could not be determined.
+        """
+
+        orca_vers = self.get_version()
+
+        # > Path as string to ORCA binary
+        try:
+            orca_bin_str = f"\nORCA binary: {self.get_orca_binary(OrcaBinary.ORCA)}"
+        except FileNotFoundError:
+            orca_bin_str = ""
+
+        if orca_vers is None:
+            if ignore_errors:
+                return None
+            else:
+                raise RuntimeError(
+                    f"Could not determine version of ORCA binary."
+                    f" Make sure ORCA is installed and configured correctly."
+                    f" Minimally required ORCA version: {ORCA_MINIMAL_VERSION}{orca_bin_str}"
+                )
+
+        elif not check_minimal_version(orca_vers):
+            if ignore_errors:
+                return False
+            else:
+                raise RuntimeError(
+                    f"ORCA version {orca_vers} is not supported. Make sure to install at least version:"
+                    f" {ORCA_MINIMAL_VERSION}{orca_bin_str}"
+                )
+        else:
+            return True
 
     @staticmethod
     def _determine_orca_paths(orca_path: Path, /) -> tuple[Path, Path]:

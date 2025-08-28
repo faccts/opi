@@ -29,7 +29,7 @@ if __name__ == "__main__":
     calc.write_input()
     calc.run()
 
-    output = calc.get_output(create_gbw_json=True)
+    output = calc.get_output()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
         sys.exit(1)

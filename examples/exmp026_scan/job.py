@@ -29,7 +29,7 @@ if __name__ == "__main__":
     calc_bond.input.add_blocks(BlockGeom(scan="B  0  1 = 1.1, 2.1, 5"))
     calc_bond.write_input()
     calc_bond.run()
-    output_bond = calc_bond.get_output(create_gbw_json=True)
+    output_bond = calc_bond.get_output()
     output_bond.parse()
 
     # > Print hl gap for scan
