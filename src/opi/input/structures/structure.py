@@ -140,7 +140,7 @@ class Structure:
         Returns
         ----------
         nelectrons : int
-            Returns the number of electrons based on the
+            Returns the number of electrons for the structure. Can be negative!
         """
         nelectrons = 0
         for atom in self.atoms:
