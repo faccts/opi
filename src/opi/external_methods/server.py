@@ -9,20 +9,21 @@ from typing import Any
 from opi.external_methods.process import Process
 
 
+class ServerStatus(Enum):
+    RUNNING = "running"
+    PORT_IN_USE = "port_in_use"
+    ALREADY_RUNNING = "already_running"
+    EXEC_NOT_FOUND = "exec_not_found"
+    INVALID_ARGS = "invalid_args"
+    SUBPROCESS_ERROR = "subprocess_error"
+    OS_ERROR = "os_error"
+    BOOT_TIMEOUT = "boot_timeout"
+
+
 class OpiServer:
     """
     Class for running a server from a file using a network socket.
     """
-
-    class ServerStatus(Enum):
-        RUNNING = "running"
-        PORT_IN_USE = "port_in_use"
-        ALREADY_RUNNING = "already_running"
-        EXEC_NOT_FOUND = "exec_not_found"
-        INVALID_ARGS = "invalid_args"
-        SUBPROCESS_ERROR = "subprocess_error"
-        OS_ERROR = "os_error"
-        BOOT_TIMEOUT = "boot_timeout"
 
     def __init__(self, serverpath: str, host_id: str = "127.0.0.1", port: int = 8888):
         """
@@ -100,7 +101,7 @@ class OpiServer:
         """
         # First check, whether server.port is free
         if self.server_port_in_use():
-            return self.ServerStatus.PORT_IN_USE
+            return ServerStatus.PORT_IN_USE
         else:
             # Start server by running a python process
             # Therefore, first set up the command line call for the server script
@@ -115,15 +116,15 @@ class OpiServer:
             try:
                 self.process.start(cmd)
             except self.process.ProcessAlreadyRunningError:
-                return self.ServerStatus.ALREADY_RUNNING
+                return ServerStatus.ALREADY_RUNNING
             except FileNotFoundError:
-                return self.ServerStatus.EXEC_NOT_FOUND
+                return ServerStatus.EXEC_NOT_FOUND
             except ValueError:
-                return self.ServerStatus.INVALID_ARGS
+                return ServerStatus.INVALID_ARGS
             except subprocess.SubprocessError:
-                return self.ServerStatus.SUBPROCESS_ERROR
+                return ServerStatus.SUBPROCESS_ERROR
             except OSError:
-                return self.ServerStatus.OS_ERROR
+                return ServerStatus.OS_ERROR
 
         # Wait until the port is reachable
         if not self._wait_for_port(self._host_id, self._port, timeout=max_boot_time):
@@ -132,9 +133,9 @@ class OpiServer:
                 self.process.stop_process()
             finally:
                 pass
-            return self.ServerStatus.BOOT_TIMEOUT
+            return ServerStatus.BOOT_TIMEOUT
 
-        return self.ServerStatus.RUNNING
+        return ServerStatus.RUNNING
 
     def kill_server(self) -> None:
         """
@@ -227,7 +228,7 @@ class CalcServer:
         with Client(address) as conn:
             conn.send({"type": "setup_calculator", "calculator": self._calculator})
 
-    def start_server(self, exe: str = sys.executable) -> OpiServer.ServerStatus:
+    def start_server(self, exe: str = sys.executable) -> ServerStatus:
         """
         Start the server.
 
