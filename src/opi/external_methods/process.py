@@ -3,21 +3,23 @@ from enum import Enum
 from typing import Any
 
 
+# Error type definitions
+class ProcessAlreadyRunningError(Exception):
+    """Raised when start() is called while a process is already running."""
+
+
+class ProcessStatus(Enum):
+    NOT_RUNNING = "not_running"
+    RUNNING = "running"
+    SOFT_KILLED = "soft_killed"
+    HARD_KILLED = "hard_killed"
+    ERROR = "error"
+
+
 class Process:
     """
     Class that runs a process, monitors it and terminates it.
     """
-
-    # Error type definitions
-    class ProcessAlreadyRunningError(Exception):
-        """Raised when start() is called while a process is already running."""
-
-    class ProcessStatus(Enum):
-        NOT_RUNNING = "not_running"
-        RUNNING = "running"
-        SOFT_KILLED = "soft_killed"
-        HARD_KILLED = "hard_killed"
-        ERROR = "error"
 
     def __init__(self) -> None:
         """
@@ -52,7 +54,7 @@ class Process:
         """
         # Check if process running
         if self.process_is_running():
-            raise self.ProcessAlreadyRunningError
+            raise ProcessAlreadyRunningError
 
         pipe_kwargs: dict[str, Any] = {}
         if pipe:
@@ -83,21 +85,21 @@ class Process:
             Indicates how the process was stopped:
         """
         if not self.process_is_running():
-            return self.ProcessStatus.NOT_RUNNING
+            return ProcessStatus.NOT_RUNNING
         if self.process:
             proc = self.process
             proc.terminate()
             try:
                 proc.wait(timeout=30)
-                return self.ProcessStatus.SOFT_KILLED
+                return ProcessStatus.SOFT_KILLED
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait()
-                return self.ProcessStatus.HARD_KILLED
+                return ProcessStatus.HARD_KILLED
             finally:
                 self.process = None
         else:
-            return self.ProcessStatus.ERROR
+            return ProcessStatus.ERROR
 
     def process_is_running(self) -> bool:
         """

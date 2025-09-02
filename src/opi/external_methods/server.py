@@ -6,7 +6,7 @@ from enum import Enum
 from multiprocessing.connection import Client
 from typing import Any
 
-from opi.external_methods.process import Process
+from opi.external_methods.process import Process, ProcessAlreadyRunningError
 
 
 class ServerStatus(Enum):
@@ -115,7 +115,7 @@ class OpiServer:
             # Start the server
             try:
                 self.process.start(cmd)
-            except self.process.ProcessAlreadyRunningError:
+            except ProcessAlreadyRunningError:
                 return ServerStatus.ALREADY_RUNNING
             except FileNotFoundError:
                 return ServerStatus.EXEC_NOT_FOUND
