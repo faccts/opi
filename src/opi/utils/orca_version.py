@@ -12,14 +12,14 @@ class OrcaVersion(Version):  # type: ignore
 
     RGX_VERSION = re.compile(
         # major version
-        r"(?P<major>\d+)"  
+        r"(?P<major>\d+)"
         # minor version
-        r"\.(?P<minor>\d+)"  
+        r"\.(?P<minor>\d+)"
         r"("
         # micro version [optional]
         r"\.(?P<micro>\d+)"
         # bugfix version [optional]
-        r"(-(?P<bugfix>f\.\d+))?"  
+        r"(-(?P<bugfix>f\.\d+))?"
         r")?",
         re.VERBOSE | re.IGNORECASE,
     )
