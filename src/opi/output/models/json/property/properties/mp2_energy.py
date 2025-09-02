@@ -10,9 +10,9 @@ class Mp2EnergyBase(Energy):
 
     Attributes
     ----------
-    refenergy: StrictFiniteFloat
+    refenergy: StrictFiniteFloat | None, default = None
         Reference energy
-    correnergy: StrictFiniteFloat
+    correnergy: StrictFiniteFloat | None, default = None
         MP2 correlation energy
     """
 

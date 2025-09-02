@@ -13,27 +13,27 @@ class EnergyExtrapolation(GetItem):
 
     Attributes
     ----------
-    doep1: StrictBool
+    doep1: StrictBool | None, default = None
         Do extrapolation with one method
-    doep2: StrictBool
+    doep2: StrictBool | None, default = None
         Do extrapolation with two methods and the same basis set
-    doep3: StrictBool
+    doep3: StrictBool | None, default = None
         Do extrapolation with two methods and three basis sets
-    dogradients: StrictBool
+    dogradients: StrictBool | None, default = None
         Extrapolate energy gradient
-    numofenergies: StrictPositiveInt
+    numofenergies: StrictPositiveInt | None, default = None
         How many energies are used
-    scfenergies: list[list[StrictFiniteFloat]]
+    scfenergies: list[list[StrictFiniteFloat]] | None, default = None
         list of the used energies
-    scfcbs: StrictFiniteFloat
+    scfcbs: StrictFiniteFloat | None, default = None
         SCF Energy extrapolated for complete basis set
-    correnergies: list[list[StrictFiniteFloat]]
+    correnergies: list[list[StrictFiniteFloat]] | None, default = None
         Used correlation energies
-    corrcbs: StrictFiniteFloat
+    corrcbs: StrictFiniteFloat | None, default = None
         Extrapolated correlation energy for correlation energy
-    ccsdtenergyx: StrictFiniteFloat default = None
+    ccsdtenergyx: StrictFiniteFloat | None, default = None
         CCSD(T] energy extrapolation, not used if only doep1 = true
-    totalcbs: StrictFiniteFloat
+    totalcbs: StrictFiniteFloat | None, default = None
         Total extrapolated energy
     """
 

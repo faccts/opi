@@ -7,8 +7,9 @@ __all__ = ("ForceField",)
 
 
 class ForceField(SimpleKeywordBox):
-    """Enum to store all simple keywords of type ForceField"""
+    """Enum to store all simple keywords of type ForceField."""
 
-    GFN_FF = SimpleKeyword("gfn-ff")  # GFN-FF (external) alias is xtb-ff
-    MM = SimpleKeyword("mm")  # Use external molecular mechanics
-    SURFF = SimpleKeyword("surff")  # Use SURFF
+    GFN_FF = SimpleKeyword("gfn-ff")
+    """SimpleKeyword: GFN-FF (external) alias is xtb-ff."""
+    MM = SimpleKeyword("mm")
+    """SimpleKeyword: Use external molecular mechanics."""

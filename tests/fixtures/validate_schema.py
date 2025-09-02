@@ -7,15 +7,15 @@ import pytest
 from jsonschema import ValidationError as SchemaValidationError
 from jsonschema import validate
 
-from opi.output.models.json.gbw.properties.atom import Atoms
+from opi.output.models.json.gbw.properties.atoms import Atoms
 from opi.output.models.json.gbw.properties.base import Base
 from opi.output.models.json.gbw.properties.cite import Cite
 from opi.output.models.json.gbw.properties.header import OrcaHeader
+from opi.output.models.json.gbw.properties.mo import MO
 from opi.output.models.json.gbw.properties.molecular_orbitals import (
     MolecularOrbitals,
 )
 from opi.output.models.json.gbw.properties.molecule import Molecule
-from opi.output.models.json.gbw.properties.mos import MO
 from opi.output.models.json.gbw.properties.paper import Paper
 from opi.output.models.json.gbw.properties.tddft import TdDft
 from opi.output.models.json.property.properties.auto_ci_energy import AutoCiEnergy
@@ -33,28 +33,30 @@ from opi.output.models.json.property.properties.chem_shift import (
 )
 from opi.output.models.json.property.properties.ci_psi import CiPsi
 from opi.output.models.json.property.properties.coord import Coordinates
-from opi.output.models.json.property.properties.dftenergy import DftEnergy
-from opi.output.models.json.property.properties.dipole import Dipole
-from opi.output.models.json.property.properties.efgtensor import EfgTensor
+from opi.output.models.json.property.properties.dft_energy import DftEnergy
+from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
+from opi.output.models.json.property.properties.efg_tensor import EfgTensor
 from opi.output.models.json.property.properties.energy_extrap import (
     EnergyExtrapolation,
 )
 from opi.output.models.json.property.properties.energy_list import (
     EnergyList,
 )
-from opi.output.models.json.property.properties.geom import Geometry
-from opi.output.models.json.property.properties.geometry import Geometries
+from opi.output.models.json.property.properties.geometries import Geometries
+from opi.output.models.json.property.properties.geometry import Geometry
 from opi.output.models.json.property.properties.gradient import NucGradient
 from opi.output.models.json.property.properties.gtensor import Gtensor
 from opi.output.models.json.property.properties.hess import Hessian
-from opi.output.models.json.property.properties.hirshfeldpopanalysis import (
+from opi.output.models.json.property.properties.hirshfeld_population_analysis import (
     HirshfeldPopulationAnalysis,
 )
 from opi.output.models.json.property.properties.led import Led
-from opi.output.models.json.property.properties.mayerpopanalysis import (
+from opi.output.models.json.property.properties.mayer_population_analysis import (
     MayerPopulationAnalysis,
 )
-from opi.output.models.json.property.properties.mbis import MbisPopAnalysis
+from opi.output.models.json.property.properties.mbis_population_analysis import (
+    MbisPopulationAnalysis,
+)
 from opi.output.models.json.property.properties.mdci_energy import (
     Mdcisd_t_Energies,
     MdcisdEnergies,
@@ -64,13 +66,13 @@ from opi.output.models.json.property.properties.nat_orbitals import (
     NaturalOrbitals,
 )
 from opi.output.models.json.property.properties.pal import PalFlags
-from opi.output.models.json.property.properties.polarisation import (
+from opi.output.models.json.property.properties.polarizability import (
     Polarizability,
 )
-from opi.output.models.json.property.properties.popanalysis import (
+from opi.output.models.json.property.properties.population_analysis import (
     PopulationAnalysis,
 )
-from opi.output.models.json.property.properties.quadrupole import (
+from opi.output.models.json.property.properties.quadrupole_moment import (
     QuadrupoleMoment,
 )
 from opi.output.models.json.property.properties.roci_en import RoCiEnergy
@@ -195,7 +197,7 @@ def get_schema(type_name: str) -> dict[str, Any]:
         "CiPsi": CiPsi,
         "Coordinates": Coordinates,
         "DftEnergy": DftEnergy,
-        "Dipole": Dipole,
+        "Dipole": DipoleMoment,
         "EfgTensor": EfgTensor,
         "EnergyExtrapolation": EnergyExtrapolation,
         "EnergyList": EnergyList,
@@ -206,7 +208,7 @@ def get_schema(type_name: str) -> dict[str, Any]:
         "HirshfeldPopulationAnalysis": HirshfeldPopulationAnalysis,
         "Led": Led,
         "MayerPopulationAnalysis": MayerPopulationAnalysis,
-        "MbisPopAnalysis": MbisPopAnalysis,
+        "MbisPopAnalysis": MbisPopulationAnalysis,
         "ScfEnergy": ScfEnergy,
         "Mdcisd_Energies": MdcisdEnergies,
         "Mdcisd_t_Energies": Mdcisd_t_Energies,

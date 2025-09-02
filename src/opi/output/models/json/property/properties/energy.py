@@ -13,12 +13,12 @@ class Energy(GetItem):
 
     Attributes
     ----------
-    method: StrictStr | None = None
+    method: StrictStr | None, default = None
         String that identifies the method that was used for the energy calculation.
         Is used for discriminating different energy types
-    mult: list[list[StrictPositiveInt]] | None = None
+    mult: list[list[StrictPositiveInt]] | None, default = None
         List of electronic multiplicities
-    totalenergy: list[list[StrictFiniteFloat]]
+    totalenergy: list[list[StrictFiniteFloat]] | None, default = None
         The total calculated Energy
     """
 

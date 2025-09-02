@@ -2,12 +2,8 @@ from typing import Literal
 
 from pydantic import field_validator
 
-from opi.input.blocks.base import (
-    Block,
-    InputFilePath,
-    IntGroup,
-    NumList,
-)
+from opi.input.blocks import Block
+from opi.input.blocks.util import InputFilePath, IntGroup, NumList
 
 __all__ = ("BlockMdci",)
 

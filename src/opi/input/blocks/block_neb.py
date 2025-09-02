@@ -2,8 +2,9 @@ from typing import Literal
 
 from pydantic import field_validator
 
-from opi.input.blocks.base import Block, InputFilePath
+from opi.input.blocks import Block
 from opi.input.blocks.geom_wrapper import Internal, Internals
+from opi.input.blocks.util import InputFilePath
 
 __all__ = ("BlockNeb",)
 
@@ -129,21 +130,24 @@ class BlockNeb(Block):
 
     @field_validator("monitor_internals", mode="before")
     @classmethod
-    def internals_str(cls, strings: list[str] | str) -> Internals:
+    def internals_init(cls, inp: list[str] | str | Internals) -> Internals:
         """
         Parameters
         ----------
-        strings : list[str] | str
+        inp : list[str] | str | Internals
         """
-        try:
-            if isinstance(strings, list):
-                internals = [Internal.from_string(s) for s in strings]
-            else:
-                internals = [Internal.from_string(strings)]
-        except Exception as e:
-            raise ValueError(f"Failed to parse strings: {e}")
+        if isinstance(inp, Internals):
+            return inp
+        else:
+            try:
+                if isinstance(inp, list):
+                    internals = [Internal.from_string(s) for s in inp]
+                else:
+                    internals = [Internal.from_string(inp)]
+            except Exception as e:
+                raise ValueError(f"Failed to parse strings: {e}")
 
-        return Internals(internals=internals)
+            return Internals(internals=internals)
 
     @field_validator(
         "neb_restart_xyzfile",

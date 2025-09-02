@@ -43,7 +43,11 @@ class Calculator:
     """
 
     def __init__(
-        self, basename: str, working_dir: Path | str | PathLike[str] | None = None
+        self,
+        basename: str,
+        working_dir: Path | str | PathLike[str] | None = None,
+        *,
+        version_check: bool = True,
     ) -> None:
         """
         Parameters
@@ -52,6 +56,9 @@ class Calculator:
             Basename of the calculation. Each file created by ORCA starts with this prefix.
         working_dir : Path | str | None, default=None
             Optional working direction. Is passed on to `Runner` and `Output` classes.
+        version_check : bool, default: True
+            Check ORCA's binary version upon initialization.
+            Important: May create significant computational overhead if many `Calculators` are initialized concurrently.
         """
 
         # -----------------------------
@@ -84,6 +91,13 @@ class Calculator:
         # > ORCA INPUT
         # -----------------------------
         self._input: Input = Input()
+
+        # ----------------------------
+        # > BINARY VERSION CHECK
+        # ----------------------------
+        if version_check:
+            # > Raises RuntimeError if version is not compatible or cannot be determined.
+            self.check_version()
 
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     # PROPERTIES
@@ -162,22 +176,16 @@ class Calculator:
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     # METHODS
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    def write_input(self, *, copy_structure: bool = True) -> None:
+    def write_input(self) -> None:
         """
         Function to create the ORCA input file `.inp`.
-        Optional, also copies the primary structure file into the working directory.
-
-        Parameters
-        ----------
-        copy_structure : bool, default: True
-            True: If the `Calculator.structure` has the base type `BaseStructureFile`, copy the file into working dir.
-            False: Don't copy the file.
 
         Raises
         ------
         RuntimeError
           * When `.inp` cannot be written.
-          * When the structure file cannot be copied.
+        ValueError
+          * When the `moinp` path is given, and it is not a subpath of the working directory.
         """
 
         assert self.working_dir
@@ -221,7 +229,7 @@ class Calculator:
                 if (ncores := input_param.ncores) is not None:
                     inp.write(f"%pal\n    nprocs {ncores:d}\nend\n")
                 if (moinp := input_param.moinp) is not None:
-                    inp.write(f"%moinp {moinp}\n")
+                    inp.write(f'%moinp "{moinp.relative_to(self.working_dir)}"\n')
 
                 # ---------------------------------
                 # > Block Options: Before coords
@@ -243,12 +251,10 @@ class Calculator:
                 # > Coords block
                 # ---------------------------------
                 if self.structure:
-                    if copy_structure and isinstance(self.structure, BaseStructureFile):
-                        try:
-                            self.structure.copy_to(self.working_dir)
-                        except OSError as err:
-                            raise RuntimeError(str(err)) from err
-                    inp.write(f"\n{self.structure.format_orca()}\n")
+                    if isinstance(self.structure, BaseStructureFile):
+                        inp.write(f"{self.structure.format_orca(self.working_dir)} ")
+                    else:
+                        inp.write(f"\n{self.structure.format_orca()}\n")
 
                 # ---------------------------------
                 # > Block options: After coords
@@ -328,4 +334,23 @@ class Calculator:
         Get an instance of `Output` setup for the current job.
         Can be called before execution of job.
         """
-        return Output(basename=self.basename, working_dir=self.working_dir)
+        return Output(
+            basename=self.basename,
+            working_dir=self.working_dir,
+        )
+
+    def check_version(self) -> None:
+        """
+        Check if the ORCA version of the binary is compatible with the current OPI version.
+        Soft-wrapper around Runner.check_version().
+
+        Raises
+        ------
+        RuntimeError: If version could not be determined or is not compatible.
+        """
+        runner = self._create_runner()
+        # > Can raise RuntimeError
+        try:
+            runner.check_version(ignore_errors=False)
+        except RuntimeError:
+            raise

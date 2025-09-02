@@ -10,11 +10,11 @@ class Coordinates(GetItem):
 
     Attributes
     ----------
-    type: StrictStr
+    type: StrictStr | None, default = None
         The type of the coordinates
-    units: StrictStr
+    units: StrictStr | None, default = None
         The unit of the coordinates
-    cartesians: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]
+    cartesians: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None, default = None
         Contains the name
     """
 

@@ -2,7 +2,8 @@ from pathlib import Path
 
 from pydantic import FilePath, field_validator
 
-from opi.input.blocks.base import Block, IntGroup
+from opi.input.blocks import Block
+from opi.input.blocks.util import IntGroup
 
 __all__ = ("HessList", "BlockFreq")
 
@@ -58,10 +59,13 @@ class BlockFreq(Block):
 
     @field_validator("hybrid_hess", "partial_hess", mode="before")
     @classmethod
-    def hessian_list(cls, ints: list[int]) -> HessList:
+    def hessian_list(cls, ints: list[int] | HessList) -> HessList:
         """
         Parameters
         ----------
-        ints : list[int]
+        ints : list[int] | HessList
         """
-        return HessList.init(ints)
+        if isinstance(ints, HessList):
+            return ints
+        else:
+            return HessList.init(ints)

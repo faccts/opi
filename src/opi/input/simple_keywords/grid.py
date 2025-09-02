@@ -7,10 +7,15 @@ __all__ = ("Grid",)
 
 
 class Grid(SimpleKeywordBox):
-    """Enum to store all simple keywords of type Grid"""
+    """Enum to store all simple keywords of type Grid."""
 
-    DEFGRID1 = SimpleKeyword("defgrid1")  # small grid
-    DEFGRID2 = SimpleKeyword("defgrid2")  # medium grid
-    DEFGRID3 = SimpleKeyword("defgrid3")  # large grid
-    REFGRID = SimpleKeyword("refgrid")  # reference grid
-    ROTINVGRID = SimpleKeyword("rotinvgrid")  # Rotational invariant grid
+    DEFGRID1 = SimpleKeyword("defgrid1")
+    """SimpleKeyword: small grid."""
+    DEFGRID2 = SimpleKeyword("defgrid2")
+    """SimpleKeyword: medium grid."""
+    DEFGRID3 = SimpleKeyword("defgrid3")
+    """SimpleKeyword: large grid."""
+    REFGRID = SimpleKeyword("refgrid")
+    """SimpleKeyword: reference grid."""
+    ROTINVGRID = SimpleKeyword("rotinvgrid")
+    """SimpleKeyword: Rotational invariant grid."""

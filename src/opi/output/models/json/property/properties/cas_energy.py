@@ -13,27 +13,27 @@ class CasEnergyBase(Energy):
 
     Attributes
     ----------
-    numofelectrons: StrictNonNegativeInt
+    numofelectrons: StrictNonNegativeInt | None, default = None
         Number of electrons
-    numoffcelectrons: StrictNonNegativeInt
+    numoffcelectrons: StrictNonNegativeInt | None, default = None
         Number of FC electrons
-    numofactiveel: StrictNonNegativeInt
+    numofactiveel: StrictNonNegativeInt | None, default = None
         Number of active electrons
-    numofactiveorbs: StrictNonNegativeInt
+    numofactiveorbs: StrictNonNegativeInt | None, default = None
         number oof active orbitals
-    numofmultiplicities: StrictPositiveInt
+    numofmultiplicities: StrictPositiveInt | None, default = None
         Number of multiplicities
-    totalnumofroots: StrictNonNegativeInt
+    totalnumofroots: StrictNonNegativeInt | None, default = None
         Total number of roots
-    finalenergy: StrictFiniteFloat
+    finalenergy: StrictFiniteFloat | None, default = None
         Final energy
-    energies: list[list[StrictFiniteFloat]]
+    energies: list[list[StrictFiniteFloat]] | None, default = None
         list of all CasSCF energies
-    irreps: list[list[StrictFiniteFloat]]
+    irreps: list[list[StrictFiniteFloat]] | None, default = None
         list of all irreducible representations of CASSCF states
-    multiplicities: list[list[StrictFiniteFloat]]
+    multiplicities: list[list[StrictFiniteFloat]] | None, default = None
         list of all multiplicities of CASSCF states
-    numofroots: list[list[StrictFiniteFloat]]
+    numofroots: list[list[StrictFiniteFloat]] | None, default = None
         list of number of roots for all CASSCF states
     """
 

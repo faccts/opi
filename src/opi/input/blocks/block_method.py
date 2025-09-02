@@ -1,6 +1,7 @@
 from pydantic import field_validator
 
-from opi.input.blocks.base import Block, InputFilePath
+from opi.input.blocks import Block
+from opi.input.blocks.util import InputFilePath
 
 __all__ = ("BlockMethod",)
 

@@ -8,9 +8,9 @@ class Hessian(GetItem):
 
     Attributes
     ----------
-    hessian: list[list[list[StrictFloat]]]
+    hessian: list[list[list[StrictFloat]]] | None, default = None
         Hessian-Matrix for the molecule
-    modes: list[list[list[StrictFloat]]]
+    modes: list[list[list[StrictFloat]]] | None, default = None
         Vibration-modes
     """
 

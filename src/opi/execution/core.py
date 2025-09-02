@@ -9,17 +9,19 @@ R:
 
 import json
 import os
-import shlex
 import shutil
 import subprocess
 from contextlib import nullcontext
 from enum import StrEnum
 from io import TextIOWrapper
 from pathlib import Path
+from subprocess import CompletedProcess
 from typing import Any, Callable, Sequence, TypeVar, cast
 
+from opi import ORCA_MINIMAL_VERSION
 from opi.utils.config import get_config
-from opi.utils.misc import add_to_env, delete_empty_file
+from opi.utils.misc import add_to_env, check_minimal_version, delete_empty_file
+from opi.utils.orca_version import OrcaVersion
 
 
 class OrcaBinary(StrEnum):
@@ -147,6 +149,7 @@ class Runner:
         args: Sequence[str] = (),
         /,
         *,
+        stdin_str: str | None = None,
         stdout: Path | None = None,
         stderr: Path | None = None,
         silent: bool = True,
@@ -163,6 +166,8 @@ class Runner:
             Name of ORCA binary to be executed. Path is automatically resolved based on configuration.
         args : Sequence[str], default: ()
             Command line arguments to pass to ORCA binary.
+        stdin_str: str | None = None
+            String to be passed to stdin.
         stdout : Path | None, default: None
             Dump STDOUT to a file.
         stderr : Path | None, default: None
@@ -187,6 +192,8 @@ class Runner:
         ------
         FileNotFound:
           Error if path to ORCA binary cannot be resolved.
+        subprocess.TimeoutExpired:
+            If `timeout>-1` and the process times out.
         """
 
         # ------------------------------------------------------------
@@ -235,6 +242,7 @@ class Runner:
             with outfile as f_out, errfile as f_err:
                 proc = subprocess.run(
                     cmd,
+                    input=stdin_str,
                     stdout=f_out,
                     stderr=f_err,
                     cwd=cwd,
@@ -280,17 +288,157 @@ class Runner:
         arguments = [inpfile.name]
         if extra_args:
             # > All extra arguments are passed as second argument to ORCA.
-            arguments += [shlex.join(extra_args)]
+            arguments += list(extra_args)
 
         # Run the Orca calculation
         self.run(
             OrcaBinary.ORCA,
-            [inpfile.name],
+            arguments,
             stdout=outfile,
             stderr=errfile,
             silent=silent,
             timeout=timeout,
         )
+
+    def run_orca_plot(
+        self,
+        gbwfile: Path,
+        stdin_list: list[str],
+        /,
+        *extra_args: str,
+        silent: bool = True,
+        timeout: int = -1,
+    ) -> None:
+        """
+        Executes the orca_plot binary in the interactive mode and passes the gbw path, an input string, and extra
+        arguments to the binary. Note that currently only the interactive mode (orca_plot (gbw) -i) is supported.
+
+        Parameters
+        ----------
+        gbwfile : Path
+            Path to an ORCA geometry, basis set, wavefunction (gbw) file.
+        stdin_list : list[str]
+            Input string handed to stdin of orca_plot.
+        *extra_args: str
+            Additional arguments passed to orca_plot.
+        silent : bool, default: True
+            Capture and discard STDOUT and STDERR.
+        timeout : int, default: -1
+            Optional timeout in seconds to wait for process to complete.
+
+        Raises
+        ----------
+        FileNotFoundError
+            If the gbw file for plotting does not exist.
+        ValueError
+            If no stdin_list for the input of orca_plot is provided.
+        """
+        if not gbwfile.is_file():
+            raise FileNotFoundError(f"GBW file {gbwfile} does not exist")
+
+        if not stdin_list:
+            raise ValueError("stdin_list is required but was empty or not provided.")
+
+        # Sets the output and error file from the gbwfile.
+        outfile = gbwfile.with_suffix(".plot.out")
+        errfile = gbwfile.with_suffix(".plot.err")
+
+        # > CLI arguments
+        arguments = [gbwfile.name]
+        # > Request interactive plot mode by adding "-i"
+        arguments += ["-i"]
+        if extra_args:
+            # > All extra arguments are passed as third argument to orca_plot.
+            arguments += list(extra_args)
+
+        # > Generate stdin string from stdin list
+        stdin_str = "\n".join(stdin_list) + "\n"
+
+        # Run orca_plot
+        self.run(
+            OrcaBinary.ORCA_PLOT,
+            arguments,
+            stdin_str=stdin_str,
+            stdout=outfile,
+            stderr=errfile,
+            silent=silent,
+            timeout=timeout,
+        )
+
+    def get_version(self) -> OrcaVersion | None:
+        """
+        Get the ORCA version from the main ORCA binary.
+
+        Returns
+        -------
+        OrcaVersion:
+            Version of the ORCA.
+        None:
+            If the version could not be determined.
+        """
+
+        try:
+            # > May raise subprocess.TimeoutExpired
+            orca_proc = self.run(OrcaBinary.ORCA, ["--version"], capture=True, timeout=5)
+
+            # > Pleasing type checker
+            assert isinstance(orca_proc, CompletedProcess)
+            return OrcaVersion.from_output(orca_proc.stdout)
+
+        except (subprocess.TimeoutExpired, ValueError, AssertionError):
+            return None
+
+    def check_version(self, *, ignore_errors: bool = False) -> bool | None:
+        """
+        Check if the ORCA version of the binary is compatible with the current OPI version.
+
+        Parameters
+        ----------
+        ignore_errors : bool, default: False
+            False: Raises RuntimeError if version is not compatible or could not be determined.
+            True: Return True if version is compatible, else return False. Also if the version could not be determined.
+
+        Returns
+        -------
+        bool :
+            True: If version is compatible.
+            False: If version is not compatible.
+        None :
+            If version could not be determined.
+
+        Raises
+        ------
+        RuntimeError: If `ignore_errors` is False and version is not compatible or could not be determined.
+        """
+
+        orca_vers = self.get_version()
+
+        # > Path as string to ORCA binary
+        try:
+            orca_bin_str = f"\nORCA binary: {self.get_orca_binary(OrcaBinary.ORCA)}"
+        except FileNotFoundError:
+            orca_bin_str = ""
+
+        if orca_vers is None:
+            if ignore_errors:
+                return None
+            else:
+                raise RuntimeError(
+                    f"Could not determine version of ORCA binary."
+                    f" Make sure ORCA is installed and configured correctly."
+                    f" Minimally required ORCA version: {ORCA_MINIMAL_VERSION}{orca_bin_str}"
+                )
+
+        elif not check_minimal_version(orca_vers):
+            if ignore_errors:
+                return False
+            else:
+                raise RuntimeError(
+                    f"ORCA version {orca_vers} is not supported. Make sure to install at least version:"
+                    f" {ORCA_MINIMAL_VERSION}{orca_bin_str}"
+                )
+        else:
+            return True
 
     @staticmethod
     def _determine_orca_paths(orca_path: Path, /) -> tuple[Path, Path]:
@@ -513,6 +661,7 @@ class Runner:
         """
         gbw_json_file = self.working_dir / f"{basename}.json"
         config_file = gbw_json_file.with_suffix(".json.conf")
+
         if gbw_json_file.is_file() and not force:
             return
         else:

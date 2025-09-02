@@ -14,21 +14,21 @@ class NucGradient(GetItem):
 
     Attributes
     ----------
-    natoms: StrictPositiveInt
+    natoms: StrictPositiveInt | None, default = None
         Number of atoms in the calculation
-    method : StrictStr
+    method : StrictStr | None, default = None
         Underlying electronic structure method
-    level : StrictStr
+    level : StrictStr | None, default = None
         Source of density e.g. linearized, un-relaxed, relaxed
-    mult : StrictPositiveInt
+    mult : StrictPositiveInt | None, default = None
         Multiplicity of the electronic state
-    state : StrictInt
+    state : StrictInt | None, default = None
         Electronic state
-    irrep : StrictInt
+    irrep : StrictInt | None, default = None
         Irreducible representation of the electronic state
-    gradnorm: StrictNonNegativeFiniteFloat
+    gradnorm: StrictNonNegativeFiniteFloat | None, default = None
         Total norm of all gradients
-    grad: list[list[StrictFiniteFloat]]
+    grad: list[list[StrictFiniteFloat]] | None, default = None
         Gradient for each atom in each dimension
     """
 

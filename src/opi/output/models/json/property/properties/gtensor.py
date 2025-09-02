@@ -13,35 +13,35 @@ class Gtensor(GetItem):
 
     Attributes
     ----------
-    method: StrictStr
+    method: StrictStr | None, default = None
        Used method for this calculation
-    level: StrictStr
+    level: StrictStr | None, default = None
         Type and relaxation of density
-    mult : StrictPositiveInt
+    mult : StrictPositiveInt | None, default = None
         Multiplicity of the electronic state
-    state : StrictInt
+    state : StrictInt | None, default = None
         Electronic state
-    irrep : StrictInt
+    irrep : StrictInt | None, default = None
         Irreducible representation of the electronic state
-    g_matrix: list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]
+    g_matrix: list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None, default = None
         Matrix of the G-Tensor
-    g_elec: StrictFiniteFloat
+    g_elec: StrictFiniteFloat | None, default = None
         The free electron G-value contribution
-    g_rmc: StrictFiniteFloat
+    g_rmc: StrictFiniteFloat | None, default = None
         Reduced mass correction
-    g_tot: list[list[StrictFiniteFloat]]
+    g_tot: list[list[StrictFiniteFloat]] | None, default = None
         Total G-tensor
-    g_iso: StrictFiniteFloat
+    g_iso: StrictFiniteFloat | None, default = None
         Isotropic part of the G-tensor
-    g_dso: list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]
+    g_dso: list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None, default = None
         Diamagnetic contribution to the G-tensor
-    g_pso: list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]
+    g_pso: list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None, default = None
         Paramagnetic contribution to the G-tensor
-    delta_g: list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]
+    delta_g: list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None, default = None
         Delta G-Tensor w.r.t the free electron
-    delta_g_iso: StrictFiniteFloat
+    delta_g_iso: StrictFiniteFloat | None, default = None
         Error of the isotropic part of the G-tensor
-    orientation: list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]]
+    orientation: list[tuple[StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None, default = None
         Orientation of the G-tensor
     """
 

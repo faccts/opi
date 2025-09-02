@@ -15,43 +15,43 @@ class ThermochemistryEnergy(GetItem):
 
     Attributes
     ----------
-    temperature: StrictNonNegativeFloat
+    temperature: StrictNonNegativeFloat | None, default = None
         The temperature simulated in the calculation
-    pressure: StrictNonNegativeFloat
+    pressure: StrictNonNegativeFloat | None, default = None
        The pressure simulated in the calculation
-    totalmass: StrictPositiveFloat
+    totalmass: StrictPositiveFloat | None, default = None
        The total mass of the molecule(s)
-    spindegeneracy: StrictNonNegativeInt
+    spindegeneracy: StrictNonNegativeInt | None, default = None
         Degeneracy of the spin
-    elenergy: StrictFiniteFloat
+    elenergy: StrictFiniteFloat | None, default = None
         Electron energy
-    transenergy: StrictFiniteFloat
+    transenergy: StrictFiniteFloat | None, default = None
         Energy of the transition
-    rotenergy: StrictFiniteFloat
+    rotenergy: StrictFiniteFloat | None, default = None
         Energy of the rotation
-    vibenergy: StrictFiniteFloat
+    vibenergy: StrictFiniteFloat | None, default = None
         Energy of the vibration
-    freqscalingfactor: StrictPositiveFloat
+    freqscalingfactor: StrictPositiveFloat | None, default = None
         Scaling factor of the frequencies
-    freq: list[list[StrictFiniteFloat]]
+    freq: list[list[StrictFiniteFloat]] | None, default = None
         list of all frequencies
-    zpe: StrictPositiveFloat
+    zpe: StrictPositiveFloat | None, default = None
         Zero point energy
-    innerenergyu: StrictFiniteFloat
+    innerenergyu: StrictFiniteFloat | None, default = None
         Inner Energy of the system
-    enthalpyh: StrictFiniteFloat
+    enthalpyh: StrictFiniteFloat | None, default = None
         Enthalpy of the system
-    qel: StrictFiniteFloat
+    qel: StrictFiniteFloat | None, default = None
         Gibbs electron energy
-    qrot: StrictNonNegativeFloat
+    qrot: StrictNonNegativeFloat | None, default = None
         Gibbs energy for Rotations
-    qvib: StrictNonNegativeFloat
+    qvib: StrictNonNegativeFloat | None, default = None
         Gibbs energy for vibration
-    entropys: StrictFiniteFloat
+    entropys: StrictFiniteFloat | None, default = None
         Entropy of the system
-    freeenergyg: StrictFiniteFloat
+    freeenergyg: StrictFiniteFloat | None, default = None
         Gibbs (free) energy of the system
-    islinear: StrictBool
+    islinear: StrictBool | None, default = None
         Is the molecular linear (true), else false
     """
 

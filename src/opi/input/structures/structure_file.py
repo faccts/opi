@@ -15,7 +15,7 @@ __all__ = (
 class BaseStructureFile(ABC):
     """
     Class to model structure file.
-    The structure file is directly passed to ORCA. This interface not read or modify the contents of the file.
+    The structure file is directly passed to ORCA. This interface does not read or modify the contents of the file.
 
     Attributes
     ----------
@@ -52,17 +52,30 @@ class BaseStructureFile(ABC):
         """
         self._file = Path(val).expanduser().resolve(strict=True)
 
-    def format_orca(self, *, full_path: bool = False) -> str:
+    def format_orca(self, working_dir: Path | None, /, *, original_path: bool = False) -> str:
         """
-        Format respectively line in ORCA input.
+        Format respectively line in ORCA input. If the file lies within the working directory a relative path is
+        used. If no working directory is set just the filename is employed.
 
         Parameters
         ----------
-        full_path : bool, default: False
-            True: Print full path to the structure in the ORCA input file.
-            False: Print only the filename. This is usually the preferred way!
+        working_dir : Path | None
+            Path to the working directory.
+        original_path : bool, default False
+            If True, the original path will not be altered.
+
+        Raises
+        ------
+        ValueError
+            If relative path is requested and cannot be resolved.
         """
-        filename = self.file if full_path else self.file.name
+        filename: str | Path
+        if original_path:
+            filename = self.file
+        elif working_dir is not None:
+            filename = self.file.relative_to(working_dir)
+        else:
+            filename = self.file.name
         return f"*{self._type}file {self.charge} {self.multiplicity} {filename}"
 
     def copy_to(self, dest: Path, /) -> bool:

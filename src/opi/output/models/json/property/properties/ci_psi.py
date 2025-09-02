@@ -12,13 +12,13 @@ class CiPsi(GetItem):
 
     Attributes
     ----------
-    multiplicity: StrictPositiveInt
+    multiplicity: StrictPositiveInt | None, default = None
         Multiplicity of the system
-    finalenergy: StrictFiniteFloat
+    finalenergy: StrictFiniteFloat | None, default = None
         Final calculated energies
-    numofroots: StrictNonNegativeInt
+    numofroots: StrictNonNegativeInt | None, default = None
         Number of roots
-    energies: list[list[StrictFiniteFloat]]
+    energies: list[list[StrictFiniteFloat]] | None, default = None
         list of calculated energies
     """
 

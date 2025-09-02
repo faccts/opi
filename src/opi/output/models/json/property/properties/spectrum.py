@@ -16,33 +16,33 @@ class Spectrum(GetItem):
 
     Attributes
     ----------
-    density_name: StrictStr
+    density_name: StrictStr | None, default = None
         Name of property with used theory
-    temperature: StrictNonNegativeFloat
+    temperature: StrictNonNegativeFloat | None, default = None
         Assumed temperature in the calculation
-    method: StrictPositiveInt
+    method: StrictPositiveInt | None, default = None
         Method used in this calculation
-    relcorrection: StrictPositiveInt
+    relcorrection: StrictPositiveInt | None, default = None
         Type of relativistic treatment in quasi degenerate perturbation theory in this calculation
-    denstype: StrictNonNegativeInt
+    denstype: StrictNonNegativeInt | None, default = None
         Used density type in this calculation
-    deritype: StrictNonNegativeInt
+    deritype: StrictNonNegativeInt | None, default = None
         Type of derived used in this calculation
-    denslevel: StrictNonNegativeInt
+    denslevel: StrictNonNegativeInt | None, default = None
         Source of density
-    representation: StrictStr
+    representation: StrictStr | None, default = None
         Used representation (passible Unknown, Length, Velocity)
-    pointgroup: StrictStr
+    pointgroup: StrictStr | None, default = None
         Pointgroup of the molecule
-    ntrans: StrictNonNegativeInt
+    ntrans: StrictNonNegativeInt | None, default = None
         Number of transition states modeled in the calculation
-    dohighermoments: StrictBool
+    dohighermoments: StrictBool | None, default = None
         Are higher moments supposed to be used
-    states: list[tuple[StrictNonNegativeInt, StrictNonNegativeInt, StrictPositiveInt, StrictNonNegativeInt]]
+    states: list[tuple[StrictNonNegativeInt, StrictNonNegativeInt, StrictPositiveInt, StrictNonNegativeInt]]| None, default = None
         Contains the initial and final states
-    multiplicities: list[tuple[StrictPositiveFloat, StrictPositiveFloat]]
+    multiplicities: list[tuple[StrictPositiveFloat, StrictPositiveFloat]] | None, default = None
         Contains the multiplicity of the initial and final state
-    excitationenergies: list[list[StrictFiniteFloat]]
+    excitationenergies: list[list[StrictFiniteFloat]] | None, default = None
         Contains the excitation energies for all modeled transition
     """
 

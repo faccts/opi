@@ -7,12 +7,19 @@ __all__ = ("Goat",)
 
 
 class Goat(SimpleKeywordBox):
-    """Enum to store all simple keywords of type Goat"""
+    """Enum to store all simple keywords of type Goat."""
 
-    GOAT = SimpleKeyword("goat")  # GOAT Methods
-    GOAT_COARSE = SimpleKeyword("goat-coarse")  # GOAT Methods
-    GOAT_DIVERSITY = SimpleKeyword("goat-diversity")  # GOAT Methods
-    GOAT_ENTROPY = SimpleKeyword("goat-entropy")  # GOAT Methods
-    GOAT_EXPLORE = SimpleKeyword("goat-explore")  # GOAT Methods
-    GOAT_REACT = SimpleKeyword("goat-react")  # GOAT Methods
-    GOAT_TS = SimpleKeyword("goat-ts")  # GOAT Methods
+    GOAT = SimpleKeyword("goat")
+    """SimpleKeyword: GOAT Methods."""
+    GOAT_COARSE = SimpleKeyword("goat-coarse")
+    """SimpleKeyword: GOAT Methods."""
+    GOAT_DIVERSITY = SimpleKeyword("goat-diversity")
+    """SimpleKeyword: GOAT Methods."""
+    GOAT_ENTROPY = SimpleKeyword("goat-entropy")
+    """SimpleKeyword: GOAT Methods."""
+    GOAT_EXPLORE = SimpleKeyword("goat-explore")
+    """SimpleKeyword: GOAT Methods."""
+    GOAT_REACT = SimpleKeyword("goat-react")
+    """SimpleKeyword: GOAT Methods."""
+    GOAT_TS = SimpleKeyword("goat-ts")
+    """SimpleKeyword: GOAT Methods."""

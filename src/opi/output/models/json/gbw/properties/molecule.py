@@ -1,7 +1,7 @@
 from pydantic import Field, StrictFloat, StrictInt, StrictStr
 
 from opi.output.models.base.get_item import GetItem
-from opi.output.models.json.gbw.properties.atom import Atoms
+from opi.output.models.json.gbw.properties.atoms import Atoms
 from opi.output.models.json.gbw.properties.molecular_orbitals import (
     MolecularOrbitals,
 )
@@ -24,7 +24,7 @@ class Molecule(GetItem):
         multiplicity of the molecule
     charge: StrictInt
         charge of the molecule
-    hftyp: StrictSrt
+    hftyp: StrictStr
         Used shell-type (e.g., UHF/RHF) in the calculation
     origin: tuple[StrictFloat, StrictFloat, StrictFloat]
         Origin of the molecule

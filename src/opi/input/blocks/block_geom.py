@@ -8,13 +8,10 @@ from pydantic import (
     model_validator,
 )
 
-from opi.input.blocks.base import (
-    Block,
-    InputFilePath,
-    NumList,
-)
+from opi.input.blocks import Block
 from opi.input.blocks.fragment import FragList, Fragment, Frags
 from opi.input.blocks.geom_wrapper import GeomWrapper, GeomWrapperBox
+from opi.input.blocks.util import InputFilePath, NumList
 from opi.utils.element import Element
 from opi.utils.misc import FLOAT_REGEX
 
@@ -629,87 +626,102 @@ class BlockGeom(Block):
 
     @field_validator("constraints", mode="before")
     @classmethod
-    def constraint_str(cls, strings: list[str] | str) -> Constraints:
+    def constraint_init(cls, inp: list[str] | str | Constraints) -> Constraints:
         """
         Creates Constraints object by parsing a given string or list of strings
 
         Parameters
         ----------
-        strings : list[str] | str
+        inp : list[str] | str | Constraints
         """
-        try:
-            if isinstance(strings, list):
-                constraints = [Constraint.from_string(s) for s in strings]
-            else:
-                constraints = [Constraint.from_string(strings)]
-        except Exception as e:
-            raise ValueError(f"Failed to parse constraints: {e}")
+        if isinstance(inp, Constraints):
+            return inp
+        else:
+            try:
+                if isinstance(inp, list):
+                    constraints = [Constraint.from_string(s) for s in inp]
+                else:
+                    constraints = [Constraint.from_string(inp)]
+            except Exception as e:
+                raise ValueError(f"Failed to parse constraints: {e}")
 
-        return Constraints(constraints=constraints)
+            return Constraints(constraints=constraints)
 
     @field_validator("scan", mode="before")
     @classmethod
-    def scan_str(cls, string: str) -> Scan:
+    def scan_init(cls, inp: str | Scan) -> Scan:
         """
         Creates Scan object by parsing given string
 
         Parameters
         ----------
-        string : str
+        inp : str | Scan
         """
-        return Scan.from_string(string)
+        if isinstance(inp, Scan):
+            return inp
+        else:
+            return Scan.from_string(inp)
 
     @field_validator("ts_mode", mode="before")
     @classmethod
-    def tsmode_str(cls, string: str) -> TSMode:
+    def tsmode_init(cls, inp: str | TSMode) -> TSMode:
         """
         Creates TSMode object by parsing given string
 
         Parameters
         ----------
-        string : str
+        inp : str | TSMode
         """
-        return TSMode.from_string(string)
+        if isinstance(inp, TSMode):
+            return inp
+        else:
+            return TSMode.from_string(inp)
 
     @field_validator("modify_internal", mode="before")
     @classmethod
-    def modify_str(cls, strings: list[str] | str) -> ModifyInternal:
+    def modify_init(cls, inp: list[str] | str | ModifyInternal) -> ModifyInternal:
         """
         Creates ModifyInternal object by parsing given string or list of strings
 
         Parameters
         ----------
-        strings : list[str] | str
+        inp : list[str] | str | ModifyInternal
         """
-        try:
-            if isinstance(strings, list):
-                modifications = [Modify.from_string(s) for s in strings]
-            else:
-                modifications = [Modify.from_string(strings)]
-        except Exception as e:
-            raise ValueError(f"Failed to parse modifications: {e}")
+        if isinstance(inp, ModifyInternal):
+            return inp
+        else:
+            try:
+                if isinstance(inp, list):
+                    modifications = [Modify.from_string(s) for s in inp]
+                else:
+                    modifications = [Modify.from_string(inp)]
+            except Exception as e:
+                raise ValueError(f"Failed to parse modifications: {e}")
 
-        return ModifyInternal(modifications=modifications)
+            return ModifyInternal(modifications=modifications)
 
     @field_validator("connectfragments", mode="before")
     @classmethod
-    def fragment_str(cls, strings: list[str] | str) -> ConnectFragments:
+    def fragment_init(cls, inp: list[str] | str | ConnectFragments) -> ConnectFragments:
         """
         Creates ConnectFragments object by parsing given string or list of strings
 
         Parameters
         ----------
-        strings : list[str] | str
+        inp : list[str] | str | ConnectFragments
         """
-        try:
-            if isinstance(strings, list):
-                fragconstraints = [FragConstraint.from_string(s) for s in strings]
-            else:
-                fragconstraints = [FragConstraint.from_string(strings)]
-        except Exception as e:
-            raise ValueError(f"Failed to parse constraints: {e}")
+        if isinstance(inp, ConnectFragments):
+            return inp
+        else:
+            try:
+                if isinstance(inp, list):
+                    fragconstraints = [FragConstraint.from_string(s) for s in inp]
+                else:
+                    fragconstraints = [FragConstraint.from_string(inp)]
+            except Exception as e:
+                raise ValueError(f"Failed to parse constraints: {e}")
 
-        return ConnectFragments(constraints=fragconstraints)
+            return ConnectFragments(constraints=fragconstraints)
 
     @field_validator(
         "rigidfrags",
@@ -720,33 +732,39 @@ class BlockGeom(Block):
         mode="before",
     )
     @classmethod
-    def frags_from_list(cls, frags: list[int]) -> FragList:
+    def frags_from_list(cls, frags: list[int] | FragList) -> FragList:
         """
         Initializes FragList object given a list of integers
 
         Parameters
         ----------
-        frags : list[int]
+        frags : list[int] | FragList
         """
-        return FragList.init(frags)
+        if isinstance(frags, FragList):
+            return frags
+        else:
+            return FragList.init(frags)
 
     @field_validator("frags", mode="before")
     @classmethod
-    def frags_str(cls, strings: list[str] | str) -> Frags:
+    def frags_str(cls, strings: list[str] | str | Frags) -> Frags:
         """
         Parameters
         ----------
-        strings : list[str] | str
+        strings : list[str] | str | Frags
         """
-        try:
-            if isinstance(strings, list):
-                frags = [Fragment.from_string(s) for s in strings]
-            else:
-                frags = [Fragment.from_string(strings)]
-        except Exception as e:
-            raise ValueError(f"Failed to parse constraints: {e}")
+        if isinstance(strings, Frags):
+            return strings
+        else:
+            try:
+                if isinstance(strings, list):
+                    frags = [Fragment.from_string(s) for s in strings]
+                else:
+                    frags = [Fragment.from_string(strings)]
+            except Exception as e:
+                raise ValueError(f"Failed to parse constraints: {e}")
 
-        return Frags(frags=frags)
+            return Frags(frags=frags)
 
     @field_validator("inhessname", "inhessname2", mode="before")
     @classmethod

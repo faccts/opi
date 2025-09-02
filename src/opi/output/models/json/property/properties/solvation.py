@@ -4,6 +4,7 @@ from opi.output.models.base.get_item import GetItem
 from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
     StrictPositiveFloat,
+    StrictPositiveFloatOrMinusOne,
     StrictPositiveInt,
 )
 
@@ -14,26 +15,26 @@ class SolvDetails(GetItem):
 
     Attributes
     ---------
-    solvent: StrictStr
+    solvent: StrictStr | None, default = None
         Name of the solvent
-    epsilon: StrictPositiveFloat
+    epsilon: StrictPositiveFloatOrMinusOne | None, default = None
         Dielectric constant of the solvent
-    refrac: StrictPositiveFloat
+    refrac: StrictPositiveFloat | None, default = None
         Refraction index of the solvent
-    rsolv: StrictPositiveFloat
+    rsolv: StrictPositiveFloat | None, default = None
         Radiation of the solvent
-    surfacetype: StrictStr
+    surfacetype: StrictStr | None, default = None
         Type of the solvation surface
-    npoints: StrictPositiveInt
+    npoints: StrictPositiveInt | None, default = None
         Number of points
-    surfacearea: StrictPositiveFloat
+    surfacearea: StrictPositiveFloat | None, default = None
         Surface area
-    cpcmdielenergy: StricFinitetFloat
+    cpcmdielenergy: StricFinitetFloat | None, default = None
         Total solvation energy
     """
 
     solvent: StrictStr | None = None
-    epsilon: StrictPositiveFloat | None = None
+    epsilon: StrictPositiveFloatOrMinusOne | None = None
     refrac: StrictPositiveFloat | None = None
     rsolv: StrictPositiveFloat | None = None
     surfacetype: StrictStr | None = None

@@ -11,19 +11,19 @@ class NaturalOrbitals(GetItem):
 
     Attributes
     ----------
-    nel: StrictNonNegativeInt
+    nel: StrictNonNegativeInt | None, default = None
         Number of electrons
-    nsomo: StrictNonNegativeInt
+    nsomo: StrictNonNegativeInt | None, default = None
         Number of SOMO
-    ndomo: StrictNonNegativeInt
+    ndomo: StrictNonNegativeInt | None, default = None
         Number of DOMO
-    nvmo: StrictNonNegativeInt
+    nvmo: StrictNonNegativeInt | None, default = None
         Number of Virtual MO
-    nnatoorbs: StrictNonNegativeInt
+    nnatoorbs: StrictNonNegativeInt | None, default = None
         Number of natural orbitals
-    occuno: list[list[StrictFloat]]
+    occuno: list[list[StrictFloat]] | None, default = None
         Number of occupation
-    occunso: list[list[StrictFiniteFloat]]
+    occunso: list[list[StrictFiniteFloat]] | None, default = None
         Number of occupation SO
     """
 
