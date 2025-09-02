@@ -20,8 +20,8 @@ from opi.input.structures import Structure
 if __name__ == "__main__":
     # > Get output of existing calculation and parse it
 
-    # same basename as existing calculation
-    calc = Calculator(basename="job")
+    # > same basename as existing calculation in the 'RUN' directory
+    calc = Calculator(basename="job",working_dir="RUN")
     output = calc.get_output()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
