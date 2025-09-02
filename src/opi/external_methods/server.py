@@ -81,7 +81,12 @@ class OpiServer:
                     time.sleep(0.1)
         return False
 
-    def start_server(self, cmd_arguments: str | None = None, exe: str = sys.executable, max_boot_time: float = 20.0) -> ServerStatus:
+    def start_server(
+        self,
+        cmd_arguments: str | None = None,
+        exe: str = sys.executable,
+        max_boot_time: float = 20.0,
+    ) -> ServerStatus:
         """
         Starts the Server from script
         Passes self._host_id and self._port as command-line arguments to the server script.
