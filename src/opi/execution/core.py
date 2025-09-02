@@ -609,7 +609,7 @@ class Runner:
             bin_name += ".exe"
 
         # > Full path to ORCA binary
-        orca_binary = self._orca_bin_folder / str(binary)
+        orca_binary = self._orca_bin_folder / bin_name
 
         if not orca_binary.is_file():
             raise FileNotFoundError(f"The ORCA binary does not exist: {orca_binary}")
