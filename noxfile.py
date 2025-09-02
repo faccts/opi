@@ -80,7 +80,7 @@ def remove_unused_imports(session):
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
     # > Sorting imports with ruff instead of isort
-    session.run("ruff", "check", "--select", "F401", "--fix")
+    session.run("ruff", "check", "--select", "F401", "--fix", "--exit-non-zero-on-fix")
 
 
 # //////////////////////////////////////////
@@ -96,7 +96,7 @@ def sort_imports(session):
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
     # > Sorting imports with ruff instead of isort
-    session.run("ruff", "check", "--select", "I", "--fix")
+    session.run("ruff", "check", "--select", "I", "--fix", "--exit-non-zero-on-fix")
 
 
 # ////////////////////////////////////////
@@ -126,7 +126,7 @@ def format_code(session):
         "lint",
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
-    session.run("ruff", "format")
+    session.run("ruff", "format", "--exit-non-zero-on-format")
 
 
 # ////////////////////////////////////////////////////
