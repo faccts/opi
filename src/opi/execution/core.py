@@ -22,6 +22,7 @@ from opi import ORCA_MINIMAL_VERSION
 from opi.utils.config import get_config
 from opi.utils.misc import add_to_env, check_minimal_version, delete_empty_file
 from opi.utils.orca_version import OrcaVersion
+from opi.utils.misc import is_windows
 
 
 class OrcaBinary(StrEnum):
@@ -601,7 +602,15 @@ class Runner:
         """
 
         assert self._orca_bin_folder is not None
-        orca_binary = self._orca_bin_folder / str(binary)
+
+        bin_name = str(binary)
+        # > On Windows ORCA binaries end with '.exe'
+        if is_windows():
+            bin_name += ".exe"
+
+        # > Full path to ORCA binary
+        orca_binary = self._orca_bin_folder / bin_name
+
         if not orca_binary.is_file():
             raise FileNotFoundError(f"The ORCA binary does not exist: {orca_binary}")
         else:
