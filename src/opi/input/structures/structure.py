@@ -4,6 +4,7 @@ from io import StringIO
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
+from warnings import warn
 
 import numpy as np
 import numpy.typing as npt
@@ -159,6 +160,26 @@ class Structure:
         """Returns a boolean indicating if the number of electrons is even. Does not check for negative electrons."""
         return self.nelectrons % 2 == 0
 
+    @property
+    def multiplicity_is_odd(self) -> bool:
+        """Returns a boolean indicating if the multiplicity is odd."""
+        return self.multiplicity % 2 == 1
+
+    @property
+    def multiplicity_is_even(self) -> bool:
+        """Returns a boolean indicating if the multiplicity is even."""
+        return self.multiplicity % 2 == 0
+
+    def set_ls_multiplicity(self) -> None:
+        """
+        Sets `multiplicity` to the lowest possible multiplicity based on the number of electrons (`multiplicitiy`
+        will either be set to 1 or 2).
+        """
+        if self.nelec_is_even:
+            self.multiplicity = 1
+        else:
+            self.multiplicity = 2
+
     @classmethod
     def combine_molecules(cls, structure1: "Structure", structure2: "Structure") -> "Structure":
         """
@@ -189,6 +210,22 @@ class Structure:
             str:
                 String representation of Molecule
         """
+        # > First we check whether the multiplicity is possible with the numbers of electrons and warn if not
+
+        # > nelec and multiplicity are even
+        if self.nelec_is_even and self.multiplicity_is_even:
+            warn(
+                "Inconsistent input: an even number of electrons cannot have even multiplicity",
+                UserWarning,
+            )
+
+        # > nelec and multiplicity are odd
+        if self.nelec_is_odd and self.multiplicity_is_odd:
+            warn(
+                "Inconsistent input: an odd number of electrons cannot have odd multiplicity",
+                UserWarning,
+            )
+
         # String representation of Molecule class , mostly used for .xyz file
         text = f"* xyz {self.charge} {self.multiplicity}\n"
         for atom in self.atoms:
