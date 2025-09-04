@@ -75,9 +75,11 @@ full_version = ""
 version_short = ""
 # > Using "main" as fallback
 release_branch = "main"
+# > Disabling git advices
+os.environ["GIT_ADVICE"] = "0"
 try:
     output = check_output(
-        ["git", "--no-advice", "--no-pager", "describe", "--always"],
+        ["git", "--no-pager", "describe", "--always"],
         timeout=5,
         cwd=origin,
         text=True,
