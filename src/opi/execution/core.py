@@ -20,9 +20,8 @@ from typing import Any, Callable, Sequence, TypeVar, cast
 
 from opi import ORCA_MINIMAL_VERSION
 from opi.utils.config import get_config
-from opi.utils.misc import add_to_env, check_minimal_version, delete_empty_file
+from opi.utils.misc import add_to_env, check_minimal_version, delete_empty_file, is_windows
 from opi.utils.orca_version import OrcaVersion
-from opi.utils.misc import is_windows
 
 
 class OrcaBinary(StrEnum):
