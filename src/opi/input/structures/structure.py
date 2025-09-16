@@ -461,7 +461,7 @@ class Structure:
         The `Structure` object extracted from the buffer
         """
         # > Try reading the string
-        atoms = []
+        atoms: list[Atom] = []
 
         # > Fetch number of atoms
         try:
@@ -481,7 +481,11 @@ class Structure:
             # > Line should have at least 4 columns
             atom_cols = line.split()
             if len(atom_cols) < 4:
-                raise ValueError(f"Line {iline}: Invalidly formatted coordinate line")
+                # > skip line if Structure is already complete and line is empty
+                if natoms == len(atoms) and len(atom_cols) == 0:
+                    continue
+                else:
+                    raise ValueError(f"Line {iline}: Invalidly formatted coordinate line")
 
             # > Get atom symbol.
             # >> First check if we have combination of atom symbol + fragment id
