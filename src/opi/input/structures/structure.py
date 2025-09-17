@@ -187,7 +187,7 @@ class Structure:
 
     def set_ls_multiplicity(self) -> None:
         """
-        Sets `multiplicity` to the lowest possible multiplicity based on the number of electrons (`multiplicitiy`
+        Sets `multiplicity` to the lowest possible multiplicity based on the number of electrons (`multiplicity`
         will either be set to 1 or 2).
         """
         if self.nelec_is_even:
@@ -408,6 +408,45 @@ class Structure:
             return structure
 
     @classmethod
+    def from_trj(
+        cls, trj_file: Path | str | PathLike[str], /, *, charge: int = 0, multiplicity: int = 1
+    ) -> "list[Structure]":
+        """
+        Function for reading a xyz trajectory file and converting it to a list of molecular Structure
+
+        Parameters
+        ----------
+        trj_file : Path | str | PathLike[str]
+            Name or path to xyz file with multiple structures
+        charge : int, default: 0
+            Charge of the molecule
+        multiplicity : int, default: 1
+            Electron spin multiplicity of the molecule
+
+
+        Returns
+        --------
+        `list[Structure]`:`Structure objects extracted from file
+        """
+        structures: list[Structure] = []
+        # > converting into Path
+        trj_file = Path(trj_file)
+
+        # > Check if file exists
+        if not trj_file.exists():
+            raise FileNotFoundError(f"XYZ file not found: {trj_file}")
+
+        with trj_file.open() as f_xyz:
+            while True:
+                try:
+                    structure = cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
+                    structure.origin = trj_file.expanduser().resolve()
+                    structures.append(structure)
+                except ValueError:
+                    break
+        return structures
+
+    @classmethod
     def from_xyz_block(
         cls,
         xyz_string: str,
@@ -437,6 +476,38 @@ class Structure:
             return cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
 
     @classmethod
+    def from_trj_block(
+        cls, trj_string: str, /, *, charge: int = 0, multiplicity: int = 1
+    ) -> "list[Structure]":
+        """
+        Function for reading a xyz trajectory data string and converting it to a list of molecular Structure
+
+        Parameters
+        ----------
+        trj_string : Path | str | PathLike[str]
+            String that contains multiple xyz file data (trajectory data)
+        charge : int, default: 0
+            Charge of the molecule
+        multiplicity : int, default: 1
+            Electron spin multiplicity of the molecule
+
+
+        Returns
+        --------
+        `list[Structure]`:`Structure objects extracted from file
+        """
+        structures: list[Structure] = []
+
+        with StringIO(trj_string) as f_xyz:
+            while True:
+                try:
+                    structure = cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
+                    structures.append(structure)
+                except ValueError:
+                    break
+        return structures
+
+    @classmethod
     def from_xyz_buffer(
         cls,
         xyz_lines: Iterator[str],
@@ -456,6 +527,11 @@ class Structure:
         multiplicity: int, default = 1
             Electron spin multiplicity of the structure.
 
+        Raises
+        --------
+        ValueError
+            When no valid structure can be read from the input buffer
+
         Returns
         --------
         The `Structure` object extracted from the buffer
@@ -463,9 +539,19 @@ class Structure:
         # > Try reading the string
         atoms: list[Atom] = []
 
+        # > Skip arbitrary number of empty lines at the beginning
+        while (line := next(xyz_lines, None)) is not None:
+            if line == "\n":
+                continue
+            else:
+                break
+
+        if line is None:
+            raise ValueError("Input buffer is empty")
+
         # > Fetch number of atoms
         try:
-            natoms = int(next(xyz_lines).split()[0])
+            natoms = int(line.split()[0])
         except (ValueError, IndexError, StopIteration) as err:
             raise ValueError("Could not read number of atoms in line 1 from xyz data") from err
         # > Skipping comment line
@@ -476,16 +562,13 @@ class Structure:
 
         # > Read atoms
         iline = 2
-        for line in xyz_lines:
+        while (line := next(xyz_lines, None)) is not None:
             iline += 1
             # > Line should have at least 4 columns
             atom_cols = line.split()
+
             if len(atom_cols) < 4:
-                # > skip line if Structure is already complete and line is empty
-                if natoms == len(atoms) and len(atom_cols) == 0:
-                    continue
-                else:
-                    raise ValueError(f"Line {iline}: Invalidly formatted coordinate line")
+                raise ValueError(f"Line {iline}: Invalidly formatted coordinate line")
 
             # > Get atom symbol.
             # >> First check if we have combination of atom symbol + fragment id
@@ -542,6 +625,10 @@ class Structure:
                     fragment_id=frag_id,
                 )
             )
+
+            # > We read the number of atom specified, we can stop here.
+            if natoms == len(atoms):
+                break
         # << END OF LOOP
 
         # > Check number of atoms declared in file agrees with apparent number of atoms.
