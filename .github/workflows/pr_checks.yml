@@ -28,4 +28,4 @@ jobs:
 
       - name: Run Nox sessions via uv
         run: |
-          uv run nox
+          uv run nox -t pr_check
