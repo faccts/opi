@@ -409,7 +409,13 @@ class Structure:
 
     @classmethod
     def from_trj(
-        cls, trj_file: Path | str | PathLike[str], /, *, charge: int = 0, multiplicity: int = 1
+        cls,
+        trj_file: Path | str | PathLike[str],
+        /,
+        *,
+        charge: int = 0,
+        multiplicity: int = 1,
+        comment_symbols: tuple[str, ...] | None = None,
     ) -> "list[Structure]":
         """
         Function for reading a xyz trajectory file and converting it to a list of molecular Structure
@@ -439,7 +445,12 @@ class Structure:
         with trj_file.open() as f_xyz:
             while True:
                 try:
-                    structure = cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
+                    structure = cls.from_xyz_buffer(
+                        f_xyz,
+                        charge=charge,
+                        multiplicity=multiplicity,
+                        comment_symbols=comment_symbols,
+                    )
                     structure.origin = trj_file.expanduser().resolve()
                     structures.append(structure)
                 except ValueError:
@@ -477,7 +488,13 @@ class Structure:
 
     @classmethod
     def from_trj_block(
-        cls, trj_string: str, /, *, charge: int = 0, multiplicity: int = 1
+        cls,
+        trj_string: str,
+        /,
+        *,
+        charge: int = 0,
+        multiplicity: int = 1,
+        comment_symbols: tuple[str, ...] | None = None,
     ) -> "list[Structure]":
         """
         Function for reading a xyz trajectory data string and converting it to a list of molecular Structure
@@ -490,6 +507,9 @@ class Structure:
             Charge of the molecule
         multiplicity : int, default: 1
             Electron spin multiplicity of the molecule
+        comment_symbols: tuple[str, ...] | None, default: None
+            List of symbols that indicate comments in the xyz file. Comments are skipped before the actual xyz file
+            starts. By default, no comments are allowed.
 
 
         Returns
@@ -501,7 +521,12 @@ class Structure:
         with StringIO(trj_string) as f_xyz:
             while True:
                 try:
-                    structure = cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
+                    structure = cls.from_xyz_buffer(
+                        f_xyz,
+                        charge=charge,
+                        multiplicity=multiplicity,
+                        comment_symbols=comment_symbols,
+                    )
                     structures.append(structure)
                 except ValueError:
                     break
@@ -514,6 +539,7 @@ class Structure:
         *,
         charge: int = 0,
         multiplicity: int = 1,
+        comment_symbols: tuple[str, ...] | None = None,
     ) -> "Structure":
         """
         Function for reading a xyz file from a buffer and converting it to a molecular Structure.
@@ -522,10 +548,13 @@ class Structure:
         ----------
         xyz_lines: Iterator[str]
             A buffer that contains xyz file data
-        charge : int, default = 0
+        charge : int, default: 0
             Molecular charge of the structure.
-        multiplicity: int, default = 1
+        multiplicity: int, default: 1
             Electron spin multiplicity of the structure.
+        comment_symbols: tuple[str, ...] | None, default: None
+            List of symbols that indicate comments in the xyz file. Comments are skipped before the actual xyz file
+            starts. By default, no comments are allowed.
 
         Raises
         --------
@@ -539,9 +568,11 @@ class Structure:
         # > Try reading the string
         atoms: list[Atom] = []
 
-        # > Skip arbitrary number of empty lines at the beginning
+        # > Skip arbitrary number of empty or comment lines at the beginning
         while (line := next(xyz_lines, None)) is not None:
             if line == "\n":
+                continue
+            elif comment_symbols is not None and line.startswith(comment_symbols):
                 continue
             else:
                 break
@@ -781,9 +812,9 @@ class Structure:
         ----------
         ase_atoms : AseAtoms
             The object "Atoms" from ase
-        charge : int | None, default = None
+        charge : int | None, default:  None
             Optional charge of the molecule, will overwrite charge from ase.
-        multiplicity : int | None, default = None
+        multiplicity : int | None, default:  None
             Optional multiplicity of the molecule, will overwrite multiplicity from ase.
 
         Returns
@@ -887,9 +918,9 @@ class Structure:
             List of symbols for elements, either as string or as atomic number
         coordinates: list[tuple[float, float, float]]
             List of tuples containing coordinates
-        charge : int, default = 0
+        charge : int, default:  0
             Optional charge for the structure
-        multiplicity : int, default = 1
+        multiplicity : int, default:  1
             Optional multiplicity for the structure
 
         Returns

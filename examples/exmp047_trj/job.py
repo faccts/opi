@@ -18,7 +18,6 @@ from opi.input.simple_keywords import Task
 from opi.input.structures import Structure
 
 if __name__ == "__main__":
-    """Run HF/def2-SVP single-point energies on a trajectory file"""
     wd = Path("RUN")
     shutil.rmtree(wd, ignore_errors=True)
     wd.mkdir()
@@ -29,6 +28,9 @@ if __name__ == "__main__":
     # > Read structures from other.xyz (empty lines in between)
     structures_other = Structure.from_trj("other.xyz")
     print(f"Number of structures in other.xyz: {len(structures_other)}")
+    # > Read structure from another.xyz (> lines between xyz blocks)
+    structures_another = Structure.from_trj("another.xyz", comment_symbols=tuple(">"))
+    print(f"Number of structures in another.xyz: {len(structures_another)}")
 
     for index, structure in enumerate(structures):
         calc = Calculator(basename="job", working_dir=wd)
