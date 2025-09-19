@@ -70,6 +70,12 @@ Example from the community can be contributed as Jupyter notebooks or Python scr
 
 - Community-based long-term maintenance of contributed example notebooks is highly appreciated! The FACCTs team can only maintain the official tutorial examples.
 
+  :::{note}
+  The Community Notebooks and external software linked within are contributed by third parties and are not reviewed, endorsed, or controlled by FACCTs. 
+  We assume no liability for the content, functionality, or consequences arising from the use of these materials. 
+  Users are advised to independently verify the legality, security, and suitability of any external software or resources before use.
+  :::
+
 (sec:howto_docs)=
 ## Documentation Pages
 
