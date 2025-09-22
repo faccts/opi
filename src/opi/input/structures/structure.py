@@ -402,12 +402,8 @@ class Structure:
         --------
         `Structure`:`Structure object extracted from file
         """
-        try:
-            structures = cls.from_trj_xyz(xyzfile, charge=charge, multiplicity=multiplicity)
-            structure = structures[0]
-        except:
-            raise
-
+        structures = cls.from_trj_xyz(xyzfile, charge=charge, multiplicity=multiplicity)
+        structure = structures[0]
         return structure
 
     @classmethod
@@ -599,7 +595,6 @@ class Structure:
 
         if comment_symbols:
             comments_tuple = tuple(comment_symbols)
-
 
         # > Skip arbitrary of comment lines at the beginning
         while (line := xyz_lines.readline()) != "":
