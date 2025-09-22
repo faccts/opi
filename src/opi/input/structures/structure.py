@@ -1,5 +1,4 @@
 import re
-from collections.abc import Iterator
 from io import StringIO
 from os import PathLike
 from pathlib import Path
@@ -21,6 +20,7 @@ from opi.input.structures.atom import (
 )
 from opi.input.structures.coordinates import Coordinates
 from opi.utils.element import Element
+from opi.utils.textio import TrackingTextIO
 
 __all__ = ("Structure",)
 
@@ -391,31 +391,34 @@ class Structure:
         multiplicity : int, default: 1
             Electron spin multiplicity of the molecule
 
+        Raises
+        --------
+        FileNotFoundError
+            If the XYZ file cannot be found
+        ValueError
+            If there is a problem with parsing the XYZ file
+
         Returns
         --------
         `Structure`:`Structure object extracted from file
         """
-        # > converting into Path
-        xyzfile = Path(xyzfile)
+        try:
+            structures = cls.from_trj_xyz(xyzfile, charge=charge, multiplicity=multiplicity)
+            structure = structures[0]
+        except:
+            raise
 
-        # > Check if file exists
-        if not xyzfile.exists():
-            raise FileNotFoundError(f"XYZ file not found: {xyzfile}")
-
-        with xyzfile.open() as f_xyz:
-            structure = cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
-            structure.origin = xyzfile.expanduser().resolve()
-            return structure
+        return structure
 
     @classmethod
-    def from_trj(
+    def from_trj_xyz(
         cls,
         trj_file: Path | str | PathLike[str],
         /,
         *,
         charge: int = 0,
         multiplicity: int = 1,
-        comment_symbols: tuple[str, ...] | None = None,
+        comment_symbols: str | Sequence[str] | None = None,
     ) -> "list[Structure]":
         """
         Function for reading a xyz trajectory file and converting it to a list of molecular Structure
@@ -428,11 +431,20 @@ class Structure:
             Charge of the molecule
         multiplicity : int, default: 1
             Electron spin multiplicity of the molecule
+        comment_symbols: str | Sequence[str] | None, default: None
+            List of symbols that indicate comments in the xyz file. Comments are skipped before the actual xyz file
+            starts. By default, no comments are allowed.
 
+        Raises
+        --------
+        FileNotFoundError
+            If the XYZ file cannot be found
+        ValueError
+            If there is a problem with parsing the XYZ file
 
         Returns
         --------
-        `list[Structure]`:`Structure objects extracted from file
+        `list[Structure]`:`Molecular structure objects extracted from the xyz file
         """
         structures: list[Structure] = []
         # > converting into Path
@@ -443,18 +455,21 @@ class Structure:
             raise FileNotFoundError(f"XYZ file not found: {trj_file}")
 
         with trj_file.open() as f_xyz:
+            tracked = TrackingTextIO(f_xyz)
             while True:
                 try:
                     structure = cls.from_xyz_buffer(
-                        f_xyz,
+                        tracked,
                         charge=charge,
                         multiplicity=multiplicity,
                         comment_symbols=comment_symbols,
                     )
+                    if structure is None:
+                        break
                     structure.origin = trj_file.expanduser().resolve()
                     structures.append(structure)
                 except ValueError:
-                    break
+                    raise
         return structures
 
     @classmethod
@@ -478,23 +493,33 @@ class Structure:
         multiplicity : int, default: 1
             Electron spin multiplicity of the molecule
 
+        Raises
+        --------
+        ValueError
+            If there is a problem with parsing the XYZ file
+
         Returns
         --------
         Structure
             The `Structure` object extracted from file
         """
         with StringIO(xyz_string) as f_xyz:
-            return cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
+            tracked = TrackingTextIO(f_xyz)
+            structure = cls.from_xyz_buffer(tracked, charge=charge, multiplicity=multiplicity)
+            if structure is None:
+                raise ValueError(f"Invalid XYZ string: {xyz_string}")
+            else:
+                return structure
 
     @classmethod
-    def from_trj_block(
+    def from_trj_xyz_block(
         cls,
         trj_string: str,
         /,
         *,
         charge: int = 0,
         multiplicity: int = 1,
-        comment_symbols: tuple[str, ...] | None = None,
+        comment_symbols: str | Sequence[str] | None = None,
     ) -> "list[Structure]":
         """
         Function for reading a xyz trajectory data string and converting it to a list of molecular Structure
@@ -511,7 +536,6 @@ class Structure:
             List of symbols that indicate comments in the xyz file. Comments are skipped before the actual xyz file
             starts. By default, no comments are allowed.
 
-
         Returns
         --------
         `list[Structure]`:`Structure objects extracted from file
@@ -519,28 +543,31 @@ class Structure:
         structures: list[Structure] = []
 
         with StringIO(trj_string) as f_xyz:
+            tracked = TrackingTextIO(f_xyz)
             while True:
                 try:
                     structure = cls.from_xyz_buffer(
-                        f_xyz,
+                        tracked,
                         charge=charge,
                         multiplicity=multiplicity,
                         comment_symbols=comment_symbols,
                     )
+                    if structure is None:
+                        break
                     structures.append(structure)
                 except ValueError:
-                    break
+                    raise
         return structures
 
     @classmethod
     def from_xyz_buffer(
         cls,
-        xyz_lines: Iterator[str],
+        xyz_lines: TrackingTextIO,
         *,
         charge: int = 0,
         multiplicity: int = 1,
-        comment_symbols: tuple[str, ...] | None = None,
-    ) -> "Structure":
+        comment_symbols: str | Sequence[str] | None = None,
+    ) -> "Structure | None":
         """
         Function for reading a xyz file from a buffer and converting it to a molecular Structure.
 
@@ -563,55 +590,77 @@ class Structure:
 
         Returns
         --------
-        The `Structure` object extracted from the buffer
+        Structure | None
+            The `Structure` object extracted from the buffer or None if the buffer was empty.
         """
         # > Try reading the string
         atoms: list[Atom] = []
+        comments_tuple: tuple[str, ...] | None = None
 
-        # > Skip arbitrary number of empty or comment lines at the beginning
-        while (line := next(xyz_lines, None)) is not None:
-            if line == "\n":
-                continue
-            elif comment_symbols is not None and line.startswith(comment_symbols):
+        if comment_symbols:
+            comments_tuple = tuple(comment_symbols)
+
+
+        # > Skip arbitrary of comment lines at the beginning
+        while (line := xyz_lines.readline()) != "":
+            if comments_tuple and line.startswith(comments_tuple):
                 continue
             else:
                 break
 
-        if line is None:
-            raise ValueError("Input buffer is empty")
+        # > No data available in the buffer
+        if line == "":
+            return None
 
         # > Fetch number of atoms
         try:
             natoms = int(line.split()[0])
-        except (ValueError, IndexError, StopIteration) as err:
-            raise ValueError("Could not read number of atoms in line 1 from xyz data") from err
+        except (ValueError, IndexError) as err:
+            raise ValueError(
+                f"Line {xyz_lines.line_number}: Could not read number of atoms at the beginning of xyz data"
+            ) from err
         # > Skipping comment line
         try:
-            next(xyz_lines)
+            xyz_lines.readline()
         except StopIteration as err:
-            raise ValueError("Comment line is not present in xyz data") from err
+            raise ValueError(
+                f"Line {xyz_lines.line_number}: Comment line is not present in xyz data"
+            ) from err
 
-        # > Read atoms
-        iline = 2
-        while (line := next(xyz_lines, None)) is not None:
-            iline += 1
+        pos = xyz_lines.tell()
+        # Read the atoms
+        while (line := xyz_lines.readline()) != "":
             # > Line should have at least 4 columns
             atom_cols = line.split()
 
             if len(atom_cols) < 4:
-                raise ValueError(f"Line {iline}: Invalidly formatted coordinate line")
+                # Data is read we can leave the loop
+                if natoms == len(atoms):
+                    try:
+                        int(line)
+                        xyz_lines.seek(pos)
+                        break
+                    except ValueError:
+                        break
+                # If we did not read everything the line is invalid
+                else:
+                    raise ValueError(
+                        f"Line {xyz_lines.line_number}: Invalidly formatted coordinate line"
+                    )
 
             # > Get atom symbol.
             # >> First check if we have combination of atom symbol + fragment id
             match_atom_sym_frag_id = RGX_ATOM_SYMBOL_FRAG_ID.match(line.lstrip())
             if not match_atom_sym_frag_id:
-                raise ValueError(f"Line {iline}: Could not find atom symbol.")
+                raise ValueError(f"Line {xyz_lines.line_number}: Could not find atom symbol.")
 
             atom_sym = match_atom_sym_frag_id.group("elem")
             try:
                 element = Element(atom_sym)
             except Exception as err:
-                raise ValueError(f"Line {iline}: Invalid atom symbol: {atom_sym}") from err
+                raise ValueError(
+                    f"Line {xyz_lines.line_number}: Invalid atom symbol: {atom_sym}"
+                ) from err
 
             # > Fragment id
             # >> First, let's assume columns 2 through 4 are the coordinates.
@@ -629,24 +678,32 @@ class Structure:
                 try:
                     frag_id = int(match_frag_id)
                 except ValueError as err:
-                    raise ValueError(f"Line {iline}: Invalid fragment id: {match_frag_id}") from err
+                    raise ValueError(
+                        f"Line {xyz_lines.line_number}: Invalid fragment id: {match_frag_id}"
+                    ) from err
 
             # > Pass coordinates
             # // X
             try:
                 coord_x = float(coords_cols[0])
             except (ValueError, IndexError) as err:
-                raise ValueError(f"Line {iline}: Invalid X coordinate: {atom_cols[1]}") from err
+                raise ValueError(
+                    f"Line {xyz_lines.line_number}: Invalid X coordinate: {atom_cols[1]}"
+                ) from err
             # // Y
             try:
                 coord_y = float(coords_cols[1])
             except (ValueError, IndexError) as err:
-                raise ValueError(f"Line {iline}: Invalid Y coordinate: {atom_cols[2]}") from err
+                raise ValueError(
+                    f"Line {xyz_lines.line_number}: Invalid Y coordinate: {atom_cols[2]}"
+                ) from err
             # // Z
             try:
                 coord_z = float(coords_cols[2])
             except (ValueError, IndexError) as err:
-                raise ValueError(f"Line {iline}: Invalid Z coordinate: {atom_cols[3]}") from err
+                raise ValueError(
+                    f"Line {xyz_lines.line_number}: Invalid Z coordinate: {atom_cols[3]}"
+                ) from err
 
             # > Adding atom
             atoms.append(
@@ -657,9 +714,7 @@ class Structure:
                 )
             )
 
-            # > We read the number of atom specified, we can stop here.
-            if natoms == len(atoms):
-                break
+            pos = xyz_lines.tell()
         # << END OF LOOP
 
         # > Check number of atoms declared in file agrees with apparent number of atoms.

@@ -23,14 +23,14 @@ if __name__ == "__main__":
     wd.mkdir()
 
     # > Read structures from inp.xyz
-    structures = Structure.from_trj("inp.xyz")
-    print(f"Number of structures in inp.xyz: {len(structures)}")
+    structures = Structure.from_trj_xyz("inp_trj.xyz")
+    print(f"Number of structures in inp_trj.xyz: {len(structures)}")
     # > Read structures from other.xyz (empty lines in between)
-    structures_other = Structure.from_trj("other.xyz")
-    print(f"Number of structures in other.xyz: {len(structures_other)}")
+    structures_blank_lines = Structure.from_trj_xyz("with_blank_lines_trj.xyz", comment_symbols=tuple("\n"))
+    print(f"Number of structures in with_blank_lines_trj.xyz: {len(structures_blank_lines)}")
     # > Read structure from another.xyz (> lines between xyz blocks)
-    structures_another = Structure.from_trj("another.xyz", comment_symbols=tuple(">"))
-    print(f"Number of structures in another.xyz: {len(structures_another)}")
+    structures_comments = Structure.from_trj_xyz("with_comments_trj.xyz", comment_symbols=tuple(">"))
+    print(f"Number of structures in with_comments_trj.xyz: {len(structures_comments)}")
 
     for index, structure in enumerate(structures):
         calc = Calculator(basename="job", working_dir=wd)
