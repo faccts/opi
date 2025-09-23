@@ -624,7 +624,7 @@ class Structure:
                 f"Line {xyz_lines.line_number}: Comment line is not present in xyz data"
             ) from err
 
-        # > Save position before coordinate lines
+        # > Save position before coordinate lines start
         pos = xyz_lines.tell()
 
         # Read the atoms
@@ -716,7 +716,7 @@ class Structure:
                 )
             )
 
-            # > Safe last position in case the next line is the next xyz block
+            # > Save last position in case the next line is the next xyz block
             pos = xyz_lines.tell()
         # << END OF LOOP
 
