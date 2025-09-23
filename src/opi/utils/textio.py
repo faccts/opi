@@ -40,3 +40,10 @@ class TrackingTextIO:
     def __getattr__(self, name: str) -> Any:
         # Tell mypy that this forwards to the underlying TextIO
         return getattr(self._stream, name)
+
+    def __next__(self) -> Any:
+        line = self.file.readline()
+        if line == "":
+            raise StopIteration
+        self.line_number += 1
+        return line

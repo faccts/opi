@@ -428,8 +428,8 @@ class Structure:
         multiplicity : int, default: 1
             Electron spin multiplicity of the molecule
         comment_symbols: str | Sequence[str] | None, default: None
-            List of symbols that indicate comments in the xyz file. Comments are skipped before the actual xyz file
-            starts. By default, no comments are allowed.
+            List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
+            data starts. By default, no user comments are used.
 
         Raises
         --------
@@ -529,8 +529,8 @@ class Structure:
         multiplicity : int, default: 1
             Electron spin multiplicity of the molecule
         comment_symbols: str | Sequence[str] | None, default: None
-            List of symbols that indicate comments in the xyz file. Comments are skipped before the actual xyz file
-            starts. By default, no comments are allowed.
+            List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
+            data starts. By default, no user comments are used.
 
         Returns
         --------
@@ -576,8 +576,8 @@ class Structure:
         multiplicity: int, default: 1
             Electron spin multiplicity of the structure.
         comment_symbols: str | Sequence[str] | None, default: None
-            List of symbols that indicate comments in the xyz file. Comments are skipped before the actual xyz file
-            starts. By default, no comments are allowed.
+            List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
+            data starts. By default, no user comments are used.
 
         Raises
         --------
@@ -593,10 +593,12 @@ class Structure:
         atoms: list[Atom] = []
         comments_tuple: tuple[str, ...] | None = None
 
-        if comment_symbols:
+        if isinstance(comment_symbols, str):
+            comments_tuple = (comment_symbols,)
+        elif isinstance(comment_symbols, Sequence):
             comments_tuple = tuple(comment_symbols)
 
-        # > Skip arbitrary of comment lines at the beginning
+        # > Skip arbitrary number of user comment lines at the beginning
         while (line := xyz_lines.readline()) != "":
             if comments_tuple and line.startswith(comments_tuple):
                 continue
@@ -622,22 +624,27 @@ class Structure:
                 f"Line {xyz_lines.line_number}: Comment line is not present in xyz data"
             ) from err
 
+        # > Save position before coordinate lines
         pos = xyz_lines.tell()
+
         # Read the atoms
         while (line := xyz_lines.readline()) != "":
             # > Line should have at least 4 columns
             atom_cols = line.split()
 
             if len(atom_cols) < 4:
-                # Data is read we can leave the loop
+                # > If data is complete we can leave the loop
                 if natoms == len(atoms):
+                    # See if current line is start of next xyz block
                     try:
                         int(line)
+                        # if it is, go back to last position
                         xyz_lines.seek(pos)
                         break
+                    # if it is not, we do not have to change the position
                     except ValueError:
                         break
-                # If we did not read everything the line is invalid
+                # If read is not complete the line is invalid
                 else:
                     raise ValueError(
                         f"Line {xyz_lines.line_number}: Invalidly formatted coordinate line"
@@ -709,6 +716,7 @@ class Structure:
                 )
             )
 
+            # > Safe last position in case the next line is the next xyz block
             pos = xyz_lines.tell()
         # << END OF LOOP
 
