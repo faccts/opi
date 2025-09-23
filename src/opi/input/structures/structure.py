@@ -528,7 +528,7 @@ class Structure:
             Charge of the molecule
         multiplicity : int, default: 1
             Electron spin multiplicity of the molecule
-        comment_symbols: tuple[str, ...] | None, default: None
+        comment_symbols: str | Sequence[str] | None, default: None
             List of symbols that indicate comments in the xyz file. Comments are skipped before the actual xyz file
             starts. By default, no comments are allowed.
 
@@ -569,13 +569,13 @@ class Structure:
 
         Parameters
         ----------
-        xyz_lines: Iterator[str]
+        xyz_lines: TrackingTextIO
             A buffer that contains xyz file data
         charge : int, default: 0
             Molecular charge of the structure.
         multiplicity: int, default: 1
             Electron spin multiplicity of the structure.
-        comment_symbols: tuple[str, ...] | None, default: None
+        comment_symbols: str | Sequence[str] | None, default: None
             List of symbols that indicate comments in the xyz file. Comments are skipped before the actual xyz file
             starts. By default, no comments are allowed.
 
