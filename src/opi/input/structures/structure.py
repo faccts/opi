@@ -598,9 +598,11 @@ class Structure:
         elif isinstance(comment_symbols, Sequence):
             comments_tuple = tuple(comment_symbols)
 
-        # > Skip arbitrary number of user comment lines at the beginning
+        # > Skip arbitrary number of empty and user comment lines at the beginning
         while (line := xyz_lines.readline()) != "":
-            if comments_tuple and line.startswith(comments_tuple):
+            if not line.lstrip():
+                continue
+            elif comments_tuple and line.startswith(comments_tuple):
                 continue
             else:
                 break
@@ -617,12 +619,10 @@ class Structure:
                 f"Line {xyz_lines.line_number}: Could not read number of atoms at the beginning of xyz data"
             ) from err
         # > Skipping comment line
-        try:
-            xyz_lines.readline()
-        except StopIteration as err:
+        if xyz_lines.readline() == "":
             raise ValueError(
                 f"Line {xyz_lines.line_number}: Comment line is not present in xyz data"
-            ) from err
+            )
 
         # > Save position before coordinate lines start
         pos = xyz_lines.tell()
@@ -637,12 +637,13 @@ class Structure:
                 if natoms == len(atoms):
                     # See if current line is start of next xyz block
                     try:
-                        int(line)
+                        # check for natoms in line
+                        int(line.split()[0])
                         # if it is, go back to last position
                         xyz_lines.seek(pos)
                         break
                     # if it is not, we do not have to change the position
-                    except ValueError:
+                    except (IndexError, ValueError):
                         break
                 # If read is not complete the line is invalid
                 else:
