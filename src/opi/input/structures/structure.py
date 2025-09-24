@@ -402,7 +402,9 @@ class Structure:
         --------
         `Structure`:`Structure object extracted from file
         """
-        structures = cls.from_trj_xyz(xyzfile, charge=charge, multiplicity=multiplicity)
+        structures = cls.from_trj_xyz(
+            xyzfile, charge=charge, multiplicity=multiplicity, struc_limit=1
+        )
         structure = structures[0]
         return structure
 
@@ -415,6 +417,7 @@ class Structure:
         charge: int = 0,
         multiplicity: int = 1,
         comment_symbols: str | Sequence[str] | None = None,
+        struc_limit: int | None = None,
     ) -> "list[Structure]":
         """
         Function for reading a xyz trajectory file and converting it to a list of molecular Structure
@@ -430,6 +433,9 @@ class Structure:
         comment_symbols: str | Sequence[str] | None, default: None
             List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
             data starts. By default, no user comments are used.
+        struc_limit: int | None, default: None
+            Limit of structures that should be read from the trj.xyz file. With the default, None, all structures are
+            read.
 
         Raises
         --------
@@ -452,6 +458,7 @@ class Structure:
 
         with trj_file.open() as f_xyz:
             tracked = TrackingTextIO(f_xyz)
+            n_struc: int = 0
             while True:
                 try:
                     structure = cls.from_xyz_buffer(
@@ -466,6 +473,11 @@ class Structure:
                     structures.append(structure)
                 except ValueError:
                     raise
+                n_struc += 1
+                # > Break if limit of allowed structures is reached
+                if struc_limit is not None and n_struc >= struc_limit:
+                    break
+
         return structures
 
     @classmethod
@@ -499,13 +511,10 @@ class Structure:
         Structure
             The `Structure` object extracted from file
         """
-        with StringIO(xyz_string) as f_xyz:
-            tracked = TrackingTextIO(f_xyz)
-            structure = cls.from_xyz_buffer(tracked, charge=charge, multiplicity=multiplicity)
-            if structure is None:
-                raise ValueError(f"Invalid XYZ string: {xyz_string}")
-            else:
-                return structure
+        structures = cls.from_trj_xyz_block(
+            xyz_string, charge=charge, multiplicity=multiplicity, struc_limit=1
+        )
+        return structures[0]
 
     @classmethod
     def from_trj_xyz_block(
@@ -516,6 +525,7 @@ class Structure:
         charge: int = 0,
         multiplicity: int = 1,
         comment_symbols: str | Sequence[str] | None = None,
+        struc_limit: int | None = None,
     ) -> "list[Structure]":
         """
         Function for reading a xyz trajectory data string and converting it to a list of molecular Structure
@@ -531,6 +541,9 @@ class Structure:
         comment_symbols: str | Sequence[str] | None, default: None
             List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
             data starts. By default, no user comments are used.
+        struc_limit: int | None, default: None
+            Limit of structures that should be read from the trj.xyz string. With the default, None, all structures are
+            read.
 
         Returns
         --------
@@ -540,6 +553,7 @@ class Structure:
 
         with StringIO(trj_string) as f_xyz:
             tracked = TrackingTextIO(f_xyz)
+            n_struc: int = 0
             while True:
                 try:
                     structure = cls.from_xyz_buffer(
@@ -553,6 +567,10 @@ class Structure:
                     structures.append(structure)
                 except ValueError:
                     raise
+                n_struc += 1
+                # > Break if limit of allowed structures is reached
+                if struc_limit is not None and n_struc >= struc_limit:
+                    break
         return structures
 
     @classmethod
