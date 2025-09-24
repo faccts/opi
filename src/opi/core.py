@@ -176,20 +176,38 @@ class Calculator:
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     # METHODS
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    def write_input(self) -> None:
+    def write_input(self, force: bool = True) -> bool:
         """
         Function to create the ORCA input file `.inp`.
+
+        Parameters
+        -----------
+        force : bool, default: True
+            Whether to overwrite the ORCA input file if it already exists.
 
         Raises
         ------
         RuntimeError
           * When `.inp` cannot be written.
+          * When '.inp' file already exists and force is `False`.
         ValueError
           * When the `moinp` path is given, and it is not a subpath of the working directory.
+
+        Returns
+        -------
+        bool
+            Whether an existing ORCA .inp file was overwritten.
         """
 
         assert self.working_dir
         self._inpfile = self.working_dir / f"{self.basename}.inp"
+
+        exists = self._inpfile.exists()
+        if exists and not force:
+            raise RuntimeError(
+                f"Input file {self._inpfile} already exists and cannot be overwritten."
+            )
+        input_overwritten = exists and force
 
         # add JSON generation to output blocks
         if self.json_via_input:
@@ -272,6 +290,8 @@ class Calculator:
                         if item.pos is ArbitraryStringPos.BOTTOM:
                             inp.write(f"\n{item}\n")
 
+                return input_overwritten
+
         except IOError as err:
             raise RuntimeError(
                 # Raises an error if the input file cannot be written
@@ -300,7 +320,7 @@ class Calculator:
         """Create a `Runner` object passing on `self.working_dir`."""
         return Runner(working_dir=self.working_dir)
 
-    def run(self, *, timeout: int = -1) -> None:
+    def run(self, *, timeout: int = -1) -> bool:
         """
         Execute ORCA calculation.
 
@@ -309,10 +329,17 @@ class Calculator:
         timeout : int, default: = -1
             Timeout in seconds to wait for ORCA process.
             If value is smaller than zero, wait indefinitely.
+
+        Returns
+        -------
+        bool
+            Whether the ORCA calculation terminated normally.
         """
         runner = self._create_runner()
         assert self.inpfile
         runner.run_orca(self.inpfile, timeout=timeout)
+        output = self.get_output()
+        return output.terminated_normally()
 
     def create_jsons(self, *, force: bool = False) -> None:
         """
@@ -354,3 +381,23 @@ class Calculator:
             runner.check_version(ignore_errors=False)
         except RuntimeError:
             raise
+
+    def write_and_run(self, force: bool = True, timeout: int = -1) -> bool:
+        """
+        Write ORCA .inp file and execute the ORCA calculation.
+
+
+        Parameters
+        ----------
+        force: bool, default:True
+            Whether to overwrite the ORCA input file if it already exists.
+        timeout: int, default: -1
+            Timeout in seconds to wait for ORCA process.
+
+        Returns
+        --------
+        bool
+            Whether the ORCA calculation terminated normally.
+        """
+        self.write_input(force=force)
+        return self.run(timeout=timeout)
