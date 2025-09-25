@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
 
-import sys
 import shutil
+import sys
 from pathlib import Path
 
 from opi.core import Calculator
 from opi.input.blocks import BlockSolvator
 from opi.input.simple_keywords.solvent import Solvent
 from opi.input.structures.structure import Structure
+from opi.output.core import Output
 
 
-if __name__ == "__main__":
-    wd = Path("RUN")
-    shutil.rmtree(wd, ignore_errors=True)
-    wd.mkdir()
+def run_exmp036(
+    structure: Structure | None = None, working_dir: Path | None = Path("RUN")
+) -> Output:
+    # > recreate the working dir
+    shutil.rmtree(working_dir, ignore_errors=True)
+    working_dir.mkdir()
 
-    structure = Structure.from_xyz("inp.xyz")
-    calc = Calculator(basename="job", working_dir=wd)
+    # > if no structure is given read structure from inp.xyz
+    if structure is None:
+        structure = Structure.from_xyz("inp.xyz")
+
+    calc = Calculator(basename="job", working_dir=working_dir)
     calc.structure = structure
     calc.structure.charge = 1
     calc.structure.multiplicity = 1
@@ -34,10 +40,16 @@ if __name__ == "__main__":
         sys.exit(1)
 
     output.parse(read_gbw_json=False)
-    
+
     print("Solvated xyz file:")
     print(f"\t{output.basename}.solvator.xyz")
 
     # > Verify output works okay
     # > there is not really much output to be gained from a solvator run
     # > other than the solvator.xyz, solvator.solventbuild.xyz or a final single point energy
+
+    return output
+
+
+if __name__ == "__main__":
+    run_exmp036()

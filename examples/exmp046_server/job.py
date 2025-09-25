@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 
-from pathlib import Path
 import shutil
 import sys
 import warnings
+from pathlib import Path
 
 from opi.core import Calculator
-from opi.input.structures.structure import Structure
-from opi.input.blocks import BlockMethod
-from opi.input.simple_keywords import ExternalTools
-from opi.input.simple_keywords import Opt
 from opi.external_methods.server import OpiServer, ServerStatus
+from opi.input.blocks import BlockMethod
+from opi.input.simple_keywords import ExternalTools, Opt
+from opi.input.structures.structure import Structure
 
 # ------------------------------------------------------------------------
 # For this example, a server and client script must be installed.

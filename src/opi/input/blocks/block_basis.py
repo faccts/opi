@@ -1,7 +1,7 @@
 import re
 
 from pydantic import BaseModel, ConfigDict, field_validator
-from pydantic_core.core_schema import FieldValidationInfo
+from pydantic_core.core_schema import ValidationInfo
 
 from opi.input.blocks import Block
 from opi.input.blocks.util import InputFilePath
@@ -305,13 +305,13 @@ class BlockBasis(Block):
         mode="before",
     )
     @classmethod
-    def frag_fromstring(cls, inp: str | FragBasis, info: FieldValidationInfo) -> FragBasis:
+    def frag_fromstring(cls, inp: str | FragBasis, info: ValidationInfo) -> FragBasis:
         """
 
         Parameters
         ----------
         inp: str | FragBasis
-        info: FieldValidationInfo
+        info: ValidationInfo
 
         Returns
         -------

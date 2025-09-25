@@ -4,25 +4,23 @@ import shutil
 import sys
 from pathlib import Path
 
-from opi.core import Calculator
-from opi.input.simple_keywords import BasisSet
-from opi.input.simple_keywords import Method
-from opi.input.simple_keywords import Scf
-from opi.input.simple_keywords import Task
-from opi.input.structures import Structure
-
 from ase import Atoms
 
-if __name__ == "__main__":
-    
+from opi.core import Calculator
+from opi.input.simple_keywords import BasisSet, Method, Scf, Task
+from opi.input.structures import Structure
+from opi.output.core import Output
+
+
+def run_exmp044(working_dir: Path | None = Path("RUN")) -> Output:
     # Create a water molecule (H2O)
     # Positions in Ångström
     positions = [
-        [0.000, 0.000, 0.000],     # O
-        [0.757, 0.586, 0.000],     # H
-        [-0.757, 0.586, 0.000],    # H
+        [0.000, 0.000, 0.000],  # O
+        [0.757, 0.586, 0.000],  # H
+        [-0.757, 0.586, 0.000],  # H
     ]
-    symbols = ['O', 'H', 'H']
+    symbols = ["O", "H", "H"]
 
     # Create ASE Atoms object
     water = Atoms(symbols=symbols, positions=positions)
@@ -33,19 +31,13 @@ if __name__ == "__main__":
 
     # Example: assign 1 unpaired electron → doublet (S=1/2 → 2S=1)
     water.set_initial_magnetic_moments([1.0, 0.0, 0.0])
-    
-    wd = Path("RUN")
-    shutil.rmtree(wd, ignore_errors=True)
-    wd.mkdir()
 
-    calc = Calculator(basename="job", working_dir=wd)
+    shutil.rmtree(working_dir, ignore_errors=True)
+    working_dir.mkdir()
+
+    calc = Calculator(basename="job", working_dir=working_dir)
     calc.structure = Structure.from_ase(water)
-    calc.input.add_simple_keywords(
-        Scf.NOAUTOSTART,
-        Method.HF,
-        BasisSet.DEF2_SVP,
-        Task.SP
-    )
+    calc.input.add_simple_keywords(Scf.NOAUTOSTART, Method.HF, BasisSet.DEF2_SVP, Task.SP)
 
     # > Print number of electrons
     print(f"Number of electrons is {calc.structure.nelectrons}")
@@ -72,3 +64,9 @@ if __name__ == "__main__":
 
     print("FINAL SINGLE POINT ENERGY")
     print(output.get_final_energy())
+
+    return output
+
+
+if __name__ == "__main__":
+    run_exmp044()
