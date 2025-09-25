@@ -20,11 +20,11 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     DLPNO-CCSD(T) calculations according to J. Chem. Theory Comput. 2023, 19, 13, 4023–4032
     """
 
-    # HF and CC type
+    # > HF and CC type
     HF_TYPE = ShellType.UHF
     CC_TYPE = Wft.DLPNO_CCSD_T1 # or Wft.DLPNO_CCSD_T
 
-    # Modify these by hand as desired
+    # > Modify these by hand as desired
     BASIS_SET = BasisSet.AUG_CC_PVDZ_DK
     REL = RelativisticCorrection.DKH2
     AUX_BASIS = AuxBasisSet.AUTOAUX
@@ -37,6 +37,7 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
 
     # > MP2 block for DLPNO-MP2 calculation
     mp2_block = BlockMp2()
+
     # > Adjust DLPNO-MP2 settings to DLPNO-CCSD(T) settings
     # > Normal PNO settings
     if DLPNO_THRESH == Dlpno.NORMALPNO:
@@ -51,7 +52,7 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     else:
         raise ValueError("Unkown DLPNO_THRESH")
 
-    # > Perform initial DLPNO-CCSD(T) calculation
+    # > DLPNO-CCSD(T1)
     dlpno_cc_calc = Calculator(basename="dlpno_ccsdt", working_dir=wd)
     dlpno_cc_calc.structure = structure
     dlpno_cc_calc.input.add_simple_keywords(
@@ -68,7 +69,7 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     dlpno_cc_out = dlpno_cc_calc.get_output()
     dlpno_cc_out.parse()
 
-    # DLPNO-MP2 Calculation
+    # > DLPNO-MP2 Calculation
     dlpno_mp2_calc = Calculator(basename="dlpno_mp2", working_dir=wd)
     dlpno_mp2_calc.structure = structure
     dlpno_mp2_calc.input.add_simple_keywords(
@@ -86,13 +87,14 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     dlpno_mp2_out = dlpno_mp2_calc.get_output()
     dlpno_mp2_out.parse()
 
-    # RI-MP2 Calculation
+    # > RI-MP2 Calculation
     ri_mp2_calc = Calculator(basename="ri_mp2", working_dir=wd)
     ri_mp2_calc.structure = structure
     ri_mp2_calc.input.add_simple_keywords(
         HF_TYPE, Wft.RIMP2, REL, BASIS_SET, AUX_BASIS, Scf.MOREAD, Scf.NOITER
     )
     ri_mp2_calc.input.moinp = wd / "dlpno_ccsdt.gbw"
+
     # > Write and run the calculation
     ri_mp2_calc.write_and_run()
     if not status:
@@ -107,9 +109,9 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     corr_energy_ri_mp2 = ri_mp2_out.get_energies()["MP2"].correnergy[0][0]
 
     extrapolated_energy = energy_dlpno_cc + (corr_energy_ri_mp2 - corr_energy_dlpno_mp2)
-    # return final extrapolated energy
-    return extrapolated_energy
 
+    # > return final extrapolated energy
+    return extrapolated_energy
 
 if __name__ == "__main__":
     xyz_string = """3
