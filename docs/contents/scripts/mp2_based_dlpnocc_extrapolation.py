@@ -108,8 +108,7 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     ri_mp2_out.parse()
 
     energy_dlpno_cc = dlpno_cc_out.get_final_energy()
-    # > note that the DLPNO-MP2 correlation energy has the key `MDCI(SD)`. Do not use `MP2` here!
-    corr_energy_dlpno_mp2 = dlpno_mp2_out.get_energies()["MDCI(SD)"].correnergy[0][0]
+    corr_energy_dlpno_mp2 = dlpno_mp2_out.get_energies()["MP2"].correnergy[0][0]
     corr_energy_ri_mp2 = ri_mp2_out.get_energies()["MP2"].correnergy[0][0]
 
     extrapolated_energy = energy_dlpno_cc + (corr_energy_ri_mp2 - corr_energy_dlpno_mp2)
