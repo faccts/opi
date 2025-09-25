@@ -10,9 +10,8 @@ from opi.input.simple_keywords import (
     RelativisticCorrection,
     ShellType,
     Scf,
-    Approximation,
 )
-from opi.input.blocks import BlockMdci
+from opi.input.blocks import BlockMdci, BlockMp2
 
 
 def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("RUN")):
@@ -23,38 +22,34 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
 
     # HF and CC type
     HF_TYPE = ShellType.UHF
-    CC_TYPE = Wft.DLPNO_CCSD_T1
+    CC_TYPE = Wft.DLPNO_CCSD_T1 # or Wft.DLPNO_CCSD_T
 
     # Modify these by hand as desired
     BASIS_SET = BasisSet.AUG_CC_PVDZ_DK
     REL = RelativisticCorrection.DKH2
     AUX_BASIS = AuxBasisSet.AUTOAUX
-    DLPNO_THRESH = Dlpno.TIGHTPNO  # / or Dlpno.NORMALPNO
+    DLPNO_THRESH = Dlpno.TIGHTPNO  # or Dlpno.NORMALPNO
 
     # > MDCI block for DLPNO-CCSD(T) calculation
     cc_mdci_block = BlockMdci()
     cc_mdci_block.usefulllmp2guess = False
     cc_mdci_block.maxiter = 100
 
-    # > MDCI block for DLPNO-MP2 calculation
-
+    # > MP2 block for DLPNO-MP2 calculation
+    mp2_block = BlockMp2()
     # > Adjust DLPNO-MP2 settings to DLPNO-CCSD(T) settings
-    # > MDCI block is ignored by DLPNO-MP2
     # > Normal PNO settings
     if DLPNO_THRESH == Dlpno.NORMALPNO:
-        tcutpno = 3.33 * 10e-7
-        tcutdo = 1 * 10e-2
-        tcutmkn = 1 * 10e-3
+        mp2_block.tcutpno = 3.33 * 10e-7
+        mp2_block.tcutdo = 1 * 10e-2
+        mp2_block.tcutmkn = 1 * 10e-3
     # > Tight PNO Settings
     elif DLPNO_THRESH == Dlpno.TIGHTPNO:
-        tcutpno = 1 * 10e-7
-        tcutdo = 5 * 10e-3
-        tcutmkn = 1 * 10e-3
+        mp2_block.tcutpno = 1 * 10e-7
+        mp2_block.tcutdo = 5 * 10e-3
+        mp2_block.tcutmkn = 1 * 10e-3
     else:
         raise ValueError("Unkown DLPNO_THRESH")
-
-    # > String for DLPNO-MP2 settings
-    mp2_block_string = f"%mp2\ntcutpno {tcutpno}\ntcutdo {tcutdo}\ntcutmkn {tcutmkn}\nend"
 
     # > Perform initial DLPNO-CCSD(T) calculation
     dlpno_cc_calc = Calculator(basename="dlpno_ccsdt", working_dir=wd)
@@ -80,7 +75,7 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
         HF_TYPE, Wft.DLPNO_MP2, REL, BASIS_SET, AUX_BASIS, Scf.MOREAD, Scf.NOITER
     )
     dlpno_mp2_calc.input.moinp = wd / "dlpno_ccsdt.gbw"
-    dlpno_mp2_calc.input.add_arbitrary_string(mp2_block_string)
+    dlpno_mp2_calc.input.add_blocks(mp2_block)
 
     # > Write and run the calculation
     status = dlpno_mp2_calc.write_and_run()
