@@ -37,18 +37,24 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     cc_mdci_block.maxiter = 100
 
     # > MDCI block for DLPNO-MP2 calculation
-    mp2_mdci_block = BlockMdci()
+
     # > Adjust DLPNO-MP2 settings to DLPNO-CCSD(T) settings
-    # > Tight PNO Settings
-    if DLPNO_THRESH == Dlpno.TIGHTPNO:
-        mp2_mdci_block.tcutdo = 5 * 10e-3
-        mp2_mdci_block.tcutmkn = 1 * 10e-3
-        mp2_mdci_block.tcutpno = 1 * 10e-7
+    # > MDCI block is ignored by DLPNO-MP2
     # > Normal PNO settings
-    elif DLPNO_THRESH == Dlpno.NORMALPNO:
-        mp2_mdci_block.tcutpno = 3.33 * 10e-7
-        mp2_mdci_block.tcutdo = 1 * 10e-2
-        mp2_mdci_block.tcutmkn = 1 * 10e-3
+    if DLPNO_THRESH == Dlpno.NORMALPNO:
+        tcutpno = 3.33 * 10e-7
+        tcutdo = 1 * 10e-2
+        tcutmkn = 1 * 10e-3
+    # > Tight PNO Settings
+    elif DLPNO_THRESH == Dlpno.TIGHTPNO:
+        tcutpno = 1 * 10e-7
+        tcutdo = 5 * 10e-3
+        tcutmkn = 1 * 10e-3
+    else:
+        raise ValueError("Unkown DLPNO_THRESH")
+
+    # > String for DLPNO-MP2 settings
+    mp2_block_string = f"%mp2\ntcutpno {tcutpno}\ntcutdo {tcutdo}\ntcutmkn {tcutmkn}\nend"
 
     # > Perform initial DLPNO-CCSD(T) calculation
     dlpno_cc_calc = Calculator(basename="dlpno_ccsdt", working_dir=wd)
@@ -71,10 +77,10 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     dlpno_mp2_calc = Calculator(basename="dlpno_mp2", working_dir=wd)
     dlpno_mp2_calc.structure = structure
     dlpno_mp2_calc.input.add_simple_keywords(
-        HF_TYPE, Wft.DLPNO_MP2, REL, BASIS_SET, AUX_BASIS, DLPNO_THRESH, Scf.MOREAD, Scf.NOITER
+        HF_TYPE, Wft.DLPNO_MP2, REL, BASIS_SET, AUX_BASIS, Scf.MOREAD, Scf.NOITER
     )
     dlpno_mp2_calc.input.moinp = wd / "dlpno_ccsdt.gbw"
-    dlpno_mp2_calc.input.add_blocks(mp2_mdci_block)
+    dlpno_mp2_calc.input.add_arbitrary_string(mp2_block_string)
 
     # > Write and run the calculation
     status = dlpno_mp2_calc.write_and_run()
