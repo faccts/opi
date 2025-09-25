@@ -48,8 +48,9 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     dlpno_cc_calc.input.add_blocks(cc_mdci_block)
 
     # > Write and run the calculation
-    dlpno_cc_calc.write_input()
-    dlpno_cc_calc.run()
+    status = dlpno_cc_calc.write_and_run()
+    if not status:
+        raise RuntimeError("DLPNO-CCSD(T) calculation did not terminate normally!")
 
     # > Get the output
     dlpno_cc_out = dlpno_cc_calc.get_output()
@@ -65,8 +66,9 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     dlpno_mp2_calc.input.add_blocks(mp2_mdci_block)
 
     # > Write and run the calculation
-    dlpno_mp2_calc.write_input()
-    dlpno_mp2_calc.run()
+    status = dlpno_mp2_calc.write_and_run()
+    if not status:
+        raise RuntimeError("DLPNO-MP2 calculation did not terminate normally!")
 
     # > Get the output
     dlpno_mp2_out = dlpno_mp2_calc.get_output()
@@ -80,8 +82,9 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     )
     ri_mp2_calc.input.moinp = wd / "dlpno_ccsdt.gbw"
     # > Write and run the calculation
-    ri_mp2_calc.write_input()
-    ri_mp2_calc.run()
+    ri_mp2_calc.write_and_run()
+    if not status:
+        raise RuntimeError("RI-MP2 calculation did not terminate normally!")
 
     # > Get the output
     ri_mp2_out = ri_mp2_calc.get_output()
