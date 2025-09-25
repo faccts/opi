@@ -2,7 +2,16 @@ from pathlib import Path
 from opi.core import Calculator
 import shutil
 from opi.input.structures.structure import Structure
-from opi.input.simple_keywords import Wft, BasisSet, Dlpno, AuxBasisSet, RelativisticCorrection, ShellType, Scf, Approximation
+from opi.input.simple_keywords import (
+    Wft,
+    BasisSet,
+    Dlpno,
+    AuxBasisSet,
+    RelativisticCorrection,
+    ShellType,
+    Scf,
+    Approximation,
+)
 from opi.input.blocks import BlockMdci
 
 
@@ -20,7 +29,7 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     BASIS_SET = BasisSet.AUG_CC_PVDZ_DK
     REL = RelativisticCorrection.DKH2
     AUX_BASIS = AuxBasisSet.AUTOAUX
-    DLPNO_THRESH = Dlpno.TIGHTPNO # / or Dlpno.NORMALPNO
+    DLPNO_THRESH = Dlpno.TIGHTPNO  # / or Dlpno.NORMALPNO
 
     # > MDCI block for DLPNO-CCSD(T) calculation
     cc_mdci_block = BlockMdci()
@@ -32,19 +41,21 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     # > Adjust DLPNO-MP2 settings to DLPNO-CCSD(T) settings
     # > Tight PNO Settings
     if DLPNO_THRESH == Dlpno.TIGHTPNO:
-        mp2_mdci_block.tcutdo = 5*10E-3
-        mp2_mdci_block.tcutmkn = 1*10E-3
-        mp2_mdci_block.tcutpno = 1*10E-7
+        mp2_mdci_block.tcutdo = 5 * 10e-3
+        mp2_mdci_block.tcutmkn = 1 * 10e-3
+        mp2_mdci_block.tcutpno = 1 * 10e-7
     # > Normal PNO settings
     elif DLPNO_THRESH == Dlpno.NORMALPNO:
-        mp2_mdci_block.tcutpno = 3.33*10E-7
-        mp2_mdci_block.tcutdo = 1*10E-2
-        mp2_mdci_block.tcutmkn = 1*10E-3
+        mp2_mdci_block.tcutpno = 3.33 * 10e-7
+        mp2_mdci_block.tcutdo = 1 * 10e-2
+        mp2_mdci_block.tcutmkn = 1 * 10e-3
 
     # > Perform initial DLPNO-CCSD(T) calculation
     dlpno_cc_calc = Calculator(basename="dlpno_ccsdt", working_dir=wd)
     dlpno_cc_calc.structure = structure
-    dlpno_cc_calc.input.add_simple_keywords(HF_TYPE, CC_TYPE, REL, BASIS_SET, AUX_BASIS, DLPNO_THRESH)
+    dlpno_cc_calc.input.add_simple_keywords(
+        HF_TYPE, CC_TYPE, REL, BASIS_SET, AUX_BASIS, DLPNO_THRESH
+    )
     dlpno_cc_calc.input.add_blocks(cc_mdci_block)
 
     # > Write and run the calculation
@@ -99,6 +110,7 @@ def run_mp2_based_dlpnocc_extrapolation(structure: Structure, wd: Path = Path("R
     # return final extrapolated energy
     return extrapolated_energy
 
+
 if __name__ == "__main__":
     xyz_string = """3
 
@@ -111,4 +123,3 @@ if __name__ == "__main__":
     wd.mkdir()
     energy = run_mp2_based_dlpnocc_extrapolation(structure, wd)
     print(f"FINAL EXTRAPOLATED ENERGY: {energy}")
-
