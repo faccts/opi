@@ -66,4 +66,6 @@ python3 job.py
 - exmp043_dummy_atom: Perform a calculation with a dummy atom
 - exmp044_from_ase: Get the structure from an ASE atoms object
 - exmp045_existing_calc: Obtain results from an already existing calculation
+- exmp046_server: Demonstrates how to use ExtOpt methods with OpiServer
+- exmp047_trj: Perform calculations on all structures of a multi-xyz (trj) file
 
