@@ -432,7 +432,8 @@ class Structure:
             Electron spin multiplicity of the molecule
         comment_symbols: str | Sequence[str] | None, default: None
             List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
-            data starts. By default, no user comments are used.
+            data starts. By default, no user comments are used. White-space only comments are not allowed and are
+            silently ignored.
         struc_limit: int | None, default: None
             Limit of structures that should be read from the trj.xyz file. With the default, None, all structures are
             read.
@@ -540,7 +541,8 @@ class Structure:
             Electron spin multiplicity of the molecule
         comment_symbols: str | Sequence[str] | None, default: None
             List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
-            data starts. By default, no user comments are used.
+            data starts. By default, no user comments are used. White-space only comments are not allowed and are
+            silently ignored.
         struc_limit: int | None, default: None
             Limit of structures that should be read from the trj.xyz string. With the default, None, all structures are
             read.
@@ -595,7 +597,8 @@ class Structure:
             Electron spin multiplicity of the structure.
         comment_symbols: str | Sequence[str] | None, default: None
             List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
-            data starts. By default, no user comments are used.
+            data starts. By default, no user comments are used. White-space only comments are not allowed and are
+            silently ignored.
 
         Raises
         --------
@@ -620,7 +623,8 @@ class Structure:
         while (line := xyz_lines.readline()) != "":
             if not line.lstrip():
                 continue
-            elif comments_tuple and line.startswith(comments_tuple):
+            # > Check for comment line. Ignore empty/whitespace lines
+            elif comments_tuple and line.lstrip().startswith(comments_tuple):
                 continue
             else:
                 break
