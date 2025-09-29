@@ -34,8 +34,12 @@ def pytest_runtest_makereport(
 
     Examples
     --------
-    When `test_example001` fails, pytest will print the scratch directory:
-        tests/examples/test_exmp001_scf.py [scratch-dir] /tmp/pytest-of-USERNAME/pytest-1/test_exmp001_scf0
+    When `test_example001` fails, pytest will print something like this:
+        /user/opi/examples/exmp001_scf/job.py:48: SystemExit: 1
+        see ORCA files in: /tmp/pytest-of-user/pytest-24/test_exmp001_scf0
+    If no error message can be retrieved, just the folder is printed:
+        Test of an example failed, see ORCA files in: /tmp/pytest-of-user/pytest-24/test_exmp001_scf0
+
     """
     # In a hookwrapper, the value of `outcome = yield` is *sent* into the generator.
     # We declare the generator's SendType as `Any`.
