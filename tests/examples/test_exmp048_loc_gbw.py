@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 import pytest
 
@@ -20,21 +18,21 @@ def test_exmp048_loc_gbw(example_input_file, tmp_path) -> None:
     # Assert that integral files are on disk
 
     # > Overlap in MO basis
-    assert os.path.exists(tmp_path / "smo.txt")
+    assert (tmp_path / "smo.txt").is_file()
     # > Size larger zero
     assert np.loadtxt(tmp_path / "smo.txt").size > 0
 
     # > Fock matrix in AO basis
-    assert os.path.exists(tmp_path / "fao.txt")
+    assert (tmp_path / "fao.txt").is_file()
     # > Size larger zero
     assert np.loadtxt(tmp_path / "fao.txt").size > 0
 
     # > Fock matrix in MO basis
-    assert os.path.exists(tmp_path / "fmo.txt")
+    assert (tmp_path / "fmo.txt").is_file()
     # > Size larger zero
     assert np.loadtxt(tmp_path / "fmo.txt").size > 0
 
     # > Fock matrix in LMO basis
-    assert os.path.exists(tmp_path / "flmo.txt")
+    assert (tmp_path / "flmo.txt").is_file()
     # > Size larger zero
     assert np.loadtxt(tmp_path / "flmo.txt").size > 0

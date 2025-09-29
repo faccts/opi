@@ -25,8 +25,8 @@ def run_exmp048(
 
     calc = Calculator(basename="job", working_dir=working_dir)
     calc.structure = structure
-    calc.charge = 1
-    calc.multiplicity = 2
+    calc.charge = 0
+    calc.multiplicity = 1
     calc.input.add_simple_keywords(
         Scf.NOAUTOSTART,
         Dft.TPSS,
