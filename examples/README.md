@@ -68,4 +68,5 @@ python3 job.py
 - exmp045_existing_calc: Obtain results from an already existing calculation
 - exmp046_server: Demonstrates how to use ExtOpt methods with OpiServer
 - exmp047_trj: Perform calculations on all structures of a multi-xyz (trj) file
+- exmp048_loc_gbw: Read localized MO coefficients and transform integrals in LMO basis
 
