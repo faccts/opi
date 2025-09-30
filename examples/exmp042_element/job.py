@@ -20,7 +20,7 @@ def run_exmp042(
     if structure is None:
         structure = Structure.from_xyz("inp.xyz")
 
-    calc = Calculator(basename="job", working_dir=working_dir)
+    calc = Calculator(basename="job", working_dir=working_dir, version_check=False)
     calc.structure = structure
 
     # > Print cardinal numbers of input file
