@@ -46,7 +46,7 @@ nox.options.default_venv_backend = "uv"
 # //////////////////////////////////////////
 # ///         UNIT TESTS: pytest         ///
 # //////////////////////////////////////////
-@nox.session(default=False,)
+@nox.session(default=False,python=None if running_in_ci() else PYTHON_VERSIONS)
 def tests(session):
     session.run_install(
         "uv",
