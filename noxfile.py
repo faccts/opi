@@ -4,6 +4,11 @@ import os
 # > External packages
 import nox
 
+# > Sessions that run with a single Python version run the following version
+SINGLE_PYTHON_VERSION = ["3.11"]
+# > Sessions that run with multiple Python versions run the following versions
+PYTHON_VERSIONS = ["3.11", "3.12", "3.13"]
+
 # > Don't update lock file when setting up virtual envs.
 os.environ.update({"UV_FROZEN": "1"})
 # > Disable automatic donwload of Python distributions
@@ -39,7 +44,7 @@ nox.options.default_venv_backend = "uv"
 # //////////////////////////////////////////
 # ///         UNIT TESTS: pytest         ///
 # //////////////////////////////////////////
-@nox.session(default=False)
+@nox.session(default=False, python=SINGLE_PYTHON_VERSION)
 def tests(session):
     session.run_install(
         "uv",
@@ -54,7 +59,7 @@ def tests(session):
 # //////////////////////////////////////////
 # ///     STATIC TYPE CHECKING: mypy     ///
 # //////////////////////////////////////////
-@nox.session(tags=["static_check", "pr_check"])
+@nox.session(tags=["static_check", "pr_check"],python=PYTHON_VERSIONS)
 def type_check(session):
     session.run_install(
         "uv",
@@ -70,7 +75,7 @@ def type_check(session):
 # //////////////////////////////////////////////////
 # ///        REMOVING UNUSED IMPORTS: Ruff      ///
 # ////////////////////////////////////////////////
-@nox.session(tags=["style", "fix", "static_check"])
+@nox.session(tags=["style", "fix", "static_check"],python=SINGLE_PYTHON_VERSION)
 def remove_unused_imports(session):
     session.run_install(
         "uv",
@@ -82,7 +87,7 @@ def remove_unused_imports(session):
     # > Sorting imports with ruff instead of isort
     session.run("ruff", "check", "--select", "F401", "--fix", "--exit-non-zero-on-fix")
 
-@nox.session(tags=["pr_check"], default=False)
+@nox.session(tags=["pr_check"], default=False,python=SINGLE_PYTHON_VERSION)
 def check_unused_imports(session):
     session.run_install(
         "uv",
@@ -97,7 +102,7 @@ def check_unused_imports(session):
 # //////////////////////////////////////////
 # ///        SORTING IMPORTS: Ruff      ///
 # //////////////////////////////////////////
-@nox.session(tags=["style", "fix", "static_check"])
+@nox.session(tags=["style", "fix", "static_check"],python=SINGLE_PYTHON_VERSION)
 def sort_imports(session):
     session.run_install(
         "uv",
@@ -110,7 +115,7 @@ def sort_imports(session):
     session.run("ruff", "check", "--select", "I", "--fix", "--exit-non-zero-on-fix")
 
 
-@nox.session(tags=["pr_check"])
+@nox.session(tags=["pr_check"],python=SINGLE_PYTHON_VERSION)
 def check_sort_imports(session):
     session.run_install(
         "uv",
@@ -126,7 +131,7 @@ def check_sort_imports(session):
 # ////////////////////////////////////////
 # ///         LINTING: Ruff            ///
 # ////////////////////////////////////////
-@nox.session(tags=["style", "static_check", "pr_check"])
+@nox.session(tags=["style", "static_check", "pr_check"],python=SINGLE_PYTHON_VERSION)
 def lint(session):
     session.run_install(
         "uv",
@@ -141,7 +146,7 @@ def lint(session):
 # //////////////////////////////////////////
 # ///         CODE FORMATTING: Ruff     ///
 # //////////////////////////////////////////
-@nox.session(tags=["style", "fix", "static_check"])
+@nox.session(tags=["style", "fix", "static_check"],python=SINGLE_PYTHON_VERSION)
 def format_code(session):
     session.run_install(
         "uv",
@@ -153,7 +158,7 @@ def format_code(session):
     session.run("ruff", "format", "--exit-non-zero-on-format")
 
 
-@nox.session(tags=["pr_check"])
+@nox.session(tags=["pr_check"],python=SINGLE_PYTHON_VERSION)
 def check_format_code(session):
     """
     Only check if code was formatted with Ruff.
@@ -171,7 +176,7 @@ def check_format_code(session):
 # ////////////////////////////////////////////////////
 # ///         SPELL CHECKING: codespell            ///
 # ////////////////////////////////////////////////////
-@nox.session(tags=["static_check", "pr_check"])
+@nox.session(tags=["static_check", "pr_check"],python=SINGLE_PYTHON_VERSION)
 def spell_check(session):
     session.run_install(
         "uv",
@@ -186,7 +191,7 @@ def spell_check(session):
 # //////////////////////////////////////////////
 # ///         DEAD CODE: vulture            ///
 # /////////////////////////////////////////////
-@nox.session(tags=["static_check", "pr_check"], default=True)
+@nox.session(tags=["static_check", "pr_check"], python=SINGLE_PYTHON_VERSION, default=True)
 def dead_code(session):
     session.run_install(
         "uv",
