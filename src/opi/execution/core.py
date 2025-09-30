@@ -630,6 +630,7 @@ class Runner:
         *,
         force: bool = False,
         config: dict[str, bool | str | list[str | int]] | None = None,
+        suffix: str = ".gbw",
     ) -> None:
         """
         Create the `<basename>.json` file from `<basename>.gbw`.
@@ -643,6 +644,8 @@ class Runner:
         config : dict[str, bool | str | list[str | int]] | None, default: None
             Determine contents of gbw-json file.
             For details about the configuration refer to the ORCA manual "9.3.2 Configuration file"
+        suffix: str, default: ".gbw"
+            Suffix of the gbw file that will be used for json creation.
         """
         gbw_json_file = self.working_dir / f"{basename}.json"
         config_file = gbw_json_file.with_suffix(".json.conf")
@@ -658,7 +661,7 @@ class Runner:
             if config_fmt := self.format_gbw_json_config(config):
                 config_file.write_text(config_fmt)
             # > Create JSON from GBW file
-            gbw_filename = str(gbw_json_file.with_suffix(".gbw"))
+            gbw_filename = str(gbw_json_file.with_suffix(suffix))
             self.run_orca_2json([gbw_filename])
 
     @staticmethod

@@ -452,6 +452,7 @@ class Output:
         force: bool = False,
         config: dict[str, Any] | None = None,
         gbw_index: int | None = None,
+        suffix: str = ".gbw",
     ) -> None:
         """
         Thin-wrapper around `Runner.create_jsons()`.
@@ -467,7 +468,8 @@ class Output:
         gbw_index: int | None, default = None
             Non-negative index of gbw file in `self.gbw_json_files` for which json files will be generated. If it is None, all files
             will be generated. If the index is negative or out of range silently nothing is done.
-
+        suffix: str, default: ".gbw"
+            Suffix of the gbw file that will be used for json creation.
         """
         files_to_process: list[Path]
 
@@ -482,7 +484,7 @@ class Output:
         for file in files_to_process:
             basename = file.stem
             runner = self._create_runner()
-            runner.create_gbw_json(basename, config=config, force=force)
+            runner.create_gbw_json(basename, config=config, force=force, suffix=suffix)
 
     def create_missing_property_json(self) -> bool:
         """

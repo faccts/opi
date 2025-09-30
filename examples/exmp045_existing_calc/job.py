@@ -9,8 +9,8 @@ from opi.output.core import Output
 
 def run_exmp045() -> Output:
     # > Get output of existing calculation and parse it
-    current_folder = Path(__file__).parent
-    working_dir = current_folder / "RUN"
+    example_folder = Path(__file__).parent
+    working_dir = example_folder / "RUN"
 
     # > same basename as existing calculation in the 'RUN' directory
     calc = Calculator(basename="job", working_dir=working_dir)

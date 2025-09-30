@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Optional, cast
 
 import pytest
+from _pytest._code.code import ExceptionRepr
 from _pytest.nodes import Item
 from _pytest.reports import TestReport
 from _pytest.runner import CallInfo
@@ -33,8 +34,12 @@ def pytest_runtest_makereport(
 
     Examples
     --------
-    When `test_example001` fails, pytest will print the scratch directory:
-        tests/examples/test_exmp001_scf.py [scratch-dir] /tmp/pytest-of-USERNAME/pytest-1/test_exmp001_scf0
+    When `test_example001` fails, pytest will print something like this:
+        /user/opi/examples/exmp001_scf/job.py:48: SystemExit: 1
+        see ORCA files in: /tmp/pytest-of-user/pytest-24/test_exmp001_scf0
+    If no error message can be retrieved, just the folder is printed:
+        Test of an example failed, see ORCA files in: /tmp/pytest-of-user/pytest-24/test_exmp001_scf0
+
     """
     # In a hookwrapper, the value of `outcome = yield` is *sent* into the generator.
     # We declare the generator's SendType as `Any`.
@@ -54,4 +59,15 @@ def pytest_runtest_makereport(
             # > make mypy happy by making sure `when` is not None
             when = rep.when or "call"
             item.add_report_section(when, "scratch", str(tmp))
-            print(f"[scratch-dir] {tmp}")
+
+            # > Write `long` representation of the test report
+            if isinstance(rep.longrepr, ExceptionRepr):
+                crash = rep.longrepr.reprcrash
+                # > Try to give path, line number and error type, alternatively just the scratch_dir
+                if crash is not None:
+                    path = crash.path
+                    lineno = crash.lineno
+                    message = crash.message
+                    rep.longrepr = f"{path}:{lineno}: {message}\nsee ORCA files in: {tmp}"
+                else:
+                    rep.longrepr = f"Test of an example failed, see ORCA files in: {tmp}"
