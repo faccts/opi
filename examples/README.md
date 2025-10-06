@@ -70,4 +70,5 @@ python3 job.py
 - exmp047_trj: Perform calculations on all structures of a multi-xyz (trj) file
 - exmp048_loc_gbw: Read localized MO coefficients and transform integrals in LMO basis
 - exmp049_arbitrary_block_variable: Use arbitrary block variable in the SCF block
+- exmp050_docker: Use docker to dock water with water
 

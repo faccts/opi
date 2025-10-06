@@ -321,10 +321,9 @@ class Output:
         """
         files = []
         if isinstance(pattern, str):
-            # > String pattern must not end with ".json"!
-            gbw_file = self.get_file(pattern + ".json")
+            gbw_file = self.get_file(pattern)
             if gbw_file.is_file():
-                files.append(gbw_file)
+                files.append(gbw_file.with_suffix(".json"))
             return files
         else:
             for i in range(start, end, step):
@@ -358,7 +357,7 @@ class Output:
         """
 
         # // Get path to main gbw/json file
-        gbw_json_list = [self.get_file(".json")]
+        gbw_json_list = self.collect_json_files(suffix)
 
         # // Check for scan files
         scan_list = self.collect_json_files(lambda i: f".{i:03}{suffix}", start=1)
