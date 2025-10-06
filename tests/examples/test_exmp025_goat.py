@@ -1,7 +1,7 @@
 import pytest
 
 from examples.exmp025_goat.job import run_exmp025
-from opi.input.structures import Structure
+from opi.input.structures import Properties, Structure
 
 
 @pytest.mark.examples
@@ -14,4 +14,9 @@ def test_exmp025_goat(example_input_file, tmp_path) -> None:
     structure = Structure.from_xyz(input_file)
 
     # Run the example in tmp_path
-    run_exmp025(structure=structure, working_dir=tmp_path)
+    structures, properties_list = run_exmp025(structure=structure, working_dir=tmp_path)
+
+    # Assert that docker structures are present
+    assert len(structures) >= 1
+    assert all(isinstance(x, Structure) for x in structures)
+    assert all(isinstance(x, Properties) for x in properties_list)

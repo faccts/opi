@@ -1,7 +1,7 @@
 import pytest
 
 from examples.exmp049_docker.job import run_exmp049
-from opi.input.structures import Structure
+from opi.input.structures import Properties, Structure
 
 
 @pytest.mark.examples
@@ -19,4 +19,4 @@ def test_exmp049_docker(example_input_file, tmp_path) -> None:
     # Assert that docker structures are present
     assert len(structures) >= 10
     assert all(isinstance(x, Structure) for x in structures)
-    # assert all(isinstance(x, Properties) for x in properties_list)
+    assert all(isinstance(x, Properties) for x in properties_list)

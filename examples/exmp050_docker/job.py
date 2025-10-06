@@ -53,7 +53,7 @@ def run_exmp050(
     )
 
     properties_list = Properties.from_trj_xyz(
-        working_dir / f"{calc.basename}.docker.struc1.all.optimized.xyz"
+        working_dir / f"{calc.basename}.docker.struc1.all.optimized.xyz", mode="docker"
     )
 
     # > Print structures that were read

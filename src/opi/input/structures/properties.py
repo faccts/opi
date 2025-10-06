@@ -2,7 +2,7 @@ import re
 from io import StringIO
 from os import PathLike
 from pathlib import Path
-from typing import Sequence
+from typing import Literal, Sequence
 
 from opi.utils.textio import TrackingTextIO
 
@@ -36,7 +36,9 @@ class Properties:
         self.energy_relative: float | None = energy_relative
 
     @classmethod
-    def from_xyz(cls, xyzfile: Path | str | PathLike[str]) -> "Properties":
+    def from_xyz(
+        cls, xyzfile: Path | str | PathLike[str], mode: Literal["goat", "docker"] = "goat"
+    ) -> "Properties":
         """
         Function for reading xyz file and return a Properties object.
 
@@ -56,7 +58,7 @@ class Properties:
         --------
         `Properties`:`Properties object extracted from file
         """
-        properties_list = cls.from_trj_xyz(xyzfile, struc_limit=1)
+        properties_list = cls.from_trj_xyz(xyzfile, struc_limit=1, mode=mode)
         properties = properties_list[0]
         return properties
 
@@ -66,6 +68,7 @@ class Properties:
         trj_file: Path | str | PathLike[str],
         /,
         *,
+        mode: Literal["goat", "docker"] = "goat",
         comment_symbols: str | Sequence[str] | None = None,
         struc_limit: int | None = None,
     ) -> "list[Properties]":
@@ -110,8 +113,7 @@ class Properties:
             while True:
                 try:
                     properties = cls.from_xyz_buffer(
-                        tracked,
-                        comment_symbols=comment_symbols,
+                        tracked, comment_symbols=comment_symbols, mode=mode
                     )
                     if properties is None:
                         break
@@ -125,7 +127,9 @@ class Properties:
         return properties_list
 
     @classmethod
-    def from_xyz_block(cls, xyz_string: str) -> "Properties":
+    def from_xyz_block(
+        cls, xyz_string: str, mode: Literal["goat", "docker"] = "goat"
+    ) -> "Properties":
         """
         Function for reading xyz data from string and return a Properties object.
 
@@ -144,7 +148,7 @@ class Properties:
         Properties
             The `Properties` object extracted from file
         """
-        properties_list = cls.from_trj_xyz_block(xyz_string, struc_limit=1)
+        properties_list = cls.from_trj_xyz_block(xyz_string, struc_limit=1, mode=mode)
         return properties_list[0]
 
     @classmethod
@@ -153,6 +157,7 @@ class Properties:
         trj_string: str,
         /,
         *,
+        mode: Literal["goat", "docker"] = "goat",
         comment_symbols: str | Sequence[str] | None = None,
         struc_limit: int | None = None,
     ) -> "list[Properties]":
@@ -183,8 +188,7 @@ class Properties:
             while True:
                 try:
                     properties = cls.from_xyz_buffer(
-                        tracked,
-                        comment_symbols=comment_symbols,
+                        tracked, comment_symbols=comment_symbols, mode=mode
                     )
                     if properties is None:
                         break
@@ -199,7 +203,12 @@ class Properties:
 
     @classmethod
     def from_xyz_buffer(
-        cls, xyz_lines: TrackingTextIO, comment_symbols: str | Sequence[str] | None = None
+        cls,
+        xyz_lines: TrackingTextIO,
+        /,
+        *,
+        comment_symbols: str | Sequence[str] | None = None,
+        mode: Literal["goat", "docker"] = "goat",
     ) -> "Properties | None":
         """
         Function for reading from the comment line of a xyz file from a buffer and converting it to a Properties object.
@@ -223,6 +232,12 @@ class Properties:
         Properties | None
             The `Properties` object extracted from the buffer or None if the buffer was empty.
         """
+        # > Select mode
+        mode_functions = {
+            "goat": cls.goat_energies,
+            "docker": cls.docker_energies,
+        }
+
         comments_tuple: tuple[str, ...] | None = None
 
         # > Convert comments to tuple
@@ -261,7 +276,7 @@ class Properties:
             )
 
         # > Analyse comment line
-        properties = cls.docker_energies(line)
+        properties = mode_functions[mode](line)
 
         # > Skip the remaining structure
         for iline in range(natoms):
@@ -288,5 +303,19 @@ class Properties:
             raise ValueError("Could not parse docker energies from comment line.")
         properties = Properties(
             structure_id=structure_id, energy_total=energy_total, energy_relative=energy_relative
+        )
+        return properties
+
+    @classmethod
+    def goat_energies(cls, line: str) -> "Properties":
+        """Function for reading goat energies from string and return a Properties object."""
+        numbers = [float(m) for m in re.findall(RGX_INT_AND_FLOAT, line)]
+        # > Parse the comment line
+        try:
+            energy_total = numbers[0]
+        except IndexError:
+            raise ValueError("Could not parse docker energies from comment line.")
+        properties = Properties(
+            energy_total=energy_total,
         )
         return properties
