@@ -7,12 +7,12 @@ from pathlib import Path
 from opi.core import Calculator
 from opi.input.blocks import BlockDocker
 from opi.input.simple_keywords import Sqm
-from opi.input.structures import Structure
+from opi.input.structures import Properties, Structure
 
 
 def run_exmp050(
     structure: Structure | None = None, working_dir: Path | None = Path("RUN")
-) -> list[Structure]:
+) -> tuple[list[Structure], list[Properties]]:
     # > recreate the working dir
     shutil.rmtree(working_dir, ignore_errors=True)
     working_dir.mkdir()
@@ -52,11 +52,16 @@ def run_exmp050(
         working_dir / f"{calc.basename}.docker.struc1.all.optimized.xyz"
     )
 
+    properties_list = Properties.from_trj_xyz(
+        working_dir / f"{calc.basename}.docker.struc1.all.optimized.xyz"
+    )
+
     # > Print structures that were read
-    for structure in structures:
+    for structure, properties in zip(structures, properties_list):
+        print(f"FINAL ENERGY: {properties.energy_total}")
         print(structure.to_xyz_block())
 
-    return structures
+    return structures, properties_list
 
 
 if __name__ == "__main__":
