@@ -4,13 +4,6 @@ import os
 # > External packages
 import nox
 
-# > Sessions that run with multiple Python versions run the following versions
-PYTHON_VERSIONS = ["3.11", "3.12", "3.13"]
-
-def running_in_ci() -> bool:
-    """Detect if we are inside GitHub Actions."""
-    return os.environ.get("GITHUB_ACTIONS") == "true"
-
 # > Don't update lock file when setting up virtual envs.
 os.environ.update({"UV_FROZEN": "1"})
 # > Disable automatic donwload of Python distributions
@@ -46,7 +39,7 @@ nox.options.default_venv_backend = "uv"
 # //////////////////////////////////////////
 # ///         UNIT TESTS: pytest         ///
 # //////////////////////////////////////////
-@nox.session(default=False,python=None if running_in_ci() else PYTHON_VERSIONS)
+@nox.session(default=False)
 def tests(session):
     session.run_install(
         "uv",
@@ -61,7 +54,7 @@ def tests(session):
 # //////////////////////////////////////////
 # ///     STATIC TYPE CHECKING: mypy     ///
 # //////////////////////////////////////////
-@nox.session(tags=["static_check", "pr_check"],python=None if running_in_ci() else PYTHON_VERSIONS)
+@nox.session(tags=["static_check", "pr_check"])
 def type_check(session):
     session.run_install(
         "uv",
