@@ -20,6 +20,7 @@ def run_exmp042(
     if structure is None:
         structure = Structure.from_xyz("inp.xyz")
 
+    # > Disable version check to be ORCA independent
     calc = Calculator(basename="job", working_dir=working_dir, version_check=False)
     calc.structure = structure
 
