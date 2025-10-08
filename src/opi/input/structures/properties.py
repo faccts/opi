@@ -273,7 +273,7 @@ class Properties:
             # > Relative energy is the third number (kcal/mol)
             energy_relative = numbers[2]
         except (IndexError, ValueError) as err:
-            raise ValueError("Could not parse docker energies from comment line.")
+            raise ValueError("Could not parse docker energies from comment line.") from err
         properties = Properties(
             structure_id=structure_id, energy_total=energy_total, energy_relative=energy_relative
         )
@@ -287,7 +287,7 @@ class Properties:
         try:
             energy_total = numbers[0]
         except (IndexError, ValueError) as err:
-            raise ValueError("Could not parse docker energies from comment line.")
+            raise ValueError("Could not parse docker energies from comment line.") from err
         properties = Properties(
             energy_total=energy_total,
         )
