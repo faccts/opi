@@ -300,7 +300,8 @@ class Output:
         step: int = 1,
     ) -> list[Path]:
         """
-        Searches for available gbw files according to a pattern in `working_dir` and returns a list of corresponding `.json` file paths.
+        Searches for available gbw files according to a pattern in `working_dir` and returns a list of corresponding
+        `.json` file paths.
 
         Parameters
         ----------

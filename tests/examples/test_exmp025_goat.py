@@ -17,6 +17,6 @@ def test_exmp025_goat(example_input_file, tmp_path) -> None:
     structures, properties_list = run_exmp025(structure=structure, working_dir=tmp_path)
 
     # Assert that docker structures are present
-    assert len(structures) >= 1
+    assert structures
     assert all(isinstance(x, Structure) for x in structures)
     assert all(isinstance(x, Properties) for x in properties_list)

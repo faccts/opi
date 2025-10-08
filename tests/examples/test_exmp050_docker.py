@@ -16,7 +16,7 @@ def test_exmp049_docker(example_input_file, tmp_path) -> None:
     # Run the example in tmp_path
     structures, properties_list = run_exmp049(structure=structure, working_dir=tmp_path)
 
-    # Assert that docker structures are present
+    # Assert that at least 10 docker structures are present
     assert len(structures) >= 10
     assert all(isinstance(x, Structure) for x in structures)
     assert all(isinstance(x, Properties) for x in properties_list)

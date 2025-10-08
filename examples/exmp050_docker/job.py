@@ -46,7 +46,7 @@ def run_exmp050(
     output.parse()
 
     # > Print graph to visualize available results
-    print(output.print_graph())
+    output.print_graph()
 
     structures = Structure.from_trj_xyz(
         working_dir / f"{calc.basename}.docker.struc1.all.optimized.xyz"
