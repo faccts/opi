@@ -69,4 +69,5 @@ python3 job.py
 - exmp046_server: Demonstrates how to use ExtOpt methods with OpiServer
 - exmp047_trj: Perform calculations on all structures of a multi-xyz (trj) file
 - exmp048_loc_gbw: Read localized MO coefficients and transform integrals in LMO basis
+- exmp049_arbitrary_block_variable: Use arbitrary block variable in the SCF block
 
