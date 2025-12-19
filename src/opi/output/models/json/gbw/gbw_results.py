@@ -1,12 +1,12 @@
 from pydantic import Field
 
-from opi.output.models.base.get_item import GetItem
 from opi.output.models.json.gbw.properties.cite import Cite
 from opi.output.models.json.gbw.properties.header import OrcaHeader
 from opi.output.models.json.gbw.properties.molecule import Molecule
+from opi.output.models.json_loadable import JSONLoadable
 
 
-class GbwResults(GetItem):
+class GbwResults(JSONLoadable):
     """
     This class contains all the information from the baseman.json file
 

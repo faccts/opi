@@ -492,15 +492,15 @@ class BlockScf(Block):
             return path
 
     def format_orca(self) -> str:
-        s = f"%{self.name}\n"
-        for key, value in self.__dict__.items():
-            if value is not None:
-                if key == "aftercoord":
-                    continue
-                if key == "scflambda":
-                    s += f"    lambda {str(value).lower()}\n"
-                else:
-                    s += f"    {key} {str(value).lower()}\n"
-        s += "end"
+        """
+        Method to convert instance of Block into a formatted string for the ORCA input file.
 
-        return s
+        Returns
+        -------
+        str
+            Formatted string.
+        """
+        formatted_string = super().format_orca()
+        formatted_string = formatted_string.replace("scflambda", "lambda")
+
+        return formatted_string

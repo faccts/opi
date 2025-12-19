@@ -1,4 +1,3 @@
-from opi.output.models.base.get_item import GetItem
 from opi.output.models.json.property.properties.calc_info import CalcInfo
 from opi.output.models.json.property.properties.calc_status import (
     CalculationStatus,
@@ -8,9 +7,10 @@ from opi.output.models.json.property.properties.calc_time import (
 )
 from opi.output.models.json.property.properties.geometries import Geometries
 from opi.output.models.json.property.properties.pal import PalFlags
+from opi.output.models.json_loadable import JSONLoadable
 
 
-class PropertyResults(GetItem):
+class PropertyResults(JSONLoadable):
     """
     Has all the information calculated in the ORCA job
 

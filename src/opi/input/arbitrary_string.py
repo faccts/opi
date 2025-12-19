@@ -86,3 +86,9 @@ class ArbitraryString:
         This makes sure that two copies of the same string but different `pos` are treated identically.
         """
         return hash(self.string)
+
+    def __eq__(self, other: object) -> bool:
+        """Two ArbitraryString instances are considered equal when the string values are equal."""
+        if not isinstance(other, ArbitraryString):
+            return False
+        return self.string == other.string

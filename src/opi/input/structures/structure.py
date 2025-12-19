@@ -268,7 +268,7 @@ class Structure:
           if index is an invalid value
         """
         # adds atom at a specified position
-        if position is not None and (position <= 0 or position > len(self.atoms) + 1):
+        if position is not None and (position < 0 or position > len(self.atoms)):
             raise ValueError("Invalid position")
         # In the case that e is a str , it is converted into object from Element
         # New atom added to self.atoms

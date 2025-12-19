@@ -1,9 +1,10 @@
+from collections import UserDict
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, conlist
 
-__all__ = ("InputString", "InputFilePath", "IntGroup", "NumList")
+__all__ = ("InputString", "InputFilePath", "IntGroup", "NumList", "NoCaseDict")
 
 
 class InputFilePath(BaseModel):
@@ -181,3 +182,131 @@ class IntGroup(BaseModel):
                     integers.append(int(item))
 
             return cls(values=integers)
+
+
+class NoCaseDict(UserDict[str, str]):
+    """
+    A dictionary whose keys are case-insensitive.
+    This only applies for string-like keys.
+    """
+
+    def __getitem__(self, key: str) -> str:
+        """
+        Retrieve a value from the dictionary.
+
+        Parameters
+        ----------
+        key: str
+            Key of entry to be fetched.
+
+        Returns
+        -------
+        str
+            Value of entry.
+
+        Raises
+        ------
+        TypeError
+            If the key is not a string.
+
+        KeyError
+            If attribute with given name does not exist.
+
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Key must be of type string, got {type(key)}")
+        key = self._norm_key(key)
+        return self.data[key]
+
+    def __setitem__(self, key: str, value: str) -> None:
+        """
+        Set a value in the dictionary.
+
+        Parameters
+        ----------
+        key: str
+            Key of entry
+        value: str
+            Value of entry to be set
+
+        Raises
+        -------
+        TypeError
+            If key or value is not a string.
+
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Key must be of type string, got {type(key)}")
+        if not isinstance(value, str):
+            raise TypeError(f"Value must be of type string, got {type(value)}")
+        key = self._norm_key(key)
+        self.data[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        """
+        Delete an item from the dictionary.
+
+        Parameters
+        ----------
+        key: str
+        Name of entry to be deleted.
+
+        Returns
+        -------
+        None
+
+        Raises
+        -------
+        KeyError
+            If key does not exist in dictionary.
+
+        TypeError
+            If the key is not a string.
+
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Key must be of type string, got {type(key)}")
+        key = self._norm_key(key)
+        del self.data[key]
+
+    def __contains__(self, key: Any) -> bool:
+        """
+        Check if a key exists in the dictionary.
+
+        Parameters
+        ----------
+        key: Any
+            Key of entry
+
+        Returns
+        -------
+        bool
+            True if key exists in the dictionary. False otherwise.
+
+        Raises
+        ------
+        TypeError
+            If the key is not a string.
+
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Key must be of type string, got {type(key)}")
+        key = self._norm_key(key)
+        return key in self.data
+
+    def _norm_key(self, key: str, /) -> str:
+        """
+        Normalize key to lower case.
+
+        Parameters
+        ----------
+        key: str
+            Key of entry
+
+        Returns
+        -------
+        str
+            Normalized key.
+
+        """
+        return key.lower().strip()
