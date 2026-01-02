@@ -1,4 +1,3 @@
-from io import StringIO
 from pathlib import Path
 
 import numpy as np
@@ -55,7 +54,7 @@ Coordinates from ORCA-job job_MEP E  -7.334880224742
 def xyz_buffer_single_structure(xyz_single_file: Path):
     """Returns a test buffer of a single structure .xyz file"""
     with xyz_single_file.open("r") as f:
-        tracking_text = TrackingTextIO(StringIO(f.read()))
+        tracking_text = TrackingTextIO(f.read())
 
     return tracking_text
 
@@ -135,7 +134,7 @@ def test_from_xyz_buffer(xyz_buffer_single_structure):
 
 def test_from_xyz_buffer_empty():
     """Test to check if `Structure.from_xyz_buffer()` returns None in case of empty buffer."""
-    structure = Structure.from_xyz_buffer(TrackingTextIO(StringIO("")))
+    structure = Structure.from_xyz_buffer(TrackingTextIO(""))
     assert not structure
 
 
@@ -145,6 +144,6 @@ def test_from_xyz_buffer_raises_on_invalid_header():
 Comment line
 O 0.0 0.0 0.0
 """
-    buffer = TrackingTextIO(StringIO(xyz_text))
+    buffer = TrackingTextIO(xyz_text)
     with pytest.raises(ValueError):
         Structure.from_xyz_buffer(buffer)

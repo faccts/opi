@@ -82,6 +82,8 @@ class Properties:
         ----------
         trj_file : Path | str | PathLike[str]
             Name or path to xyz file with one or multiple structure(s)
+        mode: Literal["goat", "docker"], default = "goat"
+            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
         comment_symbols: str | Sequence[str] | None, default: None
             List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
             data starts. By default, no user comments are used. White-space only comments are not allowed and are
