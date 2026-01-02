@@ -69,6 +69,13 @@ class Output:
         Basename of the job.
     working_dir: Path
         Optional path to the working directory.
+    gbw_files: list[Path]
+        List of paths to existing gbw files in the working directory.
+    gbw_json_files: list[Path]
+        List of paths to gbw json files that can be created from available gbw files. Files may or may not exist in the
+        working directory.
+    property_json_file: Path
+        Path to property json file. File may or may not exist in the working directory.
     results_properties: PropertyResults
         Properties parsed from `property.json`.
         Should be preferred over `property_json_data`.
@@ -124,7 +131,8 @@ class Output:
             raise FileNotFoundError(f"Working dir does not exist: {working_dir}")
 
         # // JSON PATHS
-        self.gbw_json_files = self.get_gbw_json_files()
+        self.gbw_files = self.get_gbw_files()
+        self.gbw_json_files = [gbw_file.with_suffix(".json") for gbw_file in self.gbw_files]
         self.property_json_file = self.get_file(".property.json")
 
         # > // REDUMP JSON AFTER PARSING
@@ -291,7 +299,7 @@ class Output:
         json_string: str = result.model_dump_json(indent=2)
         json_file.write_text(json_string)
 
-    def collect_json_files(
+    def collect_gbw_files(
         self,
         pattern: str | Callable[[int], str],
         *,
@@ -300,8 +308,7 @@ class Output:
         step: int = 1,
     ) -> list[Path]:
         """
-        Searches for available gbw files according to a pattern in `working_dir` and returns a list of corresponding
-        `.json` file paths.
+        Searches for available gbw files according to a pattern in `working_dir` and returns a list of them
 
         Parameters
         ----------
@@ -324,20 +331,20 @@ class Output:
         if isinstance(pattern, str):
             gbw_file = self.get_file(pattern)
             if gbw_file.is_file():
-                files.append(gbw_file.with_suffix(".json"))
+                files.append(gbw_file)
             return files
         else:
             for i in range(start, end, step):
                 gbw_file = self.get_file(pattern(i))
                 if gbw_file.is_file():
-                    files.append(gbw_file.with_suffix(".json"))
+                    files.append(gbw_file)
                 else:
                     break
         return files
 
-    def get_gbw_json_files(self, suffix: str = ".gbw", /) -> list[Path]:
+    def get_gbw_files(self, suffix: str = ".gbw", /) -> list[Path]:
         """
-        Checks if other gbw files with indexes from scans or NEB exist and returns a list with their paths.
+        Returns list of paths to existing gbw files including gbw files with indexes from scans or neb runs.
         Naming of gbw files from scan and neb is different. There should never be both so we first check for scan
         and then neb.
 
@@ -357,23 +364,23 @@ class Output:
             If multi-gbw files from scan and neb calculations exist.
         """
 
-        # // Get path to main gbw/json file
-        gbw_json_list = self.collect_json_files(suffix)
+        # // Get path to main gbw file
+        gbw_list = self.collect_gbw_files(suffix)
 
         # // Check for scan files
-        scan_list = self.collect_json_files(lambda i: f".{i:03}{suffix}", start=1)
+        scan_list = self.collect_gbw_files(lambda i: f".{i:03}{suffix}", start=1)
 
         # // Check for neb files
-        neb_list = self.collect_json_files(lambda i: f"_im{i}{suffix}")
+        neb_list = self.collect_gbw_files(lambda i: f"_im{i}{suffix}")
 
         if neb_list and scan_list:
             raise FileExistsError(
                 "Both Scan and NEB type .gbw files found! Only one type should be present."
             )
 
-        gbw_json_list.extend(scan_list or neb_list)
+        gbw_list.extend(scan_list or neb_list)
 
-        return gbw_json_list
+        return gbw_list
 
     def get_file(self, suffix: str, /, *, basename: str = "") -> Path:
         """

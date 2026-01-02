@@ -6,7 +6,7 @@ import pytest
 
 from opi.input.structures import Structure
 from opi.utils.element import Element
-from opi.utils.textio import TrackingTextIO
+from opi.utils.tracking_text_io import TrackingTextIO
 
 
 @pytest.fixture
@@ -116,7 +116,7 @@ def test_from_trj_xyz_correct_number_of_structures(xyz_multi_file: Path):
 
 def test_from_trj_xyz_struc_limit(xyz_multi_file: Path):
     """Test to check if `struc_limit` parameter is enforced correctly"""
-    structures = Structure.from_trj_xyz(xyz_multi_file, struc_limit=1)
+    structures = Structure.from_trj_xyz(xyz_multi_file, n_struc_limit=1)
     assert len(structures) == 1
 
 
