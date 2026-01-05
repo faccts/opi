@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any, cast
 
 from opi.execution.core import Runner
-from opi.input.arbitrary_string import ArbitraryStringPos
 from opi.input.blocks.block_output import BlockOutput
 from opi.input.core import Input
 from opi.input.structures.structure import Structure
@@ -215,55 +214,14 @@ class Calculator:
 
         try:
             input_param = self.input
-            simple_keywords = input_param.simple_keywords
-            blocks = input_param.blocks.values() if input_param.blocks else ()
-            arbitrary_strings = input_param.arbitrary_strings
 
             assert self.inpfile is not None
             with self.inpfile.open("w") as inp:
                 # ---------------------------------
-                # > Arbitrary Strings: top
+                # > Before coords block
                 # ---------------------------------
-                if arbitrary_strings:
-                    for item in arbitrary_strings:
-                        if item.pos is ArbitraryStringPos.TOP:
-                            inp.write(f"{item.format_orca()}\n")
 
-                # ---------------------------------
-                # > Simple Keywords
-                # ---------------------------------
-                if simple_keywords:
-                    for keyword in simple_keywords:
-                        if isinstance(keyword, str):
-                            inp.write(f"!{keyword}\n")
-                        else:
-                            inp.write(f"!{keyword.format_orca()}\n")
-
-                # ---------------------------------
-                # > Special Strings
-                # ---------------------------------
-                if (memory := input_param.memory) is not None:
-                    inp.write(f"%maxcore {memory:d}\n")
-                if (ncores := input_param.ncores) is not None:
-                    inp.write(f"%pal\n    nprocs {ncores:d}\nend\n")
-                if (moinp := input_param.moinp) is not None:
-                    inp.write(f'%moinp "{moinp.relative_to(self.working_dir)}"\n')
-
-                # ---------------------------------
-                # > Block Options: Before coords
-                # ---------------------------------
-                if blocks:
-                    for block in blocks:
-                        if not block.aftercoord:
-                            inp.write(f"\n{block.format_orca()}\n")
-
-                # ---------------------------------
-                # > Arbitrary Strings: Before Coords
-                # ---------------------------------
-                if arbitrary_strings:
-                    for item in arbitrary_strings:
-                        if item.pos is ArbitraryStringPos.BEFORE_COORDS:
-                            inp.write(f"\n{item}\n")
+                inp.write(input_param.format_before_coords(self.working_dir))
 
                 # ---------------------------------
                 # > Coords block
@@ -275,20 +233,10 @@ class Calculator:
                         inp.write(f"\n{self.structure.format_orca()}\n")
 
                 # ---------------------------------
-                # > Block options: After coords
+                # > After coords block
                 # ---------------------------------
-                if blocks:
-                    for block in blocks:
-                        if block.aftercoord:
-                            inp.write(f"\n{block.format_orca()}\n")
 
-                # ---------------------------------
-                # > Arbitrary Strings: Bottom
-                # ---------------------------------
-                if arbitrary_strings:
-                    for item in arbitrary_strings:
-                        if item.pos is ArbitraryStringPos.BOTTOM:
-                            inp.write(f"\n{item}\n")
+                inp.write(input_param.format_after_coords())
 
                 return input_overwritten
 
