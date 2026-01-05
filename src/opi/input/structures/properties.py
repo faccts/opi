@@ -16,12 +16,13 @@ RGX_INT_AND_FLOAT = re.compile(
 
 class Properties:
     """
-    Class for keeping structure properties found in xyz files.
+    Class to represent structure properties (e.g., total or relative energies).
+    Currently, properties can only be read from XYZ files created with GOAT or DOCKER.
 
     Attributes
     ----------
     structure_id : int | None, default = None
-        Number of the structure from which the properties are.
+        Number of the structure, within the XYZ file, from which the properties are.
     energy_total : float | None, default = None
         Energy of a structure.
     energy_relative : float | None, default = None
@@ -40,15 +41,16 @@ class Properties:
 
     @classmethod
     def from_xyz(
-        cls, xyzfile: Path | str | PathLike[str], mode: Literal["goat", "docker"] = "goat"
+        cls, xyz_file: Path | str | PathLike[str], mode: Literal["goat", "docker"] = "goat"
     ) -> "Properties":
         """
-        Function for reading properties from the comment lines of a xyz file and return a Properties object.
+        Function for reading properties from the comment line of a single structure from a (multi-)XYZ file
+        and returning a Properties object.
 
         Parameters
         ----------
-        xyzfile : Path | str | PathLike[str]
-            Name or path to xyz file
+        xyz_file : Path | str | PathLike[str]
+            Name or path to XYZ file
         mode: Literal["goat", "docker"], default = "goat"
             Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
 
@@ -61,9 +63,9 @@ class Properties:
 
         Returns
         --------
-        Properties:Properties object extracted from file
+        Properties: Properties object extracted from file
         """
-        return cls.from_trj_xyz(xyzfile, n_struc_limit=1, mode=mode)[0]
+        return cls.from_trj_xyz(xyz_file, n_struc_limit=1, mode=mode)[0]
 
     @classmethod
     def from_trj_xyz(
@@ -76,18 +78,17 @@ class Properties:
         n_struc_limit: int | None = None,
     ) -> "list[Properties]":
         """
-        Function for reading multi-xyz file and returning a Properties object.
+        Function for reading multi-XYZ file and returning a Properties object.
 
         Parameters
         ----------
         trj_file : Path | str | PathLike[str]
-            Name or path to xyz file with one or multiple structure(s)
+            Name or path to XYZ file with one or multiple structure(s).
         mode: Literal["goat", "docker"], default = "goat"
             Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
         comment_symbols: str | Sequence[str] | None, default: None
-            List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
-            data starts. By default, no user comments are used. White-space only comments are not allowed and are
-            silently ignored.
+            List of symbols that indicate user comments in the XYZ data.
+            User comments have to start with the given symbol, fill a whole line, and come before the actual XYZ data.
         n_struc_limit: int | None, default: None
             If >0, only read the first n structures.
 
@@ -118,19 +119,19 @@ class Properties:
         cls, xyz_string: str, mode: Literal["goat", "docker"] = "goat"
     ) -> "Properties":
         """
-        Function for reading xyz data from string and return a Properties object.
+        Function for reading a single XYZ file from a string and returning a `Properties` object.
 
         Parameters
         ----------
         xyz_string: str
-            String that contains xyz file data
+            String that contains XYZ file data
         mode: Literal["goat", "docker"], default = "goat"
             Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
 
         Raises
         --------
         ValueError
-            If there is a problem with parsing the XYZ file
+            If there is a problem with parsing the XYZ string or if `n_struc_limit` is negative or 0.
 
         Returns
         --------
@@ -150,25 +151,28 @@ class Properties:
         n_struc_limit: int | None = None,
     ) -> "list[Properties]":
         """
-        Function for reading trajectory data from string and returning a Properties object. What is read depends on the
-        mode Literal.
+        Function for reading trajectory data from string and returning a Properties object.
 
         Parameters
         ----------
         trj_string : Path | str | PathLike[str]
-            String that contains one or multiple xyz blocks (trajectory data)
+            String that contains one or multiple XYZ blocks (trajectory data)
         mode: Literal["goat", "docker"], default = "goat"
             Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
         comment_symbols: str | Sequence[str] | None, default: None
-            List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
-            data starts. By default, no user comments are used. White-space only comments are not allowed and are
-            silently ignored.
+            List of symbols that indicate user comments in the XYZ data.
+            User comments have to start with the given symbol, fill a whole line, and come before the actual XYZ data.
         n_struc_limit: int | None, default: None
             If >0, only read the first n structures.
 
         Returns
         --------
         list[Properties]: Properties objects extracted from file
+
+        Raises
+        --------
+        ValueError
+            If there is a problem with parsing the XYZ data or if `n_struc_limit` is <= 0.
         """
         with TrackingTextIO(trj_string) as tracked:
             return list(cls._iter_xyz_structures(tracked, comment_symbols, mode, n_struc_limit))
@@ -183,17 +187,16 @@ class Properties:
         mode: Literal["goat", "docker"] = "goat",
     ) -> "Properties | None":
         """
-        Function for reading from the comment line of a xyz file from a buffer and converting it to a Properties object.
-        What is read depends on the `mode` Literal, e.g, total energies from a GOAT xyz file.
+        Function for reading from the comment line of a XYZ file from a buffer and converting it to a `Properties`
+        object.
 
         Parameters
         ----------
         xyz_lines: TrackingTextIO
-            A buffer that contains xyz file data
+            A buffer that contains XYZ file data.
         comment_symbols: str | Sequence[str] | None, default: None
-            List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
-            data starts. By default, no user comments are used. White-space only comments are not allowed and are
-            silently ignored.
+            List of symbols that indicate user comments in the XYZ data.
+            User comments have to start with the given symbol, fill a whole line, and come before the actual XYZ data.
         mode: Literal["goat", "docker"], default = "goat"
             Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
 
@@ -240,14 +243,14 @@ class Properties:
             natoms = int(line.split()[0])
         except (ValueError, IndexError) as err:
             raise ValueError(
-                f"Line {xyz_lines.line_number}: Could not read number of atoms at the beginning of xyz data"
+                f"Line {xyz_lines.line_number}: Could not read number of atoms at the beginning of XYZ data"
             ) from err
 
         # > Comment line
         line = xyz_lines.readline()
         if not line:
             raise ValueError(
-                f"Line {xyz_lines.line_number}: Comment line is not present in xyz data"
+                f"Line {xyz_lines.line_number}: Comment line is not present in XYZ data"
             )
 
         # > Analyse comment line
@@ -258,13 +261,13 @@ class Properties:
             line = xyz_lines.readline()
             # > empty lines are not allowed
             if not line:
-                raise ValueError(f"Line {xyz_lines.line_number}: Incomplete xyz file buffer")
+                raise ValueError(f"Line {xyz_lines.line_number}: Incomplete XYZ file buffer")
 
         return properties
 
     @classmethod
     def docker_energies(cls, line: str) -> "Properties":
-        """Function for reading DOCKER energies from comment line of a DOCKER xyz file."""
+        """Function for reading DOCKER energies from comment line of a DOCKER XYZ file."""
         numbers = [float(m) for m in re.findall(RGX_INT_AND_FLOAT, line)]
         # > Parse the comment line
         try:
@@ -283,7 +286,7 @@ class Properties:
 
     @classmethod
     def goat_energies(cls, line: str) -> "Properties":
-        """Function for reading GOAT energies from comment line of a GOAT xyz file."""
+        """Function for reading GOAT energies from comment line of a GOAT XYZ file."""
         numbers = [float(m) for m in re.findall(RGX_INT_AND_FLOAT, line)]
         # > Parse the comment line
         try:
@@ -305,8 +308,8 @@ class Properties:
     ) -> Iterator["Properties"]:
         """Yield properties from the buffer until exhausted or the limit is reached."""
 
-        if n_struc_limit is not None and n_struc_limit < 0:
-            raise ValueError("n_struc_limit must be None, 0, or a positive integer")
+        if n_struc_limit is not None and n_struc_limit <= 0:
+            raise ValueError("n_struc_limit must be None, or a positive integer")
 
         n_struc = 0
         while True:

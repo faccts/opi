@@ -7,6 +7,7 @@ class TrackingTextIO:
     """Class that keeps track of the line number in TextIO"""
 
     def __init__(self, stream: str | TextIO) -> None:
+        # > declare self._stream for mypy
         self._stream: TextIO
         if isinstance(stream, str):
             self._stream = StringIO(stream)

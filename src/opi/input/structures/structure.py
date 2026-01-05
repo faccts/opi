@@ -402,9 +402,10 @@ class Structure:
         --------
         `Structure`:`Structure object extracted from file
         """
-        return cls.from_trj_xyz(xyzfile, charge=charge, multiplicity=multiplicity, n_struc_limit=1)[
-            0
-        ]
+        structures = cls.from_trj_xyz(
+            xyzfile, charge=charge, multiplicity=multiplicity, n_struc_limit=1
+        )
+        return structures[0]
 
     @classmethod
     def from_trj_xyz(
@@ -438,13 +439,13 @@ class Structure:
         Raises
         --------
         FileNotFoundError
-            If the XYZ file cannot be found
+            If the XYZ file cannot be found.
         ValueError
-            If there is a problem with parsing the XYZ file
+            If there is a problem with parsing the XYZ file.
 
         Returns
         --------
-        `list[Structure]`:`Molecular structure objects extracted from the xyz file
+        list[Structure]: Molecular structure objects extracted from the xyz file.
         """
         # > converting into Path
         trj_file = Path(trj_file)

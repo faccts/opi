@@ -72,8 +72,8 @@ class Output:
     gbw_files: list[Path]
         List of paths to existing gbw files in the working directory.
     gbw_json_files: list[Path]
-        List of paths to gbw json files that can be created from available gbw files. Files may or may not exist in the
-        working directory.
+        List of paths to gbw json files that can be created from available gbw files.
+        Files may or may not exist in the working directory.
     property_json_file: Path
         Path to property json file. File may or may not exist in the working directory.
     results_properties: PropertyResults
@@ -308,7 +308,7 @@ class Output:
         step: int = 1,
     ) -> list[Path]:
         """
-        Searches for available gbw files according to a pattern in `working_dir` and returns a list of them
+        Searches for available gbw files according to a pattern in `working_dir` and returns these as list.
 
         Parameters
         ----------
