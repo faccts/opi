@@ -45,25 +45,25 @@ class Properties:
     ) -> "Properties":
         """
         Function for reading properties from the comment line of a single structure from a (multi-)XYZ file
-        and returning a Properties object.
+        and returning a `Properties` object.
 
         Parameters
         ----------
         xyz_file : Path | str | PathLike[str]
-            Name or path to XYZ file
+            Name or path to XYZ file.
         mode: Literal["goat", "docker"], default = "goat"
             Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
 
         Raises
         --------
         FileNotFoundError
-            If the XYZ file cannot be found
+            If the XYZ file cannot be found.
         ValueError
-            If there is a problem with parsing the XYZ file
+            If there is a problem with parsing the XYZ file.
 
         Returns
         --------
-        Properties: Properties object extracted from file
+        Properties: Properties object extracted from file.
         """
         return cls.from_trj_xyz(xyz_file, n_struc_limit=1, mode=mode)[0]
 
@@ -95,13 +95,13 @@ class Properties:
         Raises
         --------
         FileNotFoundError
-            If the XYZ file cannot be found
+            If the XYZ file cannot be found.
         ValueError
-            If there is a problem with parsing the XYZ file
+            If there is a problem with parsing the XYZ file.
 
         Returns
         --------
-        list[Properties]: Properties object extracted from file
+        list[Properties]: Properties object extracted from file.
         """
         # > converting into Path
         trj_file = Path(trj_file)
@@ -124,7 +124,7 @@ class Properties:
         Parameters
         ----------
         xyz_string: str
-            String that contains XYZ file data
+            String that contains XYZ file data.
         mode: Literal["goat", "docker"], default = "goat"
             Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
 
@@ -136,7 +136,7 @@ class Properties:
         Returns
         --------
         Properties
-            The `Properties` object extracted from file
+            The `Properties` object extracted from file.
         """
         return cls.from_trj_xyz_block(xyz_string, n_struc_limit=1, mode=mode)[0]
 
@@ -151,12 +151,12 @@ class Properties:
         n_struc_limit: int | None = None,
     ) -> "list[Properties]":
         """
-        Function for reading trajectory data from string and returning a Properties object.
+        Function for reading trajectory data from string and returning a `Properties` object.
 
         Parameters
         ----------
         trj_string : Path | str | PathLike[str]
-            String that contains one or multiple XYZ blocks (trajectory data)
+            String that contains one or multiple XYZ blocks (trajectory data).
         mode: Literal["goat", "docker"], default = "goat"
             Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
         comment_symbols: str | Sequence[str] | None, default: None
@@ -167,7 +167,7 @@ class Properties:
 
         Returns
         --------
-        list[Properties]: Properties objects extracted from file
+        list[Properties]: List of Properties extracted from string.
 
         Raises
         --------
@@ -203,7 +203,7 @@ class Properties:
         Raises
         --------
         ValueError
-            When no valid properties can be read from the input buffer or the corresponding structure is incomplete
+            When no valid properties can be read from the input buffer or the corresponding structure is incomplete.
 
         Returns
         --------
@@ -292,7 +292,7 @@ class Properties:
         try:
             energy_total = numbers[0]
         except (IndexError, ValueError) as err:
-            raise ValueError("Could not parse docker energies from comment line.") from err
+            raise ValueError("Could not parse goat energies from comment line.") from err
         properties = Properties(
             energy_total=energy_total,
         )
