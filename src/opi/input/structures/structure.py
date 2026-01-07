@@ -512,7 +512,7 @@ class Structure:
         n_struc_limit: int | None = None,
     ) -> "list[Structure]":
         """
-        Function for reading a xyz trajectory data string and converting it to a list of molecular Structure
+        Function for reading a XYZ trajectory data string and converting it to a list of molecular Structure
 
         Parameters
         ----------
@@ -1005,7 +1005,35 @@ class Structure:
         comment_symbols: str | Sequence[str] | None = None,
         n_struc_limit: int | None = None,
     ) -> Iterator["Structure"]:
-        """Yield properties from the buffer until exhausted or the limit is reached."""
+        """
+        Yield properties from the buffer until exhausted or the limit is reached.
+
+        Parameters
+        ----------
+        tracked: TrackingTextIO
+            A buffer that contains XYZ file data.
+        charge : int, default:  0
+            Optional charge for the structure
+        multiplicity : int, default:  1
+            Optional multiplicity for the structure
+        comment_symbols: str | Sequence[str] | None, default: None
+            List of symbols that indicate user comments in the XYZ data.
+            User comments have to start with the given symbol, fill a whole line, and come before the actual XYZ data.
+        n_struc_limit: int | None, default: None
+            If >0, only read the first n structures.
+
+        Returns
+        --------
+        Iterator["Structure"]
+            Iterator of `Structure` object extracted from the buffer.
+
+        Raises
+        --------
+        ValueError
+            When no valid properties can be read from the input buffer, the corresponding structure is incomplete, or
+            `n_struc_limit` is negative or zero.
+
+        """
 
         if n_struc_limit is not None and n_struc_limit < 0:
             raise ValueError("n_struc_limit must be None, 0, or a positive integer")
