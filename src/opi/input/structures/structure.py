@@ -442,6 +442,8 @@ class Structure:
             If the XYZ file cannot be found.
         ValueError
             If there is a problem with parsing the XYZ file.
+        EOFError
+            If the file is empty.
 
         Returns
         --------
@@ -455,7 +457,7 @@ class Structure:
             raise FileNotFoundError(f"XYZ file not found: {trj_file}")
 
         with TrackingTextIO(trj_file.open()) as tracked:
-            return list(
+            structures = list(
                 cls._iter_xyz_structures(
                     tracked,
                     charge=charge,
@@ -464,6 +466,9 @@ class Structure:
                     n_struc_limit=n_struc_limit,
                 )
             )
+            if not structures:
+                raise EOFError(f"XYZ file {trj_file} is empty")
+            return structures
 
     @classmethod
     def from_xyz_block(
@@ -531,10 +536,15 @@ class Structure:
 
         Returns
         --------
-        `list[Structure]`:`Structure objects extracted from file
+        list[Structure]: `Structure objects extracted from file
+
+        Raises
+        --------
+        EOFError
+            If the string is empty
         """
         with TrackingTextIO(trj_string) as tracked:
-            return list(
+            structures = list(
                 cls._iter_xyz_structures(
                     tracked,
                     charge=charge,
@@ -543,6 +553,9 @@ class Structure:
                     n_struc_limit=n_struc_limit,
                 )
             )
+            if not structures:
+                raise EOFError("XYZ string is empty")
+            return structures
 
     @classmethod
     def from_xyz_buffer(
@@ -552,7 +565,7 @@ class Structure:
         charge: int = 0,
         multiplicity: int = 1,
         comment_symbols: str | Sequence[str] | None = None,
-    ) -> "Structure | None":
+    ) -> "Structure":
         """
         Function for reading a xyz file from a buffer and converting it to a molecular Structure.
 
@@ -569,15 +582,17 @@ class Structure:
             data starts. By default, no user comments are used. White-space only comments are not allowed and are
             silently ignored.
 
+        Returns
+        --------
+        Structure
+            The `Structure` object extracted from the buffer.
+
         Raises
         --------
         ValueError
-            When no valid structure can be read from the input buffer
-
-        Returns
-        --------
-        Structure | None
-            The `Structure` object extracted from the buffer or None if the buffer was empty.
+            When no valid structure can be read from the input buffer.
+        EOFError
+            When no data is in the buffer.
         """
         # > Try reading the string
         atoms: list[Atom] = []
@@ -598,9 +613,8 @@ class Structure:
             else:
                 break
 
-        # > No data available in the buffer
         if not line:
-            return None
+            raise EOFError("No data available in the buffer.")
 
         # > Fetch number of atoms
         try:
@@ -1030,8 +1044,7 @@ class Structure:
         Raises
         --------
         ValueError
-            When no valid properties can be read from the input buffer, the corresponding structure is incomplete, or
-            `n_struc_limit` is negative or zero.
+            If `n_struc_limit` is negative or zero.
 
         """
 
@@ -1040,10 +1053,14 @@ class Structure:
 
         n_struc = 0
         while True:
-            struct = cls.from_xyz_buffer(
-                tracked, charge=charge, multiplicity=multiplicity, comment_symbols=comment_symbols
-            )
-            if struct is None:
+            try:
+                struct = cls.from_xyz_buffer(
+                    tracked,
+                    charge=charge,
+                    multiplicity=multiplicity,
+                    comment_symbols=comment_symbols,
+                )
+            except EOFError:
                 break
             yield struct
             n_struc += 1

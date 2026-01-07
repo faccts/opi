@@ -42,7 +42,7 @@ class Properties:
     @classmethod
     def from_xyz(
         cls, xyz_file: Path | str | PathLike[str], mode: Literal["goat", "docker"] = "goat"
-    ) -> "Properties | None":
+    ) -> "Properties":
         """
         Function for reading properties from the comment line of a single structure from a (multi-)XYZ file
         and returning a `Properties` object.
@@ -65,9 +65,10 @@ class Properties:
             If the XYZ file cannot be found.
         ValueError
             If there is a problem with parsing the XYZ file.
+        EOFError
+            If the file is empty.
         """
-        properties = cls.from_trj_xyz(xyz_file, n_struc_limit=1, mode=mode)
-        return properties[0] if properties else None
+        return cls.from_trj_xyz(xyz_file, n_struc_limit=1, mode=mode)[0]
 
     @classmethod
     def from_trj_xyz(
@@ -105,6 +106,8 @@ class Properties:
             If the XYZ file cannot be found.
         ValueError
             If there is a problem with parsing the XYZ file.
+        EOFError
+            If the file is empty.
         """
         # > converting into Path
         trj_file = Path(trj_file)
@@ -115,12 +118,17 @@ class Properties:
 
         # > Open file and iterate over structures
         with TrackingTextIO(trj_file.open()) as tracked:
-            return list(cls._iter_xyz_structures(tracked, comment_symbols, mode, n_struc_limit))
+            properties_trj = list(
+                cls._iter_xyz_structures(tracked, comment_symbols, mode, n_struc_limit)
+            )
+            if not properties_trj:
+                raise EOFError(f"XYZ file {trj_file} is empty")
+            return properties_trj
 
     @classmethod
     def from_xyz_block(
         cls, xyz_string: str, mode: Literal["goat", "docker"] = "goat"
-    ) -> "Properties | None":
+    ) -> "Properties":
         """
         Function for reading a single XYZ file from a string and returning a `Properties` object.
 
@@ -133,16 +141,17 @@ class Properties:
 
         Returns
         --------
-        Properties | None
-            The `Properties` object extracted from string or None if nothing could be extracted.
+        Properties
+            The `Properties` object extracted from string.
 
         Raises
         --------
         ValueError
             If there is a problem with parsing the XYZ string or if `n_struc_limit` is negative or 0.
+        EOFError
+            If the string is empty.
         """
-        properties = cls.from_trj_xyz_block(xyz_string, n_struc_limit=1, mode=mode)
-        return properties[0] if properties else None
+        return cls.from_trj_xyz_block(xyz_string, n_struc_limit=1, mode=mode)[0]
 
     @classmethod
     def from_trj_xyz_block(
@@ -177,9 +186,16 @@ class Properties:
         --------
         ValueError
             If there is a problem with parsing the XYZ data or if `n_struc_limit` is <= 0.
+        EOFError
+            If the string is empty.
         """
         with TrackingTextIO(trj_string) as tracked:
-            return list(cls._iter_xyz_structures(tracked, comment_symbols, mode, n_struc_limit))
+            properties_trj = list(
+                cls._iter_xyz_structures(tracked, comment_symbols, mode, n_struc_limit)
+            )
+            if not properties_trj:
+                raise EOFError("No XYZ data in string.")
+            return properties_trj
 
     @classmethod
     def from_xyz_buffer(
@@ -189,7 +205,7 @@ class Properties:
         *,
         comment_symbols: str | Sequence[str] | None = None,
         mode: Literal["goat", "docker"] = "goat",
-    ) -> "Properties | None":
+    ) -> "Properties":
         """
         Function for reading from the comment line of a XYZ file from a buffer and converting it to a `Properties`
         object.
@@ -206,13 +222,15 @@ class Properties:
 
         Returns
         --------
-        Properties | None
-            The `Properties` object extracted from the buffer or None if the buffer was empty.
+        Properties
+            The `Properties` object extracted from the buffer.
 
         Raises
         --------
         ValueError
             When no valid properties can be read from the input buffer or the corresponding structure is incomplete.
+        EOFError
+            When no data is in the buffer.
         """
         # > Select mode
         mode_functions = {
@@ -238,9 +256,8 @@ class Properties:
             else:
                 break
 
-        # > No data available in the buffer
         if not line:
-            return None
+            raise EOFError("No data available in the buffer.")
 
         # > Fetch number of atoms
         try:
@@ -335,8 +352,7 @@ class Properties:
         Raises
         --------
         ValueError
-            When no valid properties can be read from the input buffer, the corresponding structure is incomplete, or
-            `n_struc_limit` is negative or zero.
+            If `n_struc_limit` is negative or zero.
         """
 
         if n_struc_limit is not None and n_struc_limit <= 0:
@@ -344,8 +360,9 @@ class Properties:
 
         n_struc = 0
         while True:
-            props = cls.from_xyz_buffer(tracked, comment_symbols=comment_symbols, mode=mode)
-            if props is None:
+            try:
+                props = cls.from_xyz_buffer(tracked, comment_symbols=comment_symbols, mode=mode)
+            except EOFError:
                 break
             yield props
             n_struc += 1

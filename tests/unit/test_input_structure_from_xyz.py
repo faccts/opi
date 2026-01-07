@@ -133,9 +133,9 @@ def test_from_xyz_buffer(xyz_buffer_single_structure):
 
 
 def test_from_xyz_buffer_empty():
-    """Test to check if `Structure.from_xyz_buffer()` returns None in case of empty buffer."""
-    structure = Structure.from_xyz_buffer(TrackingTextIO(""))
-    assert not structure
+    """Test to check if `Structure.from_xyz_buffer()` raises EOFError in case of empty buffer."""
+    with pytest.raises(EOFError):
+        Structure.from_xyz_buffer(TrackingTextIO(""))
 
 
 def test_from_xyz_buffer_raises_on_invalid_header():
