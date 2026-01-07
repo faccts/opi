@@ -42,7 +42,7 @@ class Properties:
     @classmethod
     def from_xyz(
         cls, xyz_file: Path | str | PathLike[str], mode: Literal["goat", "docker"] = "goat"
-    ) -> "Properties":
+    ) -> "Properties | None":
         """
         Function for reading properties from the comment line of a single structure from a (multi-)XYZ file
         and returning a `Properties` object.
@@ -54,18 +54,20 @@ class Properties:
         mode: Literal["goat", "docker"], default = "goat"
             Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
 
+        Returns
+        --------
+        Properties | None
+            Properties object extracted from file or None if nothing could be extracted.
+
         Raises
         --------
         FileNotFoundError
             If the XYZ file cannot be found.
         ValueError
             If there is a problem with parsing the XYZ file.
-
-        Returns
-        --------
-        Properties: Properties object extracted from file.
         """
-        return cls.from_trj_xyz(xyz_file, n_struc_limit=1, mode=mode)[0]
+        properties = cls.from_trj_xyz(xyz_file, n_struc_limit=1, mode=mode)
+        return properties[0] if properties else None
 
     @classmethod
     def from_trj_xyz(
@@ -78,7 +80,7 @@ class Properties:
         n_struc_limit: int | None = None,
     ) -> "list[Properties]":
         """
-        Function for reading multi-XYZ file and returning a Properties object.
+        Function for reading multi-XYZ file and returning a list of `Properties`.
 
         Parameters
         ----------
@@ -92,16 +94,17 @@ class Properties:
         n_struc_limit: int | None, default: None
             If >0, only read the first n structures.
 
+        Returns
+        --------
+        list[Properties]
+            Properties object extracted from file.
+
         Raises
         --------
         FileNotFoundError
             If the XYZ file cannot be found.
         ValueError
             If there is a problem with parsing the XYZ file.
-
-        Returns
-        --------
-        list[Properties]: Properties object extracted from file.
         """
         # > converting into Path
         trj_file = Path(trj_file)
@@ -117,7 +120,7 @@ class Properties:
     @classmethod
     def from_xyz_block(
         cls, xyz_string: str, mode: Literal["goat", "docker"] = "goat"
-    ) -> "Properties":
+    ) -> "Properties | None":
         """
         Function for reading a single XYZ file from a string and returning a `Properties` object.
 
@@ -128,17 +131,18 @@ class Properties:
         mode: Literal["goat", "docker"], default = "goat"
             Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
 
+        Returns
+        --------
+        Properties | None
+            The `Properties` object extracted from string or None if nothing could be extracted.
+
         Raises
         --------
         ValueError
             If there is a problem with parsing the XYZ string or if `n_struc_limit` is negative or 0.
-
-        Returns
-        --------
-        Properties
-            The `Properties` object extracted from file.
         """
-        return cls.from_trj_xyz_block(xyz_string, n_struc_limit=1, mode=mode)[0]
+        properties = cls.from_trj_xyz_block(xyz_string, n_struc_limit=1, mode=mode)
+        return properties[0] if properties else None
 
     @classmethod
     def from_trj_xyz_block(
@@ -151,7 +155,7 @@ class Properties:
         n_struc_limit: int | None = None,
     ) -> "list[Properties]":
         """
-        Function for reading trajectory data from string and returning a `Properties` object.
+        Function for reading trajectory data from string and returning a list of `Properties`.
 
         Parameters
         ----------
@@ -200,15 +204,15 @@ class Properties:
         mode: Literal["goat", "docker"], default = "goat"
             Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
 
-        Raises
-        --------
-        ValueError
-            When no valid properties can be read from the input buffer or the corresponding structure is incomplete.
-
         Returns
         --------
         Properties | None
             The `Properties` object extracted from the buffer or None if the buffer was empty.
+
+        Raises
+        --------
+        ValueError
+            When no valid properties can be read from the input buffer or the corresponding structure is incomplete.
         """
         # > Select mode
         mode_functions = {
@@ -267,7 +271,8 @@ class Properties:
 
     @classmethod
     def docker_energies(cls, line: str) -> "Properties":
-        """Function for reading DOCKER energies from comment line of a DOCKER XYZ file."""
+        """Function for reading DOCKER energies from comment line of a DOCKER XYZ file and return them in `Properties`
+        object."""
         numbers = [float(m) for m in re.findall(RGX_INT_AND_FLOAT, line)]
         # > Parse the comment line
         try:
@@ -278,7 +283,7 @@ class Properties:
             # > Relative energy is the third number (kcal/mol)
             energy_relative = numbers[2]
         except (IndexError, ValueError) as err:
-            raise ValueError("Could not parse docker energies from comment line.") from err
+            raise ValueError("Could not parse DOCKER energies from comment line.") from err
         properties = Properties(
             structure_id=structure_id, energy_total=energy_total, energy_relative=energy_relative
         )
@@ -286,13 +291,14 @@ class Properties:
 
     @classmethod
     def goat_energies(cls, line: str) -> "Properties":
-        """Function for reading GOAT energies from comment line of a GOAT XYZ file."""
+        """Function for reading GOAT energies from comment line of a GOAT XYZ file and return them in `Properties`
+        object."""
         numbers = [float(m) for m in re.findall(RGX_INT_AND_FLOAT, line)]
         # > Parse the comment line
         try:
             energy_total = numbers[0]
         except (IndexError, ValueError) as err:
-            raise ValueError("Could not parse goat energies from comment line.") from err
+            raise ValueError("Could not parse GOAT energies from comment line.") from err
         properties = Properties(
             energy_total=energy_total,
         )
@@ -306,7 +312,32 @@ class Properties:
         mode: Literal["goat", "docker"],
         n_struc_limit: int | None,
     ) -> Iterator["Properties"]:
-        """Yield properties from the buffer until exhausted or the limit is reached."""
+        """
+        Yield properties from the buffer until exhausted or the limit is reached.
+
+        Parameters
+        ----------
+        tracked: TrackingTextIO
+            A buffer that contains XYZ file data.
+        comment_symbols: str | Sequence[str] | None, default: None
+            List of symbols that indicate user comments in the XYZ data.
+            User comments have to start with the given symbol, fill a whole line, and come before the actual XYZ data.
+        mode: Literal["goat", "docker"], default = "goat"
+            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
+        n_struc_limit: int | None, default: None
+            If >0, only read the first n structures.
+
+        Returns
+        --------
+        Iterator["Properties"]
+            Iterator of `Properties` object extracted from the buffer.
+
+        Raises
+        --------
+        ValueError
+            When no valid properties can be read from the input buffer, the corresponding structure is incomplete, or
+            `n_struc_limit` is negative or zero.
+        """
 
         if n_struc_limit is not None and n_struc_limit <= 0:
             raise ValueError("n_struc_limit must be None, or a positive integer")
