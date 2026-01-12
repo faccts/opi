@@ -4,19 +4,50 @@ from typing import Tuple
 
 @dataclass
 class IrMode:
-    """IR mode data."""
+    """
+    Data available from ORCA for a single infrared (IR) mode.
+
+    Attributes
+    ----------
+    mode: int
+        Number of the mode, counting starts at 1.
+    wavenumber: float
+        Wavenumber of the mode in cm⁻¹.
+    eps: float
+        Partial molar absorptivity (epsilon) of the mode in L/(mol*cm).
+    intensity: float
+        IR intensity of the mode in km/mol.
+    dipole: Tuple[float, float, float]
+        Dipole derivatives TX TY TZ in atomic units.
+    """
 
     mode: int
-    wavenumber: float  # cm^-1
-    eps: float  # L/(mol*cm)
-    intensity: float  # km/mol
-    dipole: Tuple[float, float, float]  # TX TY TZ
+    wavenumber: float
+    eps: float
+    intensity: float
+    dipole: Tuple[float, float, float]
 
     @classmethod
     def from_string(cls, line: str) -> "IrMode":
         """
-        Parse a line like:
+        Parse a string line like:
         6:   1535.92   0.012167   61.49  0.002472  ( 0.028738 -0.018467 -0.036127)
+        and initializes `IrMode` from it.
+
+        Arguments
+        ---------
+        line: str
+            String line from which to parse.
+
+        Returns
+        ---------
+        IrMode
+            Parsed IR mode.
+
+        Raises
+        ---------
+        ValueError
+            If the string cannot be properly parsed.
         """
         # split once
         left, right = line.split("(", maxsplit=1)
@@ -51,6 +82,7 @@ class IrMode:
 
     @classmethod
     def header(cls) -> str:
+        """Returns the header from the ORCA IR spectrum. Print this once before printing `IrMode` for column context."""
         return (
             " Mode   freq       eps        Int     T**2         TX        TY        TZ\n"
             "       cm**-1   L/(mol*cm)  km/mol    a.u."

@@ -11,7 +11,7 @@ def has_string_in_file(file_name: Path, search_for: str, /, *, strict: bool = Tr
     Parameters
     ----------
     file_name : Path
-        Path to the output file
+        Path to the file that should be searched.
     search_for : str
         string that function searches in function
     strict : bool, default: False
@@ -49,12 +49,12 @@ def get_float_from_line(
     file_name: Path, search_for: str, index: int, field: int = -1, /, *, strict: bool = True
 ) -> float | None:
     """
-    Searches the output_file for a string and returns a float from the line of this string.
+    Searches `file_name` for a string and returns a float from the line of this string.
 
     Parameters
     ----------
     file_name : Path
-        Path to the output file
+        Path to the file that should be searched.
     search_for : str
         string that function searches in file.
     index : int
@@ -108,6 +108,8 @@ def get_lines_from_block(
 
     Parameters
     ----------
+    file_name : Path
+        Path to the file that should be searched.
     search_for : str
         string that function searches in file.
     index : int, default: -1
@@ -123,6 +125,8 @@ def get_lines_from_block(
     """
     lines = []
     skip_lines = offset
+    # > Obtain the block by repeatedly calling the grepper and increasing the number of lines to skip, until the line
+    # > obtained is emtpy.
     while True:
         try:
             grepper = Grepper(file_name)
