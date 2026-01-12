@@ -104,7 +104,7 @@ def get_lines_from_block(
     file_name: Path, search_for: str, /, *, index: int = -1, offset: int = 0
 ) -> list[str]:
     """
-    Searches the output_file for a string indicating a block and return all lines until an empty line is found.
+    Searches `file_name` for a string indicating a block and return all lines until an empty line is found.
 
     Parameters
     ----------
