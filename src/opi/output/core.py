@@ -18,11 +18,13 @@ from opi.output.cube import CubeOutput
 from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
     get_float_from_line,
+    get_lines_from_block,
     has_geometry_optimization_converged,
     has_scf_converged,
     has_terminated_normally,
 )
 from opi.output.hftyp import Hftyp
+from opi.output.ir_mode import IrMode
 from opi.output.mo_data import MOData
 from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
@@ -2018,3 +2020,29 @@ class Output:
             return np.array(k_list[0])
         else:
             return None
+
+    def get_ir(self) -> dict[int, IrMode] | None:
+        """
+        Returns the IR Spectrum from the ORCA output file
+
+        Returns
+        ----------
+        dict[int, IrMode] | None
+            Dictionary where the key indicates the number of the mode and `IrMode` contains the IR data of the mode and
+            None if the IR spectrum could not be grepped from the ORCA output.
+        """
+        outfile = self.get_outfile()
+        # // String for finding the IR spectrum block
+        ir_string = "IR SPECTRUM"
+        # // Grep the IR spectrum block
+        ir_data = get_lines_from_block(outfile, ir_string, index=-1, offset=6)
+
+        ir_dict = {}
+        for ir_line in ir_data:
+            try:
+                ir_mode = IrMode.from_string(ir_line)
+                ir_dict[ir_mode.mode] = ir_mode
+            except (ValueError, IndexError):
+                break
+
+        return ir_dict or None
