@@ -126,7 +126,7 @@ def get_lines_from_block(
     lines = []
     skip_lines = offset
     # > Obtain the block by repeatedly calling the grepper and increasing the number of lines to skip, until the line
-    # > obtained is emtpy.
+    # > obtained is empty.
     while True:
         try:
             grepper = Grepper(file_name)
