@@ -4,6 +4,7 @@ It's mostly based on the ORCA's two JSONs files.
 """
 
 import json
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any, Callable, cast
 from warnings import warn
@@ -90,6 +91,9 @@ class Output:
         Redump JSONs files after parsing. This is mostly meant for debugging.
     """
 
+    _gbw_json_files: tuple[Path, ...]
+    _property_json_file: Path | None
+
     def __init__(
         self,
         basename: str,
@@ -130,10 +134,9 @@ class Output:
         if not self.working_dir.is_dir():
             raise FileNotFoundError(f"Working dir does not exist: {working_dir}")
 
-        # // JSON PATHS
-        self.gbw_files = self.get_gbw_files()
-        self.gbw_json_files = [gbw_file.with_suffix(".json") for gbw_file in self.gbw_files]
-        self.property_json_file = self.get_file(".property.json")
+        # // INITIALIZE EMPTY JSON PATHS
+        self.gbw_json_files = ()
+        self.property_json_file = None
 
         # > // REDUMP JSON AFTER PARSING
         self.do_redump_jsons: bool = False
@@ -182,14 +185,24 @@ class Output:
         FileNotFoundError
             If any JSON file should be read that is not present.
         """
-        # // Create JSONs files
-        # // GBW JSON files
-        if do_create_gbw_json is None:
-            self.create_missing_gbw_json()
-        elif do_create_gbw_json:
-            self.create_gbw_json(force=True)
+        self.parse_property(
+            do_create_property_json=do_create_property_json, read_prop_json=read_prop_json
+        )
+        self.parse_gbw(do_create_gbw_json=do_create_gbw_json, read_gbw_json=read_gbw_json)
 
-        # // Property JSON file
+        # > Redump JSON files
+        if self.do_redump_jsons:
+            self._redump_jsons()
+
+    def parse_property(
+        self,
+        do_create_property_json: bool | None = None,
+        read_prop_json: bool = True,
+    ) -> None:
+        # // Use default name if None was supplied
+        if not self.property_json_file:
+            self.property_json_file = self.get_file(".property.json")
+        # // Create missing property JSON files
         if do_create_property_json is None:
             self.create_missing_property_json()
         elif do_create_property_json:
@@ -207,14 +220,58 @@ class Output:
             if self.do_version_check:
                 warn("No version check possible.")
 
-        # // GBW JSON file
+    def parse_gbw(
+        self,
+        do_create_gbw_json: bool | None = None,
+        read_gbw_json: bool = True,
+    ) -> None:
+        # // Use default names if None was supplied
+        if not self.gbw_json_files:
+            self.gbw_json_files = [
+                gbw_file.with_suffix(".json") for gbw_file in self.get_gbw_files()
+            ]
+        # // Create missing GBW JSON files
+        if do_create_gbw_json is None:
+            self.create_missing_gbw_json()
+        elif do_create_gbw_json:
+            self.create_gbw_json(force=True)
+
+        # // read the GBW files
         if read_gbw_json:
             self.gbw_json_data = [self._process_json_file(file) for file in self.gbw_json_files]
             self.results_gbw = [GbwResults(**data) for data in self.gbw_json_data]
 
-        # > Redump JSON files
-        if self.do_redump_jsons:
-            self._redump_jsons()
+    @property
+    def gbw_json_files(self) -> Sequence[Path]:
+        return self._gbw_json_files
+
+    @gbw_json_files.setter
+    def gbw_json_files(self, value: Iterable[str | Path]) -> None:
+        out: list[Path] = []
+        for i, p in enumerate(value):
+            try:
+                pp = Path(p)
+            except TypeError as e:
+                raise TypeError(f"gbw_json_files[{i}] is not path-like: {p!r}") from e
+
+            out.append(pp)
+        self._gbw_json_files = tuple(out)
+
+    @property
+    def property_json_file(self) -> Path | None:
+        return self._property_json_file
+
+    @property_json_file.setter
+    def property_json_file(self, value: str | Path | None) -> None:
+        if value is None:
+            self._property_json_file = None
+            return
+        else:
+            try:
+                pp = Path(value)
+            except TypeError as e:
+                raise TypeError(f"propert_json_file is not path-like: {value!r}") from e
+            self._property_json_file = pp
 
     @property
     def num_gbw_json_files(self) -> int:
@@ -478,11 +535,11 @@ class Output:
         suffix: str, default: ".gbw"
             Suffix of the gbw file that will be used for json creation.
         """
-        files_to_process: list[Path]
+        files_to_process: Sequence[Path]
 
         if gbw_index is not None:
             try:
-                files_to_process = [self.gbw_json_files[gbw_index]]
+                files_to_process = (self.gbw_json_files[gbw_index],)
             except IndexError:
                 return
         else:
@@ -502,23 +559,28 @@ class Output:
         was_create : bool
             A boolean indicating if the file was created.
         """
-        if not self.property_json_file.is_file():
+        if self.property_json_file and not self.property_json_file.is_file():
             self.create_property_json()
             return True
         return False
 
     def create_property_json(self, *, force: bool = False) -> None:
         """
-        Thin-wrapper around `Runner.create_property_json()`.
-        Create the `<basename>.property.json` file
+        Wrapper around `Runner.create_property_json()`.
+        Create the `.property.json` file based on self.property_json_file or if not present self.basename
 
         Parameters
         ----------
         force : bool, default = None
             Overwrite any existing ORCA property JSON file.
         """
+        basename: str
+        if self.property_json_file:
+            basename = self.property_json_file.stem.split(".")[0]
+        else:
+            basename = self.basename
         runner = self._create_runner()
-        runner.create_property_json(self.basename, force=force)
+        runner.create_property_json(basename, force=force)
 
     def create_jsons(self, *, force: bool = False) -> None:
         """
