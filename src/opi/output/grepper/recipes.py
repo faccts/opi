@@ -11,7 +11,7 @@ def has_string_in_file(file_name: Path, search_for: str, /, *, strict: bool = Tr
     Parameters
     ----------
     file_name : Path
-        Path to the output file
+        Path to the file that should be searched.
     search_for : str
         string that function searches in function
     strict : bool, default: False
@@ -49,12 +49,12 @@ def get_float_from_line(
     file_name: Path, search_for: str, index: int, field: int = -1, /, *, strict: bool = True
 ) -> float | None:
     """
-    Searches the output_file for a string and returns a float from the line of this string.
+    Searches `file_name` for a string and returns a float from the line of this string.
 
     Parameters
     ----------
     file_name : Path
-        Path to the output file
+        Path to the file that should be searched.
     search_for : str
         string that function searches in file.
     index : int
@@ -98,6 +98,52 @@ def get_float_from_line(
             raise
         else:
             return None
+
+
+def get_lines_from_block(
+    file_name: Path, search_for: str, /, *, index: int = -1, offset: int = 0
+) -> list[str]:
+    """
+    Searches `file_name` for a string indicating a block and return all lines until an empty line is found.
+
+    Parameters
+    ----------
+    file_name : Path
+        Path to the file that should be searched.
+    search_for : str
+        string that function searches in file.
+    index : int, default: -1
+        which occurrence of the string should be used.
+    offset : int, default: 0
+        line offset from the line of the found string.
+
+    Returns
+    ----------
+    list[str]
+        Returns a list of lines as strings
+
+    """
+    lines = []
+    skip_lines = offset
+    # > Obtain the block by repeatedly calling the grepper and increasing the number of lines to skip, until the line
+    # > obtained is empty.
+    while True:
+        try:
+            grepper = Grepper(file_name)
+            results = grepper.search(
+                search_for,
+                fallback=[None],
+                case_sensitive=True,
+                skip_lines=skip_lines,
+            )
+            if results[index]:
+                lines.append(results[index])
+                skip_lines += 1
+            else:
+                break
+        except (FileNotFoundError, TypeError, ValueError, IndexError):
+            break
+    return lines
 
 
 def has_terminated_normally(file_name: Path, /) -> bool:

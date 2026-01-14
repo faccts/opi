@@ -13,6 +13,7 @@ from opi.input.simple_keywords import (
 )
 from opi.input.structures import Structure
 from opi.output.core import Output
+from opi.output.ir_mode import IrMode
 
 
 def run_exmp004(
@@ -42,6 +43,13 @@ def run_exmp004(
 
     # > Parse JSON files
     output.parse()
+
+    ir_dict = output.get_ir()
+
+    # > Print IR Data
+    print(IrMode.header())
+    for ir_mode in ir_dict.values():
+        print(ir_mode)
 
     ngeoms = len(output.results_properties.geometries)
     print("N GEOMETRIES")
