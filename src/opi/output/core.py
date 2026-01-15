@@ -4,7 +4,7 @@ It's mostly based on the ORCA's two JSONs files.
 """
 
 import json
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Callable, cast
 from warnings import warn
@@ -242,15 +242,19 @@ class Output:
             self.create_gbw_json(force=True)
 
         # // read the GBW files
-        self.gbw_json_data = [self._process_json_file(file) for file in self.gbw_json_files]
+        self.gbw_json_data = self._process_json_files(self.gbw_json_files, continue_on_error=True)
         self.results_gbw = [GbwResults(**data) for data in self.gbw_json_data]
 
     @property
-    def gbw_json_files(self) -> Sequence[Path]:
+    def gbw_json_files(self) -> tuple[Path, ...]:
         return self._gbw_json_files
 
     @gbw_json_files.setter
-    def gbw_json_files(self, value: Iterable[str | Path]) -> None:
+    def gbw_json_files(self, value: Sequence[str | Path] | None) -> None:
+        if value is None:
+            self._gbw_json_files = ()
+            return
+
         out: list[Path] = []
         for i, p in enumerate(value):
             try:
@@ -306,12 +310,16 @@ class Output:
         ------
         FileNotFoundError
             If the Path leads to no file
+        json.JSONDecodeError
+            If the file contains invalid JSON.
+        OSError
+            If the file cannot be opened.
         """
 
         if not json_file.is_file():
             raise FileNotFoundError(f"JSON file does not exist: {json_file}")
 
-        with json_file.open() as f_json:
+        with json_file.open(encoding="utf-8") as f_json:
             json_data: dict[str, Any] = json.load(f_json)
             return json_data
 
@@ -329,6 +337,38 @@ class Output:
         # > Convert all keys to lowercase.
         lowercase(json_data)
         return json_data
+
+    def _process_json_files(
+        self,
+        files: Sequence[Path],
+        *,
+        continue_on_error: bool = False,
+    ) -> list[dict[str, Any]]:
+        """
+        Process multiple JSON files.
+
+        Parameters
+        ----------
+        files: Sequence[Path]
+            Paths to JSON files to be processed.
+        continue_on_error: bool
+            Whether to continue processing when an error occurs.
+
+        Returns
+        ----------
+        list[dict[str, Any]]
+            The list of the JSON files processed.
+        """
+        results: list[dict[str, Any]] = []
+
+        for path in files:
+            try:
+                data = self._process_json_file(path)
+                results.append(data)
+            except (FileNotFoundError, OSError, json.JSONDecodeError):
+                if not continue_on_error:
+                    raise
+        return results
 
     def _redump_jsons(self) -> None:
         """Redump both JSON files as read and parse by `PropertyResults` and `GbwResults`."""
@@ -544,10 +584,11 @@ class Output:
         suffix: str, default: ".gbw"
             Suffix of the gbw file that will be used for json creation.
         """
-        files_to_process: Sequence[Path]
+        files_to_process: tuple[Path, ...]
 
         if gbw_index is not None:
             try:
+                # single entry tuple to satisfy mypy
                 files_to_process = (self.gbw_json_files[gbw_index],)
             except IndexError:
                 return
