@@ -62,6 +62,7 @@ contents/dev_guide
 contents/notebooks/how_to_opi.ipynb
 contents/notebooks/ml_properties.ipynb
 contents/notebooks/conformer_generation.ipynb
+contents/notebooks/redox.ipynb
 contents/notebooks/fock_matrix_diagonalization.ipynb
 contents/notebooks/led.ipynb
 contents/notebooks/covaled_ethane.ipynb
