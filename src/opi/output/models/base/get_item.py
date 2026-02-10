@@ -1,5 +1,6 @@
 import re
 import typing
+from abc import ABC
 from typing import Any, Union, get_args, get_origin
 
 from pydantic import BaseModel
@@ -27,7 +28,7 @@ def get_clean_type_name(t: Any) -> str:
         return result
 
 
-class GetItem(BaseModel):
+class GetItem(BaseModel, ABC):
     """This class contains the get_item function for nearly all other classes"""
 
     def __getitem__(self, name: str) -> Any:

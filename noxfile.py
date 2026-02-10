@@ -54,7 +54,7 @@ def tests(session):
 # //////////////////////////////////////////
 # ///     STATIC TYPE CHECKING: mypy     ///
 # //////////////////////////////////////////
-@nox.session(tags=["static_check"])
+@nox.session(tags=["static_check", "pr_check"])
 def type_check(session):
     session.run_install(
         "uv",
@@ -80,7 +80,18 @@ def remove_unused_imports(session):
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
     # > Sorting imports with ruff instead of isort
-    session.run("ruff", "check", "--select", "F401", "--fix")
+    session.run("ruff", "check", "--select", "F401", "--fix", "--exit-non-zero-on-fix")
+
+@nox.session(tags=["pr_check"], default=False)
+def check_unused_imports(session):
+    session.run_install(
+        "uv",
+        "sync",
+        "--group",
+        "lint",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.run("ruff", "check", "--select", "F401")
 
 
 # //////////////////////////////////////////
@@ -96,13 +107,26 @@ def sort_imports(session):
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
     # > Sorting imports with ruff instead of isort
-    session.run("ruff", "check", "--select", "I", "--fix")
+    session.run("ruff", "check", "--select", "I", "--fix", "--exit-non-zero-on-fix")
+
+
+@nox.session(tags=["pr_check"])
+def check_sort_imports(session):
+    session.run_install(
+        "uv",
+        "sync",
+        "--group",
+        "lint",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    # > Sorting imports with ruff instead of isort
+    session.run("ruff", "check", "--select", "I")
 
 
 # ////////////////////////////////////////
 # ///         LINTING: Ruff            ///
 # ////////////////////////////////////////
-@nox.session(tags=["style", "static_check"])
+@nox.session(tags=["style", "static_check", "pr_check"])
 def lint(session):
     session.run_install(
         "uv",
@@ -126,13 +150,28 @@ def format_code(session):
         "lint",
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
-    session.run("ruff", "format")
+    session.run("ruff", "format", "--exit-non-zero-on-format")
+
+
+@nox.session(tags=["pr_check"])
+def check_format_code(session):
+    """
+    Only check if code was formatted with Ruff.
+    """
+    session.run_install(
+        "uv",
+        "sync",
+        "--group",
+        "lint",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.run("ruff", "format", "--check")
 
 
 # ////////////////////////////////////////////////////
 # ///         SPELL CHECKING: codespell            ///
 # ////////////////////////////////////////////////////
-@nox.session(tags=["static_check"])
+@nox.session(tags=["static_check", "pr_check"])
 def spell_check(session):
     session.run_install(
         "uv",
@@ -147,7 +186,7 @@ def spell_check(session):
 # //////////////////////////////////////////////
 # ///         DEAD CODE: vulture            ///
 # /////////////////////////////////////////////
-@nox.session(tags=["static_check"], default=True)
+@nox.session(tags=["static_check", "pr_check"], default=True)
 def dead_code(session):
     session.run_install(
         "uv",

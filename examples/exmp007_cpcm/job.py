@@ -1,20 +1,28 @@
 #!/usr/bin/env python3
 
-import sys
 import shutil
+import sys
 from pathlib import Path
 
 from opi.core import Calculator
 from opi.input.simple_keywords import BasisSet, Dft, Scf, SolvationModel, Solvent
 from opi.input.structures import Structure
+from opi.output.core import Output
 
-if __name__ == "__main__":
-    wd = Path("RUN")
-    shutil.rmtree(wd, ignore_errors=True)
-    wd.mkdir()
 
-    calc = Calculator(basename="job", working_dir=wd)
-    calc.structure = Structure.from_xyz("inp.xyz")
+def run_exmp007(
+    structure: Structure | None = None, working_dir: Path | None = Path("RUN")
+) -> Output:
+    # > recreate the working dir
+    shutil.rmtree(working_dir, ignore_errors=True)
+    working_dir.mkdir()
+
+    # > if no structure is given read structure from inp.xyz
+    if structure is None:
+        structure = Structure.from_xyz("inp.xyz")
+
+    calc = Calculator(basename="job", working_dir=working_dir)
+    calc.structure = structure
     calc.input.add_simple_keywords(
         Scf.NOAUTOSTART, Dft.BP86, BasisSet.DEF2_SVP, SolvationModel.CPCM(Solvent.WATER)
     )
@@ -44,3 +52,9 @@ if __name__ == "__main__":
     print(output.results_properties.geometries[0].solvation_details.npoints)
     print("CPCM ENERGY")
     print(output.results_properties.geometries[0].solvation_details.cpcmdielenergy)
+
+    return output
+
+
+if __name__ == "__main__":
+    run_exmp007()

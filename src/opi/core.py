@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any, cast
 
 from opi.execution.core import Runner
-from opi.input.arbitrary_string import ArbitraryStringPos
 from opi.input.blocks.block_output import BlockOutput
 from opi.input.core import Input
 from opi.input.structures.structure import Structure
@@ -43,7 +42,11 @@ class Calculator:
     """
 
     def __init__(
-        self, basename: str, working_dir: Path | str | PathLike[str] | None = None
+        self,
+        basename: str,
+        working_dir: Path | str | PathLike[str] | None = None,
+        *,
+        version_check: bool = True,
     ) -> None:
         """
         Parameters
@@ -52,6 +55,9 @@ class Calculator:
             Basename of the calculation. Each file created by ORCA starts with this prefix.
         working_dir : Path | str | None, default=None
             Optional working direction. Is passed on to `Runner` and `Output` classes.
+        version_check : bool, default: True
+            Check ORCA's binary version upon initialization.
+            Important: May create significant computational overhead if many `Calculators` are initialized concurrently.
         """
 
         # -----------------------------
@@ -84,6 +90,13 @@ class Calculator:
         # > ORCA INPUT
         # -----------------------------
         self._input: Input = Input()
+
+        # ----------------------------
+        # > BINARY VERSION CHECK
+        # ----------------------------
+        if version_check:
+            # > Raises RuntimeError if version is not compatible or cannot be determined.
+            self.check_version()
 
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     # PROPERTIES
@@ -162,20 +175,38 @@ class Calculator:
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     # METHODS
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    def write_input(self) -> None:
+    def write_input(self, force: bool = True) -> bool:
         """
         Function to create the ORCA input file `.inp`.
+
+        Parameters
+        -----------
+        force : bool, default: True
+            Whether to overwrite the ORCA input file if it already exists.
 
         Raises
         ------
         RuntimeError
           * When `.inp` cannot be written.
+          * When '.inp' file already exists and force is `False`.
         ValueError
           * When the `moinp` path is given, and it is not a subpath of the working directory.
+
+        Returns
+        -------
+        bool
+            Whether an existing ORCA .inp file was overwritten.
         """
 
         assert self.working_dir
         self._inpfile = self.working_dir / f"{self.basename}.inp"
+
+        exists = self._inpfile.exists()
+        if exists and not force:
+            raise RuntimeError(
+                f"Input file {self._inpfile} already exists and cannot be overwritten."
+            )
+        input_overwritten = exists and force
 
         # add JSON generation to output blocks
         if self.json_via_input:
@@ -183,55 +214,14 @@ class Calculator:
 
         try:
             input_param = self.input
-            simple_keywords = input_param.simple_keywords
-            blocks = input_param.blocks.values() if input_param.blocks else ()
-            arbitrary_strings = input_param.arbitrary_strings
 
             assert self.inpfile is not None
             with self.inpfile.open("w") as inp:
                 # ---------------------------------
-                # > Arbitrary Strings: top
+                # > Before coords block
                 # ---------------------------------
-                if arbitrary_strings:
-                    for item in arbitrary_strings:
-                        if item.pos is ArbitraryStringPos.TOP:
-                            inp.write(f"{item.format_orca()}\n")
 
-                # ---------------------------------
-                # > Simple Keywords
-                # ---------------------------------
-                if simple_keywords:
-                    for keyword in simple_keywords:
-                        if isinstance(keyword, str):
-                            inp.write(f"!{keyword}\n")
-                        else:
-                            inp.write(f"!{keyword.format_orca()}\n")
-
-                # ---------------------------------
-                # > Special Strings
-                # ---------------------------------
-                if (memory := input_param.memory) is not None:
-                    inp.write(f"%maxcore {memory:d}\n")
-                if (ncores := input_param.ncores) is not None:
-                    inp.write(f"%pal\n    nprocs {ncores:d}\nend\n")
-                if (moinp := input_param.moinp) is not None:
-                    inp.write(f'%moinp "{moinp.relative_to(self.working_dir)}"\n')
-
-                # ---------------------------------
-                # > Block Options: Before coords
-                # ---------------------------------
-                if blocks:
-                    for block in blocks:
-                        if not block.aftercoord:
-                            inp.write(f"\n{block.format_orca()}\n")
-
-                # ---------------------------------
-                # > Arbitrary Strings: Before Coords
-                # ---------------------------------
-                if arbitrary_strings:
-                    for item in arbitrary_strings:
-                        if item.pos is ArbitraryStringPos.BEFORE_COORDS:
-                            inp.write(f"\n{item}\n")
+                inp.write(input_param.format_before_coords(self.working_dir))
 
                 # ---------------------------------
                 # > Coords block
@@ -243,20 +233,12 @@ class Calculator:
                         inp.write(f"\n{self.structure.format_orca()}\n")
 
                 # ---------------------------------
-                # > Block options: After coords
+                # > After coords block
                 # ---------------------------------
-                if blocks:
-                    for block in blocks:
-                        if block.aftercoord:
-                            inp.write(f"\n{block.format_orca()}\n")
 
-                # ---------------------------------
-                # > Arbitrary Strings: Bottom
-                # ---------------------------------
-                if arbitrary_strings:
-                    for item in arbitrary_strings:
-                        if item.pos is ArbitraryStringPos.BOTTOM:
-                            inp.write(f"\n{item}\n")
+                inp.write(input_param.format_after_coords())
+
+                return input_overwritten
 
         except IOError as err:
             raise RuntimeError(
@@ -286,7 +268,7 @@ class Calculator:
         """Create a `Runner` object passing on `self.working_dir`."""
         return Runner(working_dir=self.working_dir)
 
-    def run(self, *, timeout: int = -1) -> None:
+    def run(self, *, timeout: int = -1) -> bool:
         """
         Execute ORCA calculation.
 
@@ -295,10 +277,17 @@ class Calculator:
         timeout : int, default: = -1
             Timeout in seconds to wait for ORCA process.
             If value is smaller than zero, wait indefinitely.
+
+        Returns
+        -------
+        bool
+            Whether the ORCA calculation terminated normally.
         """
         runner = self._create_runner()
         assert self.inpfile
         runner.run_orca(self.inpfile, timeout=timeout)
+        output = self.get_output()
+        return output.terminated_normally()
 
     def create_jsons(self, *, force: bool = False) -> None:
         """
@@ -315,16 +304,48 @@ class Calculator:
         runner = self._create_runner()
         runner.create_jsons(self.basename, force=force)
 
-    def get_output(self, create_gbw_json: bool = False) -> "Output":
+    def get_output(self) -> "Output":
         """
         Get an instance of `Output` setup for the current job.
         Can be called before execution of job.
+        """
+        return Output(
+            basename=self.basename,
+            working_dir=self.working_dir,
+        )
+
+    def check_version(self) -> None:
+        """
+        Check if the ORCA version of the binary is compatible with the current OPI version.
+        Soft-wrapper around Runner.check_version().
+
+        Raises
+        ------
+        RuntimeError: If version could not be determined or is not compatible.
+        """
+        runner = self._create_runner()
+        # > Can raise RuntimeError
+        try:
+            runner.check_version(ignore_errors=False)
+        except RuntimeError:
+            raise
+
+    def write_and_run(self, force: bool = True, timeout: int = -1) -> bool:
+        """
+        Write ORCA .inp file and execute the ORCA calculation.
+
 
         Parameters
         ----------
-        create_gbw_json : bool, default: False
-            Call orca2json to generate the gbw json file. Required for results with multiple gbw files, e.g., scans
+        force: bool, default:True
+            Whether to overwrite the ORCA input file if it already exists.
+        timeout: int, default: -1
+            Timeout in seconds to wait for ORCA process.
+
+        Returns
+        --------
+        bool
+            Whether the ORCA calculation terminated normally.
         """
-        return Output(
-            basename=self.basename, working_dir=self.working_dir, create_gbw_json=create_gbw_json
-        )
+        self.write_input(force=force)
+        return self.run(timeout=timeout)

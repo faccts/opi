@@ -115,6 +115,14 @@ docs = [
 xfail_strict = true
 strict_markers = true
 
+[tool.pytest.ini_options]
+markers = [
+    "ase: tests that require ASE",
+    "examples: tests that run an example",
+    "orca: tests that require ORCA",
+    "slow: tests that take longer",
+]
+
 
 # ////  MYPY  ////
 [tool.mypy]
@@ -133,7 +141,8 @@ follow_untyped_imports = true
 include = [
     "pyproject.toml",
     "src/**/*.py",
-    "tests/**/*.py"
+    "tests/**/*.py",
+    "examples/**/*.py"
 ]
 # > Default max line-length: 100 chars
 line-length = 100
@@ -161,3 +170,5 @@ make_whitelist = false
 min_confidence = 70
 paths = ["src/"]
 #verbose = false
+
+

@@ -1,11 +1,38 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os
+import sys
+from subprocess import check_output, CalledProcessError, TimeoutExpired
+from pathlib import Path
+import traceback
 
 from docutils import nodes
 from sphinx.transforms import SphinxTransform
+from semantic_version import Version
 
 # needs_sphinx = '1.0'
+
+def git_branch(cwd) -> str:
+    """Returns the git branch name."""
+    try:
+        b = check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=cwd, text=True, timeout=5,
+        ).strip()
+    except CalledProcessError:
+        return "unknown"
+
+    return b
+
+def git_exact_tag(cwd) -> str | None:
+    """Returns the git exact tag name."""
+    try:
+        return check_output(
+            ["git", "describe", "--tags", "--exact-match"],
+            cwd=cwd, text=True, timeout=5,
+        ).strip()
+    except CalledProcessError:
+        return None
 
 extensions = [
     "sphinx-prompt",
@@ -63,10 +90,44 @@ project = "ORCA Python Interface Documentation"
 copyright = "2025, FACCTs"
 author = "FACCTs"
 
+
+origin = Path(__file__).resolve().parent
+full_version = ""
 # > The short X.Y version.
-version = "1.0"
-# > The full version, including alpha/beta/rc tags.
-release = "1.0"
+version_short = ""
+# > Using "main" as fallback
+release_branch = "main"
+# > Disabling git advices
+os.environ["GIT_ADVICE"] = "0"
+try:
+    branch = git_branch(origin)
+    tag = git_exact_tag(origin)
+except (CalledProcessError, TimeoutExpired, OSError):
+    traceback.print_exc()
+    sys.exit(1)
+else:
+    try:
+        release_branch = branch if branch != "HEAD" else "main"
+
+        if tag and tag.startswith("v"):
+            version_string = tag.removeprefix("v")
+            full_version = Version(version_string=version_string)
+            version_short = f"{full_version.major}.{full_version.minor}"
+        else:
+            # Not on a release tag
+            if branch == "main":
+                version_short = "nightly"
+            # on a release branch
+            elif branch.startswith("release/"):
+                # e.g. "release/1.0" -> "1.0-dev"
+                version_short = f"{branch.removeprefix('release/')}-dev"
+            # on a feature branch
+            else:
+                version_short = "dev"
+    except:
+        traceback.print_exc()
+        sys.exit(1)
+
 
 # > Language
 language = "English"
@@ -98,10 +159,6 @@ suppress_warnings = [
 ]
 
 # > -- Options for HTML output ----------------------------------------------
-
-html_title = f"OPI {version} Docs"
-html_logo = "img/assets/opi_logo_thumbnail.svg"
-
 # > The theme to use for HTML and HTML Help pages.  See the documentation for
 # > a list of builtin themes.
 html_theme = "furo"
@@ -109,7 +166,7 @@ html_theme = "furo"
 # > Theme options are theme-specific and customize the look and feel of a theme
 # > further.  For a list of options available for each theme, see the
 # > documentation.
-html_title = f"OPI {version} Docs"
+html_title = f"OPI {version_short} Docs"
 html_logo = "img/assets/opi_logo_thumbnail.svg"
 
 html_show_sphinx = False
@@ -208,7 +265,7 @@ class InjectNotebookButtons(SphinxTransform):
         html = ""
         if docname.startswith("contents/notebooks/"):
             ipynb_file = f"_static/{docname}.ipynb"
-            github_url = f"https://github.com/faccts/opi/blob/main/docs/{docname}.ipynb"
+            github_url = f"https://github.com/faccts/opi/blob/{release_branch}/docs/{docname}.ipynb"
             html = f"""
             <div class="button-row">
                 <a href="{github_url}" class="orca-btn">View on GitHub <i class="fab fa-github"></i></a>

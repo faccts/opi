@@ -5,35 +5,32 @@ import sys
 from pathlib import Path
 
 from opi.core import Calculator
-from opi.input.blocks import BlockMethod
-from opi.input.simple_keywords import BasisSet
-from opi.input.simple_keywords import (
-    DispersionCorrection,
-)
-from opi.input.simple_keywords import Method
-from opi.input.simple_keywords import Scf
-from opi.input.simple_keywords import SolvationModel
-from opi.input.simple_keywords import Solvent
-from opi.input.simple_keywords import Task
+from opi.input.simple_keywords import BasisSet, Dft, Scf, Task
 from opi.input.structures import Structure
+from opi.output.core import Output
 
-if __name__ == "__main__":
-    wd = Path("RUN")
-    shutil.rmtree(wd, ignore_errors=True)
-    wd.mkdir()
 
-    calc = Calculator(basename="job", working_dir=wd)
-    calc.structure = Structure.from_xyz("inp.xyz",charge=1,multiplicity=2)
+def run_exmp035(
+    structure: Structure | None = None, working_dir: Path | None = Path("RUN")
+) -> Output:
+    # > recreate the working dir
+    shutil.rmtree(working_dir, ignore_errors=True)
+    working_dir.mkdir()
+
+    # > if no structure is given read structure from inp.xyz
+    if structure is None:
+        structure = Structure.from_xyz("inp.xyz")
+
+    calc = Calculator(basename="job", working_dir=working_dir)
+    calc.structure = structure
+    calc.charge = 1
+    calc.multiplicity = 2
     calc.input.add_simple_keywords(
         Scf.NOAUTOSTART,
-        Method.HF,
+        Dft.TPSS,
         BasisSet.DEF2_SVP,
         Task.SP,
-        SolvationModel.CPCM(Solvent.WATER),
-        DispersionCorrection.D3,
     )
-
-    calc.input.add_blocks(BlockMethod(d3s6=0.64, d3a1=0.3065, d3s8=0.9147, d3a2=5.0570))
 
     calc.write_input()
     calc.run()
@@ -48,7 +45,7 @@ if __name__ == "__main__":
     output.parse()
 
     # check for convergence of the SCF
-    if output.results_properties.geometries[0].single_point_data.converged:
+    if output.scf_converged():
         print("SCF CONVERGED")
     else:
         print("SCF DID NOT CONVERGE")
@@ -67,11 +64,13 @@ if __name__ == "__main__":
     print(density)
     print(spin_density)
 
-    # > save mo in script dir
-    with open(mo_5.path.name,"w") as file:
-        file.write(mo_5.cube)
-    # > save mo in script dir line by line
-    with open(f"{mo_5.path.name}.from_iterator", "w") as file:
+    # > save mo in working dir line by line
+    with open(working_dir / f"{mo_5.path.stem}.from_iterator.cube", "w") as file:
         for line in mo_5:
             file.write(line)
 
+    return output
+
+
+if __name__ == "__main__":
+    run_exmp035()

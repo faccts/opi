@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import shutil
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from opi.core import Calculator
 from opi.input.simple_keywords import (
@@ -12,15 +12,24 @@ from opi.input.simple_keywords import (
     Task,
 )
 from opi.input.structures import Structure
+from opi.output.core import Output
+from opi.output.ir_mode import IrMode
 
-if __name__ == "__main__":
-    wd = Path("RUN")
-    shutil.rmtree(wd, ignore_errors=True)
-    wd.mkdir()
 
-    calc = Calculator(basename="job", working_dir=wd)
-    calc.structure = Structure.from_xyz("inp.xyz")
-    calc.input.add_simple_keywords(Scf.NOAUTOSTART, BasisSet.DEF2_TZVP, Dft.TPSS, Task.FREQ)
+def run_exmp004(
+    structure: Structure | None = None, working_dir: Path | None = Path("RUN")
+) -> Output:
+    # > recreate the working dir
+    shutil.rmtree(working_dir, ignore_errors=True)
+    working_dir.mkdir()
+
+    # > if no structure is given read structure from inp.xyz
+    if structure is None:
+        structure = Structure.from_xyz("inp.xyz")
+
+    calc = Calculator(basename="job", working_dir=working_dir)
+    calc.structure = structure
+    calc.input.add_simple_keywords(Scf.NOAUTOSTART, BasisSet.DEF2_SVP, Dft.TPSS, Task.FREQ)
     calc.input.ncores = 4
 
     calc.write_input()
@@ -34,6 +43,13 @@ if __name__ == "__main__":
 
     # > Parse JSON files
     output.parse()
+
+    ir_dict = output.get_ir()
+
+    # > Print IR Data
+    print(IrMode.header())
+    for ir_mode in ir_dict.values():
+        print(ir_mode)
 
     ngeoms = len(output.results_properties.geometries)
     print("N GEOMETRIES")
@@ -52,4 +68,8 @@ if __name__ == "__main__":
     print(output.get_entropy())
     print("G-E(el)")
     print(output.get_free_energy_delta())
+    return output
 
+
+if __name__ == "__main__":
+    run_exmp004()

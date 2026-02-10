@@ -1,9 +1,9 @@
 import re
 from collections.abc import Iterator
-from io import StringIO
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
+from warnings import warn
 
 import numpy as np
 import numpy.typing as npt
@@ -20,6 +20,7 @@ from opi.input.structures.atom import (
 )
 from opi.input.structures.coordinates import Coordinates
 from opi.utils.element import Element
+from opi.utils.tracking_text_io import TrackingTextIO
 
 __all__ = ("Structure",)
 
@@ -130,6 +131,70 @@ class Structure:
             raise ValueError(f"{self.__class__.__name__}.multiplicity: must be positive")
         self._multiplicity = value
 
+    @property
+    def nelectrons(self) -> int:
+        """
+        Returns the number of electrons based on the cardinal numbers of atoms in the structure and the overall
+        molecular charge. Note that the number of electrons returned by this function can be negative and should be
+        checked!
+
+        Returns
+        ----------
+        nelectrons : int
+            Returns the number of electrons for the structure. Can be negative!
+        """
+        nelectrons = 0
+        for atom in self.atoms:
+            if isinstance(atom, Atom):
+                nelectrons += atom.element.atomic_number
+        nelectrons -= self.charge
+        return nelectrons
+
+    @property
+    def nelec_is_odd(self) -> bool:
+        """Returns a boolean indicating if the number of electrons is odd. Does not check for negative electrons."""
+        return self.nelectrons % 2 == 1
+
+    @property
+    def nelec_is_even(self) -> bool:
+        """Returns a boolean indicating if the number of electrons is even. Does not check for negative electrons."""
+        return self.nelectrons % 2 == 0
+
+    @property
+    def multiplicity_is_odd(self) -> bool:
+        """Returns a boolean indicating if the multiplicity is odd."""
+        return self.multiplicity % 2 == 1
+
+    @property
+    def multiplicity_is_even(self) -> bool:
+        """Returns a boolean indicating if the multiplicity is even."""
+        return self.multiplicity % 2 == 0
+
+    @property
+    def nelec_and_multiplicity_even(self) -> bool:
+        """Returns a boolean indicating if the number of electrons and the multiplicity are even."""
+        return self.nelec_is_even and self.multiplicity_is_even
+
+    @property
+    def nelec_and_multiplicity_odd(self) -> bool:
+        """Returns a boolean indicating if the number of electrons and the multiplicity are odd."""
+        return self.nelec_is_odd and self.multiplicity_is_odd
+
+    @property
+    def multiplicity_is_possible(self) -> bool:
+        """Returns a boolean indicating if the multiplicity can be realized with the number of electrons."""
+        return not (self.nelec_and_multiplicity_even or self.nelec_and_multiplicity_odd)
+
+    def set_ls_multiplicity(self) -> None:
+        """
+        Sets `multiplicity` to the lowest possible multiplicity based on the number of electrons (`multiplicity`
+        will either be set to 1 or 2).
+        """
+        if self.nelec_is_even:
+            self.multiplicity = 1
+        else:
+            self.multiplicity = 2
+
     @classmethod
     def combine_molecules(cls, structure1: "Structure", structure2: "Structure") -> "Structure":
         """
@@ -160,6 +225,19 @@ class Structure:
             str:
                 String representation of Molecule
         """
+        # > First we check whether the multiplicity is possible with the numbers of electrons and warn if not
+        if self.nelec_and_multiplicity_even:
+            warn(
+                "Inconsistent input: an even number of electrons cannot have even multiplicity",
+                UserWarning,
+            )
+
+        if self.nelec_and_multiplicity_odd:
+            warn(
+                "Inconsistent input: an odd number of electrons cannot have odd multiplicity",
+                UserWarning,
+            )
+
         # String representation of Molecule class , mostly used for .xyz file
         text = f"* xyz {self.charge} {self.multiplicity}\n"
         for atom in self.atoms:
@@ -190,7 +268,7 @@ class Structure:
           if index is an invalid value
         """
         # adds atom at a specified position
-        if position is not None and (position <= 0 or position > len(self.atoms) + 1):
+        if position is not None and (position < 0 or position > len(self.atoms)):
             raise ValueError("Invalid position")
         # In the case that e is a str , it is converted into object from Element
         # New atom added to self.atoms
@@ -313,21 +391,84 @@ class Structure:
         multiplicity : int, default: 1
             Electron spin multiplicity of the molecule
 
+        Raises
+        --------
+        FileNotFoundError
+            If the XYZ file cannot be found
+        ValueError
+            If there is a problem with parsing the XYZ file
+
         Returns
         --------
         `Structure`:`Structure object extracted from file
         """
+        structures = cls.from_trj_xyz(
+            xyzfile, charge=charge, multiplicity=multiplicity, n_struc_limit=1
+        )
+        return structures[0]
+
+    @classmethod
+    def from_trj_xyz(
+        cls,
+        trj_file: Path | str | PathLike[str],
+        /,
+        *,
+        charge: int = 0,
+        multiplicity: int = 1,
+        comment_symbols: str | Sequence[str] | None = None,
+        n_struc_limit: int | None = None,
+    ) -> "list[Structure]":
+        """
+        Function for reading a xyz trajectory file and converting it to a list of molecular Structure
+
+        Parameters
+        ----------
+        trj_file : Path | str | PathLike[str]
+            Name or path to xyz file with one or multiple structure(s)
+        charge : int, default: 0
+            Charge of the molecule
+        multiplicity : int, default: 1
+            Electron spin multiplicity of the molecule
+        comment_symbols: str | Sequence[str] | None, default: None
+            List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
+            data starts. By default, no user comments are used. White-space only comments are not allowed and are
+            silently ignored.
+        n_struc_limit: int | None, default: None
+            If >0, only read the first n structures.
+
+        Raises
+        --------
+        FileNotFoundError
+            If the XYZ file cannot be found.
+        ValueError
+            If there is a problem with parsing the XYZ file.
+        EOFError
+            If the file is empty.
+
+        Returns
+        --------
+        list[Structure]: Molecular structure objects extracted from the xyz file.
+        """
         # > converting into Path
-        xyzfile = Path(xyzfile)
+        trj_file = Path(trj_file)
 
         # > Check if file exists
-        if not xyzfile.exists():
-            raise FileNotFoundError(f"XYZ file not found: {xyzfile}")
+        if not trj_file.exists():
+            raise FileNotFoundError(f"XYZ file not found: {trj_file}")
 
-        with xyzfile.open() as f_xyz:
-            structure = cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
-            structure.origin = xyzfile.expanduser().resolve()
-            return structure
+        with TrackingTextIO(trj_file.open()) as tracked:
+            structures = list(
+                cls._iter_xyz_structures(
+                    tracked,
+                    charge=charge,
+                    multiplicity=multiplicity,
+                    comment_symbols=comment_symbols,
+                    n_struc_limit=n_struc_limit,
+                )
+            )
+            if not structures:
+                raise EOFError(f"XYZ file {trj_file} is empty")
+            return structures
 
     @classmethod
     def from_xyz_block(
@@ -350,72 +491,184 @@ class Structure:
         multiplicity : int, default: 1
             Electron spin multiplicity of the molecule
 
+        Raises
+        --------
+        ValueError
+            If there is a problem with parsing the XYZ file
+
         Returns
         --------
         Structure
             The `Structure` object extracted from file
         """
-        with StringIO(xyz_string) as f_xyz:
-            return cls.from_xyz_buffer(f_xyz, charge=charge, multiplicity=multiplicity)
+        return cls.from_trj_xyz_block(
+            xyz_string, charge=charge, multiplicity=multiplicity, n_struc_limit=1
+        )[0]
+
+    @classmethod
+    def from_trj_xyz_block(
+        cls,
+        trj_string: str,
+        /,
+        *,
+        charge: int = 0,
+        multiplicity: int = 1,
+        comment_symbols: str | Sequence[str] | None = None,
+        n_struc_limit: int | None = None,
+    ) -> "list[Structure]":
+        """
+        Function for reading a XYZ trajectory data string and converting it to a list of molecular Structure
+
+        Parameters
+        ----------
+        trj_string : Path | str | PathLike[str]
+            String that contains multiple xyz blocks (trajectory data)
+        charge : int, default: 0
+            Charge of the molecule
+        multiplicity : int, default: 1
+            Electron spin multiplicity of the molecule
+        comment_symbols: str | Sequence[str] | None, default: None
+            List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
+            data starts. By default, no user comments are used. White-space only comments are not allowed and are
+            silently ignored.
+        n_struc_limit: int | None, default: None
+            If >0, only read the first n structures.
+
+        Returns
+        --------
+        list[Structure]: `Structure objects extracted from file
+
+        Raises
+        --------
+        EOFError
+            If the string is empty
+        """
+        with TrackingTextIO(trj_string) as tracked:
+            structures = list(
+                cls._iter_xyz_structures(
+                    tracked,
+                    charge=charge,
+                    multiplicity=multiplicity,
+                    comment_symbols=comment_symbols,
+                    n_struc_limit=n_struc_limit,
+                )
+            )
+            if not structures:
+                raise EOFError("XYZ string is empty")
+            return structures
 
     @classmethod
     def from_xyz_buffer(
         cls,
-        xyz_lines: Iterator[str],
+        xyz_lines: TrackingTextIO,
         *,
         charge: int = 0,
         multiplicity: int = 1,
+        comment_symbols: str | Sequence[str] | None = None,
     ) -> "Structure":
         """
         Function for reading a xyz file from a buffer and converting it to a molecular Structure.
 
         Parameters
         ----------
-        xyz_lines: Iterator[str]
+        xyz_lines: TrackingTextIO
             A buffer that contains xyz file data
-        charge : int, default = 0
+        charge : int, default: 0
             Molecular charge of the structure.
-        multiplicity: int, default = 1
+        multiplicity: int, default: 1
             Electron spin multiplicity of the structure.
+        comment_symbols: str | Sequence[str] | None, default: None
+            List of symbols that indicate user comments in the xyz file. User comments are skipped before the actual xyz
+            data starts. By default, no user comments are used. White-space only comments are not allowed and are
+            silently ignored.
 
         Returns
         --------
-        The `Structure` object extracted from the buffer
+        Structure
+            The `Structure` object extracted from the buffer.
+
+        Raises
+        --------
+        ValueError
+            When no valid structure can be read from the input buffer.
+        EOFError
+            When no data is in the buffer.
         """
         # > Try reading the string
-        atoms = []
+        atoms: list[Atom] = []
+        comments_tuple: tuple[str, ...] | None = None
+
+        if isinstance(comment_symbols, str):
+            comments_tuple = (comment_symbols,)
+        elif isinstance(comment_symbols, Sequence):
+            comments_tuple = tuple(comment_symbols)
+
+        # > Skip arbitrary number of empty and user comment lines at the beginning
+        while (line := xyz_lines.readline()) != "":
+            if not line.lstrip():
+                continue
+            # > Check for comment line. Ignore empty/whitespace lines
+            elif comments_tuple and line.lstrip().startswith(comments_tuple):
+                continue
+            else:
+                break
+
+        if not line:
+            raise EOFError("No data available in the buffer.")
 
         # > Fetch number of atoms
         try:
-            natoms = int(next(xyz_lines).split()[0])
-        except (ValueError, IndexError, StopIteration) as err:
-            raise ValueError("Could not read number of atoms in line 1 from xyz data") from err
+            natoms = int(line.split()[0])
+        except (ValueError, IndexError) as err:
+            raise ValueError(
+                f"Line {xyz_lines.line_number}: Could not read number of atoms at the beginning of xyz data"
+            ) from err
         # > Skipping comment line
-        try:
-            next(xyz_lines)
-        except StopIteration as err:
-            raise ValueError("Comment line is not present in xyz data") from err
+        if xyz_lines.readline() == "":
+            raise ValueError(
+                f"Line {xyz_lines.line_number}: Comment line is not present in xyz data"
+            )
 
-        # > Read atoms
-        iline = 2
-        for line in xyz_lines:
-            iline += 1
+        # > Save position before coordinate lines start
+        pos = xyz_lines.tell()
+
+        # Read the atoms
+        while line := xyz_lines.readline():
             # > Line should have at least 4 columns
             atom_cols = line.split()
+
             if len(atom_cols) < 4:
-                raise ValueError(f"Line {iline}: Invalidly formatted coordinate line")
+                # > If data is complete we can leave the loop
+                if natoms == len(atoms):
+                    # See if current line is start of next xyz block
+                    try:
+                        # check for natoms in line
+                        int(line.split()[0])
+                        # if it is, go back to last position
+                        xyz_lines.seek(pos)
+                        break
+                    # if it is not, we do not have to change the position
+                    except (IndexError, ValueError):
+                        break
+                # If read is not complete the line is invalid
+                else:
+                    raise ValueError(
+                        f"Line {xyz_lines.line_number}: Invalidly formatted coordinate line"
+                    )
 
             # > Get atom symbol.
             # >> First check if we have combination of atom symbol + fragment id
             match_atom_sym_frag_id = RGX_ATOM_SYMBOL_FRAG_ID.match(line.lstrip())
             if not match_atom_sym_frag_id:
-                raise ValueError(f"Line {iline}: Could not find atom symbol.")
+                raise ValueError(f"Line {xyz_lines.line_number}: Could not find atom symbol.")
 
             atom_sym = match_atom_sym_frag_id.group("elem")
             try:
                 element = Element(atom_sym)
             except Exception as err:
-                raise ValueError(f"Line {iline}: Invalid atom symbol: {atom_sym}") from err
+                raise ValueError(
+                    f"Line {xyz_lines.line_number}: Invalid atom symbol: {atom_sym}"
+                ) from err
 
             # > Fragment id
             # >> First, let's assume columns 2 through 4 are the coordinates.
@@ -433,24 +686,32 @@ class Structure:
                 try:
                     frag_id = int(match_frag_id)
                 except ValueError as err:
-                    raise ValueError(f"Line {iline}: Invalid fragment id: {match_frag_id}") from err
+                    raise ValueError(
+                        f"Line {xyz_lines.line_number}: Invalid fragment id: {match_frag_id}"
+                    ) from err
 
             # > Pass coordinates
             # // X
             try:
                 coord_x = float(coords_cols[0])
             except (ValueError, IndexError) as err:
-                raise ValueError(f"Line {iline}: Invalid X coordinate: {atom_cols[1]}") from err
+                raise ValueError(
+                    f"Line {xyz_lines.line_number}: Invalid X coordinate: {atom_cols[1]}"
+                ) from err
             # // Y
             try:
                 coord_y = float(coords_cols[1])
             except (ValueError, IndexError) as err:
-                raise ValueError(f"Line {iline}: Invalid Y coordinate: {atom_cols[2]}") from err
+                raise ValueError(
+                    f"Line {xyz_lines.line_number}: Invalid Y coordinate: {atom_cols[2]}"
+                ) from err
             # // Z
             try:
                 coord_z = float(coords_cols[2])
             except (ValueError, IndexError) as err:
-                raise ValueError(f"Line {iline}: Invalid Z coordinate: {atom_cols[3]}") from err
+                raise ValueError(
+                    f"Line {xyz_lines.line_number}: Invalid Z coordinate: {atom_cols[3]}"
+                ) from err
 
             # > Adding atom
             atoms.append(
@@ -460,6 +721,9 @@ class Structure:
                     fragment_id=frag_id,
                 )
             )
+
+            # > Save last position in case the next line is the next xyz block
+            pos = xyz_lines.tell()
         # << END OF LOOP
 
         # > Check number of atoms declared in file agrees with apparent number of atoms.
@@ -612,9 +876,9 @@ class Structure:
         ----------
         ase_atoms : AseAtoms
             The object "Atoms" from ase
-        charge : int | None, default = None
+        charge : int | None, default:  None
             Optional charge of the molecule, will overwrite charge from ase.
-        multiplicity : int | None, default = None
+        multiplicity : int | None, default:  None
             Optional multiplicity of the molecule, will overwrite multiplicity from ase.
 
         Returns
@@ -718,9 +982,9 @@ class Structure:
             List of symbols for elements, either as string or as atomic number
         coordinates: list[tuple[float, float, float]]
             List of tuples containing coordinates
-        charge : int, default = 0
+        charge : int, default:  0
             Optional charge for the structure
-        multiplicity : int, default = 1
+        multiplicity : int, default:  1
             Optional multiplicity for the structure
 
         Returns
@@ -745,3 +1009,60 @@ class Structure:
             atoms.append(Atom(element=element, coordinates=coords))
 
         return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)
+
+    @classmethod
+    def _iter_xyz_structures(
+        cls,
+        tracked: TrackingTextIO,
+        charge: int = 0,
+        multiplicity: int = 1,
+        comment_symbols: str | Sequence[str] | None = None,
+        n_struc_limit: int | None = None,
+    ) -> Iterator["Structure"]:
+        """
+        Yield properties from the buffer until exhausted or the limit is reached.
+
+        Parameters
+        ----------
+        tracked: TrackingTextIO
+            A buffer that contains XYZ file data.
+        charge : int, default:  0
+            Optional charge for the structure
+        multiplicity : int, default:  1
+            Optional multiplicity for the structure
+        comment_symbols: str | Sequence[str] | None, default: None
+            List of symbols that indicate user comments in the XYZ data.
+            User comments have to start with the given symbol, fill a whole line, and come before the actual XYZ data.
+        n_struc_limit: int | None, default: None
+            If >0, only read the first n structures.
+
+        Returns
+        --------
+        Iterator["Structure"]
+            Iterator of `Structure` object extracted from the buffer.
+
+        Raises
+        --------
+        ValueError
+            If `n_struc_limit` is negative or zero.
+
+        """
+
+        if n_struc_limit is not None and n_struc_limit < 0:
+            raise ValueError("n_struc_limit must be None, 0, or a positive integer")
+
+        n_struc = 0
+        while True:
+            try:
+                struct = cls.from_xyz_buffer(
+                    tracked,
+                    charge=charge,
+                    multiplicity=multiplicity,
+                    comment_symbols=comment_symbols,
+                )
+            except EOFError:
+                break
+            yield struct
+            n_struc += 1
+            if n_struc_limit and n_struc >= n_struc_limit:
+                break

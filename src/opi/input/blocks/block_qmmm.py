@@ -3,8 +3,9 @@ from typing import Literal
 from pydantic import field_validator
 
 from opi.input.blocks import Block
-from opi.input.blocks.util import InputFilePath, IntGroup
+from opi.input.blocks.util import InputFilePath
 from opi.input.simple_keywords import SimpleKeyword
+from opi.models import IntGroupEnd
 
 __all__ = ("BlockQmmm",)
 
@@ -101,12 +102,12 @@ class BlockQmmm(Block):
     hflayergto: SimpleKeyword | None = None
     hflayerecp: SimpleKeyword | None = None
     ecplayerecp: SimpleKeyword | None = None
-    qmatoms: IntGroup | None = None
-    activeatoms: IntGroup | None = None
-    optregion_fixedatoms: IntGroup | None = None
-    qm2atoms: IntGroup | None = None
-    hflayeratoms: IntGroup | None = None
-    qm3atoms: IntGroup | None = None
+    qmatoms: IntGroupEnd | None = None
+    activeatoms: IntGroupEnd | None = None
+    optregion_fixedatoms: IntGroupEnd | None = None
+    qm2atoms: IntGroupEnd | None = None
+    hflayeratoms: IntGroupEnd | None = None
+    qm3atoms: IntGroupEnd | None = None
     h_dist_filename: InputFilePath | None = None
     qmqm2_qmlink_offfilename: InputFilePath | None = None
     oniom3_qmqm2_offfilename: InputFilePath | None = None
@@ -131,14 +132,14 @@ class BlockQmmm(Block):
         mode="before",
     )
     @classmethod
-    def intgroup_from_list(cls, inp: IntGroup | list[int]) -> IntGroup:
+    def intgroupend_from_list(cls, inp: IntGroupEnd | list[int]) -> IntGroupEnd:
         """
         Parameters
         ----------
-        inp : IntGroup | list[int]
+        inp : IntGroupEnd | list[int]
         """
         if isinstance(inp, list):
-            return IntGroup.init(inp)
+            return IntGroupEnd.init(inp)
         else:
             return inp
 

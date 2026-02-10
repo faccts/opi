@@ -4,6 +4,7 @@ Modules that hold Python objects representing chemical structures (i.e. atom typ
 
 from opi.input.structures.atom import Atom, EmbeddingPotential, GhostAtom, PointCharge
 from opi.input.structures.coordinates import Coordinates
+from opi.input.structures.properties import Properties
 from opi.input.structures.structure import Structure
 from opi.input.structures.structure_file import BaseStructureFile, GzmtFile, PdbFile, XyzFile
 
@@ -14,6 +15,7 @@ __all__ = [
     "EmbeddingPotential",
     "Coordinates",
     "Structure",
+    "Properties",
     "BaseStructureFile",
     "XyzFile",
     "PdbFile",

@@ -4,6 +4,7 @@ It's mostly based on the ORCA's two JSONs files.
 """
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Callable, cast
 from warnings import warn
@@ -18,11 +19,13 @@ from opi.output.cube import CubeOutput
 from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
     get_float_from_line,
+    get_lines_from_block,
     has_geometry_optimization_converged,
     has_scf_converged,
     has_terminated_normally,
 )
 from opi.output.hftyp import Hftyp
+from opi.output.ir_mode import IrMode
 from opi.output.mo_data import MOData
 from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
@@ -61,7 +64,7 @@ from opi.utils.units import AU_TO_ANGST, AU_TO_EV
 
 class Output:
     """
-    Class that handles of ORCA output, especially the `<basename>.json` `<basename>.property.json`
+    Class that handles of ORCA output, especially `<basename>.json` and `<basename>.property.json`
 
     Attributes
     ----------
@@ -69,10 +72,11 @@ class Output:
         Basename of the job.
     working_dir: Path
         Optional path to the working directory.
-    do_create_gbw_json: bool, default: False
-        Switch that determines if gbw-json file is created if missing.
-    do_create_property_json: PropertyResults
-        Switch that determines if property-json file is created if missing.
+    gbw_json_files: tuple[Path, ...]
+        Tuple of paths to gbw json files that can be created from available gbw files.
+        Files may or may not exist in the working directory.
+    property_json_file: Path
+        Path to property json file. File may or may not exist in the working directory.
     results_properties: PropertyResults
         Properties parsed from `property.json`.
         Should be preferred over `property_json_data`.
@@ -92,8 +96,6 @@ class Output:
         basename: str,
         *,
         working_dir: Path | None = None,
-        create_gbw_json: bool = False,
-        create_property_json: bool = False,
         version_check: bool = True,
         parse: bool = False,
     ):
@@ -108,13 +110,6 @@ class Output:
             Basename of the job.
         working_dir: Path
             Optional path to the working directory.
-        create_gbw_json: bool = False
-            Whether the JSON gbw-file should be created by calling `orca_2json`, will not overwrite an existing JSON-file
-            Usually, this is already done by `Calculator` if used.
-        create_property_json: bool = False
-            Whether the JSON property-file should be created by calling orca_2json,
-            will not overwrite an existing JSON-file.
-            Usually, this is already done by `Calculator` if used.
         version_check: bool, default: True
             If True, check if the ORCA version stored in JSON-property file is compliant with the minimal supported ORCA version of this interface.
             A warning is printed if the version check is not passed.
@@ -123,6 +118,11 @@ class Output:
             True: Create (if turned on by `create_gbw_json/create_property_json`) and parse JSONs files at the end of the initialization.
             False: Only return an Output object. In order to use the object to access the JSON data,
                    `Output.parse()` has to be called first.
+
+        Raises
+        ----------
+        FileExistsError
+            If multi-gbw files from different multi-gbw runs exist (e.g., scan and neb).
         """
         self.basename = basename
         self.do_version_check = version_check
@@ -131,13 +131,9 @@ class Output:
         if not self.working_dir.is_dir():
             raise FileNotFoundError(f"Working dir does not exist: {working_dir}")
 
-        # // JSON PATHS
-        self.gbw_json_files = self.get_gbw_json_files()
-        self.property_json_file = self.get_file(".property.json")
-
-        # > // SWITCHES: CREATE JSON FILES
-        self.do_create_gbw_json = create_gbw_json
-        self.do_create_property_json = create_property_json
+        # // INITIALIZE EMPTY JSON PATHS
+        self._gbw_json_files: tuple[Path, ...] = ()
+        self._property_json_file: Path | None = None
 
         # > // REDUMP JSON AFTER PARSING
         self.do_redump_jsons: bool = False
@@ -154,45 +150,135 @@ class Output:
         if parse:
             self.parse()
 
-    def parse(self, read_prop_json: bool = True, read_gbw_json: bool = True) -> None:
+    def parse(
+        self,
+        do_create_property_json: bool | None = None,
+        do_create_gbw_json: bool | None = None,
+        read_prop_json: bool = True,
+        read_gbw_json: bool = True,
+    ) -> None:
         """
-        Create property- and gbw-JSON file (according to `do_create_property_json` and `self.do_create_gbw_json`)
-        and parse them.
-        Skips the parsing for the gbw or prop json file when the respective bool is false. It defaults to true
+        Create and read property- and gbw-JSON file(s) (according to `do_create_property_json` and `do_create_gbw_json`).
+        Creates the required files with the default `None` without overwriting any JSON files.
 
         Parameters
         ----------
+        do_create_property_json: bool | None, default: None
+            Whether to create the property JSON file. If None, the file is only created if it is missing. If True,
+            the existing file will be overwritten. If False, the file will not be created. Default is None.
+        do_create_gbw_json: bool | None, default: None
+            Whether to create the gbw JSON files. If None, the files are only created if they are missing. If True,
+            the existing files will be overwritten. If False, the files will not be created. Default is None.
         read_prop_json: bool, default: True
-            Whether or not to read the property JSON file
+            Whether to read the property JSON file. If True, the file will be read. If False, the file will not
+            be read. If the file should be read but is not present, a FileNotFoundError is raised.
         read_gbw_json: bool, default: True
-            Whether or not to read the gbw JSON file
-        """
-        # // Create JSONs files
-        if self.do_create_gbw_json:
-            self.create_gbw_json()
-        if self.do_create_property_json:
-            self.create_property_json()
+            Whether to read the gbw JSON files. If True, the base gbw JSON file and any gbw JSON files from multi gbw
+            runs (e.g., scan or neb) will be read. If False, none of these files will be read.
+            If any of the JSON files that should be read are not present, a FileNotFoundError is raised.
 
-        # // PARSE JSONS
-        # // Property JSON
+        Raises
+        ----------
+        FileNotFoundError
+            If any JSON file should be read that is not present.
+        """
         if read_prop_json:
-            self.property_json_data = self._process_json_file(self.property_json_file)
-            # > Check in property json whether version fits:
-            if self.do_version_check:
-                self.check_version()
-            self.results_properties = PropertyResults(**self.property_json_data)
+            self.parse_property(do_create_property_json=do_create_property_json)
         else:
+            # // version check is performed with property JSON
             if self.do_version_check:
                 warn("No version check possible.")
 
-        # // GBW JSON file
         if read_gbw_json:
-            self.gbw_json_data = [self._process_json_file(file) for file in self.gbw_json_files]
-            self.results_gbw = [GbwResults(**data) for data in self.gbw_json_data]
+            self.parse_gbw(do_create_gbw_json=do_create_gbw_json)
 
         # > Redump JSON files
         if self.do_redump_jsons:
             self._redump_jsons()
+
+    def parse_property(self, do_create_property_json: bool | None = None) -> None:
+        """
+        Create and read property-JSON file.
+
+        Parameters
+        ----------
+        do_create_property_json: bool | None, default: None
+            Whether to create the property JSON file. If None, the file is only created if it is missing. If True,
+            the existing file will be overwritten. If False, the file will not be created. Default is None.
+        """
+        # // Use default name if None was supplied
+        if not self.property_json_file:
+            self.property_json_file = self.get_file(".property.json")
+        # // Create missing property JSON files
+        if do_create_property_json is None:
+            self.create_missing_property_json()
+        elif do_create_property_json:
+            self.create_property_json(force=True)
+
+        # // Parse JSON
+        self.property_json_data = self._process_json_file(self.property_json_file)
+        # > Check in property JSON whether version fits:
+        if self.do_version_check:
+            self.check_version()
+        self.results_properties = PropertyResults(**self.property_json_data)
+
+    def parse_gbw(self, do_create_gbw_json: bool | None = None) -> None:
+        """
+        Create and read gbw-JSON file(s).
+
+        Parameters
+        ----------
+        do_create_gbw_json: bool | None, default: None
+            Whether to create the gbw JSON files. If None, the files are only created if they are missing. If True,
+            the existing files will be overwritten. If False, the files will not be created. Default is None.
+        """
+        # // Use default names if None was supplied
+        if not self.gbw_json_files:
+            self.collect_gbw_json_files()
+        # // Create missing GBW JSON files
+        if do_create_gbw_json is None:
+            self.create_missing_gbw_json()
+        elif do_create_gbw_json:
+            self.create_gbw_json(force=True)
+
+        # // read the GBW files
+        self.gbw_json_data = self._process_json_files(self.gbw_json_files, continue_on_error=True)
+        self.results_gbw = [GbwResults(**data) for data in self.gbw_json_data]
+
+    @property
+    def gbw_json_files(self) -> tuple[Path, ...]:
+        return self._gbw_json_files
+
+    @gbw_json_files.setter
+    def gbw_json_files(self, value: Sequence[str | Path] | None) -> None:
+        if value is None:
+            self._gbw_json_files = ()
+            return
+
+        out: list[Path] = []
+        for i, p in enumerate(value):
+            try:
+                pp = Path(p)
+            except TypeError as e:
+                raise TypeError(f"gbw_json_files[{i}] is not path-like: {p!r}") from e
+
+            out.append(pp)
+        self._gbw_json_files = tuple(out)
+
+    @property
+    def property_json_file(self) -> Path | None:
+        return self._property_json_file
+
+    @property_json_file.setter
+    def property_json_file(self, value: str | Path | None) -> None:
+        if not value:
+            self._property_json_file = None
+        else:
+            try:
+                pp = Path(value)
+            except TypeError as e:
+                raise TypeError(f"property_json_file is not path-like: {value!r}") from e
+            self._property_json_file = pp
 
     @property
     def num_gbw_json_files(self) -> int:
@@ -224,12 +310,16 @@ class Output:
         ------
         FileNotFoundError
             If the Path leads to no file
+        json.JSONDecodeError
+            If the file contains invalid JSON.
+        OSError
+            If the file cannot be opened.
         """
 
         if not json_file.is_file():
             raise FileNotFoundError(f"JSON file does not exist: {json_file}")
 
-        with json_file.open() as f_json:
+        with json_file.open(encoding="utf-8") as f_json:
             json_data: dict[str, Any] = json.load(f_json)
             return json_data
 
@@ -247,6 +337,38 @@ class Output:
         # > Convert all keys to lowercase.
         lowercase(json_data)
         return json_data
+
+    def _process_json_files(
+        self,
+        files: Sequence[Path],
+        *,
+        continue_on_error: bool = False,
+    ) -> list[dict[str, Any]]:
+        """
+        Process multiple JSON files.
+
+        Parameters
+        ----------
+        files: Sequence[Path]
+            Paths to JSON files to be processed.
+        continue_on_error: bool
+            Whether to continue processing when an error occurs.
+
+        Returns
+        ----------
+        list[dict[str, Any]]
+            The list of the JSON files processed.
+        """
+        results: list[dict[str, Any]] = []
+
+        for path in files:
+            try:
+                data = self._process_json_file(path)
+                results.append(data)
+            except (FileNotFoundError, OSError, json.JSONDecodeError):
+                if not continue_on_error:
+                    raise
+        return results
 
     def _redump_jsons(self) -> None:
         """Redump both JSON files as read and parse by `PropertyResults` and `GbwResults`."""
@@ -277,7 +399,13 @@ class Output:
         json_string: str = result.model_dump_json(indent=2)
         json_file.write_text(json_string)
 
-    def collect_json_files(
+    def collect_gbw_json_files(self) -> None:
+        """
+        Set default gbw json file names by checking available gbw files in working directory.
+        """
+        self.gbw_json_files = [gbw_file.with_suffix(".json") for gbw_file in self.get_gbw_files()]
+
+    def collect_gbw_files(
         self,
         pattern: str | Callable[[int], str],
         *,
@@ -286,7 +414,7 @@ class Output:
         step: int = 1,
     ) -> list[Path]:
         """
-        Searches for available gbw files according to a pattern in `working_dir` and returns a list of corresponding `.json` file paths.
+        Searches for available gbw files according to a pattern in `working_dir` and returns these as list.
 
         Parameters
         ----------
@@ -307,8 +435,7 @@ class Output:
         """
         files = []
         if isinstance(pattern, str):
-            # > String pattern must not end with ".json"!
-            gbw_file = self.get_file(pattern + ".json")
+            gbw_file = self.get_file(pattern)
             if gbw_file.is_file():
                 files.append(gbw_file)
             return files
@@ -316,14 +443,14 @@ class Output:
             for i in range(start, end, step):
                 gbw_file = self.get_file(pattern(i))
                 if gbw_file.is_file():
-                    files.append(gbw_file.with_suffix(".json"))
+                    files.append(gbw_file)
                 else:
                     break
         return files
 
-    def get_gbw_json_files(self, suffix: str = ".gbw", /) -> list[Path]:
+    def get_gbw_files(self, suffix: str = ".gbw", /) -> list[Path]:
         """
-        Checks if other gbw files with indexes from scans or NEB exist and returns a list with their paths.
+        Returns list of paths to existing gbw files including gbw files with indexes from scans or neb runs.
         Naming of gbw files from scan and neb is different. There should never be both so we first check for scan
         and then neb.
 
@@ -336,25 +463,30 @@ class Output:
         ----------
         list[Path]
             Returns list of indexed gbw files, e.g., from relaxed surface scan or neb calculation
+
+        Raises
+        ----------
+        FileExistsError
+            If multi-gbw files from scan and neb calculations exist.
         """
 
-        # // Get path to main gbw/json file
-        gbw_json_list = [self.get_file(".json")]
+        # // Get path to main gbw file
+        gbw_list = self.collect_gbw_files(suffix)
 
         # // Check for scan files
-        scan_list = self.collect_json_files(lambda i: f".{i:03}{suffix}", start=1)
+        scan_list = self.collect_gbw_files(lambda i: f".{i:03}{suffix}", start=1)
 
         # // Check for neb files
-        neb_list = self.collect_json_files(lambda i: f"_im{i}{suffix}")
+        neb_list = self.collect_gbw_files(lambda i: f"_im{i}{suffix}")
 
         if neb_list and scan_list:
             raise FileExistsError(
                 "Both Scan and NEB type .gbw files found! Only one type should be present."
             )
 
-        gbw_json_list.extend(scan_list or neb_list)
+        gbw_list.extend(scan_list or neb_list)
 
-        return gbw_json_list
+        return gbw_list
 
     def get_file(self, suffix: str, /, *, basename: str = "") -> Path:
         """
@@ -404,12 +536,36 @@ class Output:
         """Create a `Runner` object passing on `self.working_dir`."""
         return Runner(working_dir=self.working_dir)
 
+    def create_missing_gbw_json(self, *, config: dict[str, Any] | None = None) -> bool:
+        """
+        Check if gbw JSON files are available and try to create missing files
+
+        Parameters
+        ----------
+        config : dict[str | Any] | None, default = None
+            Determine contents of gbw-json file.
+            For details about the configuration refer to the ORCA manual "9.3.2 Configuration file"
+
+        Returns
+        ----------
+        was_create : bool
+            A boolean indicating if any file was created.
+        """
+        # // loop over files, check if present and create if missing
+        was_created = False
+        for index, file in enumerate(self.gbw_json_files):
+            if not file.is_file():
+                self.create_gbw_json(config=config, gbw_index=index)
+                was_created = True
+        return was_created
+
     def create_gbw_json(
         self,
         *,
         force: bool = False,
         config: dict[str, Any] | None = None,
         gbw_index: int | None = None,
+        suffix: str = ".gbw",
     ) -> None:
         """
         Thin-wrapper around `Runner.create_jsons()`.
@@ -425,13 +581,15 @@ class Output:
         gbw_index: int | None, default = None
             Non-negative index of gbw file in `self.gbw_json_files` for which json files will be generated. If it is None, all files
             will be generated. If the index is negative or out of range silently nothing is done.
-
+        suffix: str, default: ".gbw"
+            Suffix of the gbw file that will be used for json creation.
         """
-        files_to_process: list[Path]
+        files_to_process: tuple[Path, ...]
 
         if gbw_index is not None:
             try:
-                files_to_process = [self.gbw_json_files[gbw_index]]
+                # single entry tuple to satisfy mypy
+                files_to_process = (self.gbw_json_files[gbw_index],)
             except IndexError:
                 return
         else:
@@ -440,20 +598,39 @@ class Output:
         for file in files_to_process:
             basename = file.stem
             runner = self._create_runner()
-            runner.create_gbw_json(basename, config=config, force=force)
+            runner.create_gbw_json(basename, config=config, force=force, suffix=suffix)
+
+    def create_missing_property_json(self) -> bool:
+        """
+        Check if the property json file is available and try to create it if it is missing.
+
+        Returns
+        ----------
+        was_create : bool
+            A boolean indicating if the file was created.
+        """
+        if self.property_json_file and not self.property_json_file.is_file():
+            self.create_property_json()
+            return True
+        return False
 
     def create_property_json(self, *, force: bool = False) -> None:
         """
-        Thin-wrapper around `Runner.create_property_json()`.
-        Create the `<basename>.property.json` file
+        Wrapper around `Runner.create_property_json()`.
+        Create the `.property.json` file based on self.property_json_file or if not present self.basename
 
         Parameters
         ----------
         force : bool, default = None
             Overwrite any existing ORCA property JSON file.
         """
+        basename: str
+        if self.property_json_file:
+            basename = self.property_json_file.stem.split(".")[0]
+        else:
+            basename = self.basename
         runner = self._create_runner()
-        runner.create_property_json(self.basename, force=force)
+        runner.create_property_json(basename, force=force)
 
     def create_jsons(self, *, force: bool = False) -> None:
         """
@@ -1953,3 +2130,29 @@ class Output:
             return np.array(k_list[0])
         else:
             return None
+
+    def get_ir(self) -> dict[int, IrMode] | None:
+        """
+        Returns the IR Spectrum from the ORCA output file
+
+        Returns
+        ----------
+        dict[int, IrMode] | None
+            Dictionary where the key indicates the number of the mode and `IrMode` contains the IR data of the mode and
+            None if the IR spectrum could not be grepped from the ORCA output.
+        """
+        outfile = self.get_outfile()
+        # // String for finding the IR spectrum block
+        ir_string = "IR SPECTRUM"
+        # // Grep the IR spectrum block
+        ir_data = get_lines_from_block(outfile, ir_string, index=-1, offset=6)
+
+        ir_dict = {}
+        for ir_line in ir_data:
+            try:
+                ir_mode = IrMode.from_string(ir_line)
+                ir_dict[ir_mode.mode] = ir_mode
+            except (ValueError, IndexError):
+                break
+
+        return ir_dict or None

@@ -22,6 +22,7 @@ A clear and concise description of what you expected to happen.
 
 **Version:**
  - OS: [e.g. Ubuntu 22.04]
+ - Python [e.g. Python 3.13.7]
  - ORCA [e.g. 6.0.1]
 
 **Additional context**

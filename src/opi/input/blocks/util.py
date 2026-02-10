@@ -1,9 +1,10 @@
+from collections import UserDict
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, conlist
 
-__all__ = ("InputString", "InputFilePath", "IntGroup", "NumList")
+__all__ = ("InputString", "InputFilePath", "NumList", "NoCaseDict")
 
 
 class InputFilePath(BaseModel):
@@ -110,74 +111,129 @@ class NumList(BaseModel):
             return NumList(parsed_values)
 
 
-class IntGroup(BaseModel):
+class NoCaseDict(UserDict[str, str]):
     """
-    Class to format a collection of integers for the ORCA inp file
-
-    Attributes
-    ----------
-    values : list[int | tuple[int, int]]
-        Stores list of integers or pairs of integers
+    A dictionary whose keys are case-insensitive.
+    This only applies for string-like keys.
     """
 
-    values: list[int | tuple[int, int]]
-
-    def __str__(self) -> str:
-        parts = []
-        for v in self.values:
-            # check if v is an integer and append to parts
-            if isinstance(v, int):
-                parts.append(str(v))
-            else:
-                # if v is not an integer it should be a range(e.g 1:10)
-                # in this case we parse the string and save the lower and upper bounds as a tuple
-                assert len(v) == 2
-                parts.append(f"{v[0]}:{v[1]}")
-        return f"{{ {' '.join(parts)} }}"
-
-    @classmethod
-    def init(cls, inp: str | list[int | tuple[int, int]] | list[int]) -> Self:
+    def __getitem__(self, key: str) -> str:
         """
-        Initialize `IntGroup` from a string or list.
+        Retrieve a value from the dictionary.
 
         Parameters
         ----------
-        inp : str | list[int | tuple[int, int]]
-            String format example: "{1 2 3:5 10}" or list of ints/tuples.
-            Ranges like '4:10' are converted to (4, 10).
-            Curly braces in strings are optional and stripped.
+        key: str
+            Key of entry to be fetched.
 
         Returns
         -------
-        IntGroup
-            An object of `IntGroup`.
+        str
+            Value of entry.
+
+        Raises
+        ------
+        TypeError
+            If the key is not a string.
+
+        KeyError
+            If attribute with given name does not exist.
+
         """
-        if isinstance(inp, list):
-            return cls(values=inp)
-        else:
-            # > Removing optional leading and trailing curly braces and redundant whitespaces for streamlined processing.
-            cleaned_string = inp.strip().removeprefix("{").removesuffix("}").strip()
+        if not isinstance(key, str):
+            raise TypeError(f"Key must be of type string, got {type(key)}")
+        key = self._norm_key(key)
+        return self.data[key]
 
-            # Handle empty set case
-            if not cleaned_string:
-                return cls(values=[])
+    def __setitem__(self, key: str, value: str) -> None:
+        """
+        Set a value in the dictionary.
 
-            # Split by whitespace and convert to integers or tuples depending on format
-            # parse the string for values which can either be integers or ranges (e.g 1:12)
-            # in the case of ranges save the lower and upper limit as a tuple
-            integers: list[int | tuple[int, int]] = []
-            for item in cleaned_string.split():
-                if ":" in item:
-                    parts = item.split(":")
-                    assert len(parts) == 2
-                    startindex = int(parts[0])
-                    endindex = int(parts[1])
-                    if endindex < startindex:
-                        raise ValueError(
-                            f"Invalid range given, lower limit {startindex}, upper limit {endindex}"
-                        )
-                    integers.append((startindex, endindex))
-                else:
-                    integers.append(int(item))
+        Parameters
+        ----------
+        key: str
+            Key of entry
+        value: str
+            Value of entry to be set
 
-            return cls(values=integers)
+        Raises
+        -------
+        TypeError
+            If key or value is not a string.
+
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Key must be of type string, got {type(key)}")
+        if not isinstance(value, str):
+            raise TypeError(f"Value must be of type string, got {type(value)}")
+        key = self._norm_key(key)
+        self.data[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        """
+        Delete an item from the dictionary.
+
+        Parameters
+        ----------
+        key: str
+        Name of entry to be deleted.
+
+        Returns
+        -------
+        None
+
+        Raises
+        -------
+        KeyError
+            If key does not exist in dictionary.
+
+        TypeError
+            If the key is not a string.
+
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Key must be of type string, got {type(key)}")
+        key = self._norm_key(key)
+        del self.data[key]
+
+    def __contains__(self, key: Any) -> bool:
+        """
+        Check if a key exists in the dictionary.
+
+        Parameters
+        ----------
+        key: Any
+            Key of entry
+
+        Returns
+        -------
+        bool
+            True if key exists in the dictionary. False otherwise.
+
+        Raises
+        ------
+        TypeError
+            If the key is not a string.
+
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Key must be of type string, got {type(key)}")
+        key = self._norm_key(key)
+        return key in self.data
+
+    def _norm_key(self, key: str, /) -> str:
+        """
+        Normalize key to lower case.
+
+        Parameters
+        ----------
+        key: str
+            Key of entry
+
+        Returns
+        -------
+        str
+            Normalized key.
+
+        """
+        return key.lower().strip()

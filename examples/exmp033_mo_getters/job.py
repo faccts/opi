@@ -5,20 +5,24 @@ import sys
 from pathlib import Path
 
 from opi.core import Calculator
-from opi.input.simple_keywords import BasisSet
-from opi.input.simple_keywords import Method
-from opi.input.simple_keywords import Scf
-from opi.input.simple_keywords import Task
-from opi.input.simple_keywords import Dft
+from opi.input.simple_keywords import BasisSet, Dft, Scf, Task
 from opi.input.structures import Structure
+from opi.output.core import Output
 
-if __name__ == "__main__":
-    wd = Path("RUN")
-    shutil.rmtree(wd, ignore_errors=True)
-    wd.mkdir()
 
-    calc = Calculator(basename="job", working_dir=wd)
-    calc.structure = Structure.from_xyz("inp.xyz")
+def run_exmp033(
+    structure: Structure | None = None, working_dir: Path | None = Path("RUN")
+) -> Output:
+    # > recreate the working dir
+    shutil.rmtree(working_dir, ignore_errors=True)
+    working_dir.mkdir()
+
+    # > if no structure is given read structure from inp.xyz
+    if structure is None:
+        structure = Structure.from_xyz("inp.xyz")
+
+    calc = Calculator(basename="job", working_dir=working_dir)
+    calc.structure = structure
     calc.structure.charge = 1
     calc.structure.multiplicity = 2
     calc.input.add_simple_keywords(
@@ -49,9 +53,15 @@ if __name__ == "__main__":
 
     print(output.get_hftype())
     print(output.get_nelectrons())
-    mos = output.get_mos()
+    output.get_mos()
     homo_data = output.get_homo()
     lumo_data = output.get_lumo()
     print(f"HOMO {homo_data.index}({homo_data.channel}) energy: {homo_data.orbitalenergy:.8f} Eh")
     print(f"LUMO {lumo_data.index}({lumo_data.channel}) energy: {lumo_data.orbitalenergy:.8f} Eh")
     print(f"HOMO-LUMO gap: {output.get_hl_gap():.2f} eV")
+
+    return output
+
+
+if __name__ == "__main__":
+    run_exmp033()

@@ -4,7 +4,8 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from opi.input.blocks import Block
-from opi.input.blocks.util import InputFilePath, IntGroup, NumList
+from opi.input.blocks.util import InputFilePath, NumList
+from opi.models import IntGroup
 from opi.utils.element import Element
 
 __all__ = ("NucleiFlag", "Nuclei", "NmrGroup", "NmrEquiv", "BlockEprnmr")
