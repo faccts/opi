@@ -7,7 +7,8 @@ from opi.input.structures import Structure
 
 @pytest.mark.examples
 @pytest.mark.orca
-def test_exmp038_integrals(example_input_file, tmp_path) -> None:
+@pytest.mark.json_files
+def test_exmp038_integrals(example_input_file, tmp_path, json_files_exporter) -> None:
     """Ensure integral example runs successfully and allows access to integrals."""
     # Get input file from example folder
     input_file = example_input_file(run_exmp038)
@@ -47,3 +48,6 @@ def test_exmp038_integrals(example_input_file, tmp_path) -> None:
     assert isinstance(k, np.ndarray)
     assert k.dtype == np.float64
     assert k.ndim == 2
+
+    # optional export of json files
+    json_files_exporter.export_jsons_from(tmp_path)

@@ -21,5 +21,7 @@ class Dlpno(SimpleKeywordBox):
     """SimpleKeyword: Select Tight PNO settings.."""
     ADLD = SimpleKeyword("adld")
     """SimpleKeyword: Atomic decomposition of the London Dispersion energy.."""
+    ADEX = SimpleKeyword("adex")
+    """SimpleKeyword: Atomic decomposition of the Exchange."""
     PNOEXTRAPOLATION = SimpleKeyword("pnoextrapolation")
     """SimpleKeyword: Automatic extrapolation of PNO space.."""

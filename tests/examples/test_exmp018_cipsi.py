@@ -6,7 +6,8 @@ from opi.input.structures import Structure
 
 @pytest.mark.examples
 @pytest.mark.orca
-def test_exmp018_cipsi(example_input_file, tmp_path) -> None:
+@pytest.mark.json_files
+def test_exmp018_cipsi(example_input_file, tmp_path, json_files_exporter) -> None:
     """Ensure ICE-CI example runs successfully."""
     # Get input file from example folder
     input_file = example_input_file(run_exmp018)
@@ -14,3 +15,6 @@ def test_exmp018_cipsi(example_input_file, tmp_path) -> None:
 
     # Run the example in tmp_path
     run_exmp018(structure=structure, working_dir=tmp_path)
+
+    # optional export of json files
+    json_files_exporter.export_jsons_from(tmp_path)

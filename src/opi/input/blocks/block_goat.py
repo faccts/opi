@@ -3,7 +3,8 @@ from typing import Literal
 from pydantic import field_validator
 
 from opi.input.blocks import Block
-from opi.input.blocks.util import InputFilePath, IntGroup
+from opi.input.blocks.util import InputFilePath
+from opi.models import IntGroup
 
 __all__ = ("AtomList", "BlockGoat")
 

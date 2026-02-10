@@ -6,7 +6,8 @@ from opi.input.structures import Structure
 
 @pytest.mark.examples
 @pytest.mark.orca
-def test_exmp003_opt(example_input_file, tmp_path) -> None:
+@pytest.mark.json_files
+def test_exmp003_opt(example_input_file, tmp_path, json_files_exporter) -> None:
     """Ensure optimization example runs successfully and produces a final energy and structure."""
     # Get input file from example folder
     input_file = example_input_file(run_exmp003)
@@ -20,3 +21,6 @@ def test_exmp003_opt(example_input_file, tmp_path) -> None:
     # > Assert that a structure is available
     structure = output.get_structure()
     assert isinstance(structure, Structure), f"Expected Structure, got {type(structure).__name__}"
+
+    # optional export of json files
+    json_files_exporter.export_jsons_from(tmp_path)

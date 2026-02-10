@@ -33,7 +33,9 @@ class BaseStructureFile(ABC):
         *,
         charge: int = 0,
         multiplicity: int = 1,
+        strict: bool = True,
     ):
+        self._strict = strict
         self._file: Path
         self.file = cast(Path, file)
         self.charge = charge
@@ -50,7 +52,7 @@ class BaseStructureFile(ABC):
         ----------
         val : Path | str | os.PathLike[str]
         """
-        self._file = Path(val).expanduser().resolve(strict=True)
+        self._file = Path(val).expanduser().resolve(strict=self._strict)
 
     def format_orca(self, working_dir: Path | None, /, *, original_path: bool = False) -> str:
         """

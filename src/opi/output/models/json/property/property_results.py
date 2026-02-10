@@ -6,7 +6,6 @@ from opi.output.models.json.property.properties.calc_time import (
     CalculationTiming,
 )
 from opi.output.models.json.property.properties.geometries import Geometries
-from opi.output.models.json.property.properties.pal import PalFlags
 from opi.output.models.json_loadable import JSONLoadable
 
 
@@ -22,12 +21,9 @@ class PropertyResults(JSONLoadable):
         contains information about the Status of the calculation
     calculation_timings : CalculationTiming
         contains timings of the calculation
-    pal_flags: PalFlags default = None
-        Contains information about the parallel Jobs used in the calculation
     """
 
     calculation_info: CalcInfo | None = None
     calculation_status: CalculationStatus | None = None
     calculation_timings: CalculationTiming | None = None
-    pal_flags: PalFlags | None = None
     geometries: list[Geometries] | None = None

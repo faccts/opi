@@ -3,6 +3,14 @@ import pytest
 from opi.core import Calculator
 from opi.input.simple_keywords import BasisSet, Method, SimpleKeyword
 
+"""
+This module contains tests for simple keyword related operations such as:
+- Add `SimpleKeyword` to `Calculator` object
+- Clear all `SimpleKeyword` objects
+- Getting `SimpleKeyword` object
+- Checking whether `Calculator` object has a specific `SimpleKeyword` object
+"""
+
 
 @pytest.fixture()
 def empty_calc() -> Calculator:
@@ -39,6 +47,8 @@ def calc_with_keywords(keywords) -> Calculator:
     return new_calc
 
 
+@pytest.mark.unit
+@pytest.mark.input
 def test_add_simple_keyword(calc_with_keywords: Calculator, keywords: tuple):
     """
     Test to add simple keywords to an empty `Calculator` object.
@@ -46,6 +56,8 @@ def test_add_simple_keyword(calc_with_keywords: Calculator, keywords: tuple):
     assert calc_with_keywords.input.has_simple_keywords(*keywords)
 
 
+@pytest.mark.unit
+@pytest.mark.input
 def test_add_simple_keywords_strict(calc_with_keywords: Calculator, keywords: tuple):
     """Test addition of keywords with `strict=True`. When `strict=True`, a `ValueError` should be raised
     if keywords have already been added."""
@@ -53,12 +65,16 @@ def test_add_simple_keywords_strict(calc_with_keywords: Calculator, keywords: tu
         calc_with_keywords.input.add_simple_keywords(keywords[0], strict=True)
 
 
+@pytest.mark.unit
+@pytest.mark.input
 def test_clear_simple_keywords(calc: Calculator):
     """Test for `Input.clear_simple_keywords()`."""
     calc.input.clear_simple_keywords()
     assert not calc.input.simple_keywords
 
 
+@pytest.mark.unit
+@pytest.mark.input
 def test_clear_simple_keywords_strict(empty_calc: Calculator):
     """Test for `Input.clear_simple_keywords()` with `strict=True`. When `strict=True`, a `ValueError` should be
     raised if there are no keywords to be removed."""
@@ -66,6 +82,8 @@ def test_clear_simple_keywords_strict(empty_calc: Calculator):
         empty_calc.input.clear_simple_keywords(strict=True)
 
 
+@pytest.mark.unit
+@pytest.mark.input
 def test_get_keywords(calc: Calculator, keywords: tuple):
     """Test for `Input.get_simple_keywords()`.
     Tests for both regular and string keywords."""
@@ -74,6 +92,8 @@ def test_get_keywords(calc: Calculator, keywords: tuple):
         assert keyword in returned_keywords
 
 
+@pytest.mark.unit
+@pytest.mark.input
 @pytest.mark.parametrize("keywords", [("ex",), ("hf",)])
 def test_get_keyword_with_string(calc: Calculator, keywords: tuple):
     """Tests `Input.get_simple_keywords()` with a string.
@@ -83,6 +103,8 @@ def test_get_keyword_with_string(calc: Calculator, keywords: tuple):
         assert SimpleKeyword(keyword) in returned_keywords
 
 
+@pytest.mark.unit
+@pytest.mark.input
 def test_get_keyword_create_missing(empty_calc: Calculator, keywords: tuple):
     """Test `Input.get_simple_keywords()` with `create_missing=True`. When `create_missing=True`, the missing keyword
     gets created and added to simple keywords."""
@@ -90,12 +112,16 @@ def test_get_keyword_create_missing(empty_calc: Calculator, keywords: tuple):
     assert keywords[0] in returned_keywords
 
 
+@pytest.mark.unit
+@pytest.mark.input
 def test_get_nonexistent_keyword(empty_calc: Calculator, keywords: tuple):
     """Test `Input.get_simple_keywords()` with a not yet added keyword."""
     returned_keywords = empty_calc.input.get_simple_keywords(*keywords)
     assert not returned_keywords
 
 
+@pytest.mark.unit
+@pytest.mark.input
 @pytest.mark.parametrize(
     "keywords_tuple",
     [

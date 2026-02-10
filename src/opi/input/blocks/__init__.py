@@ -56,12 +56,11 @@ from opi.input.blocks.block_tddft import BlockTddft
 from opi.input.blocks.block_xtb import BlockXtb
 from opi.input.blocks.fragment import FragList, Fragment, Frags
 from opi.input.blocks.geom_wrapper import Internal, Internals
-from opi.input.blocks.util import InputFilePath, InputString, IntGroup, NumList
+from opi.input.blocks.util import InputFilePath, InputString, NumList
 
 __all__ = [
     "Block",
     "NumList",
-    "IntGroup",
     "InputFilePath",
     "InputString",
     "BlockAutoCI",

@@ -34,7 +34,7 @@ python3 job.py
 - exmp011_epr: Calculate EPR properties with B3LYP/EPR-II
 - exmp012_nmr: Calculate NMR properties with RI-MP2/pcSseg-2
 - exmp013_bs: Perform a broken symmetry calculation with B3LYP/SVP (B3LYP/G)
-- exmp014_led: Perform an LED decomposition with DLPNO-CCSD(T)/cc-pVDZ
+- exmp014_led: Perform an LED decomposition with DLPNO-CCSD(T)/cc-pVDZ (including ADLD, ADEX)
 - exmp015_pop_analysis: Get multiple population analysis results from DSD-PBEP86/def2-SVP
 - exmp016_autoci: Use AUTO-CI to run CISD/def2-SVP single-point
 - exmp017_roci: Perform a ROCIS calculation
