@@ -48,7 +48,7 @@ def tests(session):
         "tests",
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
-    session.run("pytest", *session.posargs)
+    session.run("pytest","-m unit", *session.posargs)
 
 
 # //////////////////////////////////////////

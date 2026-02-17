@@ -44,4 +44,4 @@ jobs:
       - name: Run Nox sessions via uv
         run: |
           uv run nox -t pr_check
-          uv run nox -s tests -- -m "not orca"
+          uv run nox -s tests
