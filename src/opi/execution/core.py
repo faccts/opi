@@ -657,7 +657,7 @@ class Runner:
         if gbw_json_file.is_file() and not force:
             return
         else:
-            # > Delete eventually existing ".property.json" and recreate
+            # > Delete eventually existing ".json" and recreate
             gbw_json_file.unlink(missing_ok=True)
             config_file.unlink(missing_ok=True)
 
