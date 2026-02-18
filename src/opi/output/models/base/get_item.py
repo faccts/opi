@@ -113,3 +113,11 @@ class GetItem(BaseModel, ABC):
                 lines.append(header)
 
         return "\n".join(lines)
+
+    def __eq__(self, other: Any) -> bool:
+        """
+        For GetItems to be equal they must have the same attributes with exactly the same values.
+        """
+        if type(self) is not type(other):
+            return False
+        return bool(self.__dict__ == other.__dict__)

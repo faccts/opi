@@ -1,0 +1,25 @@
+----------
+ORCA_2JSON
+----------
+
+Reading the gbw file     ... job.gbw done
+Creating JSON Objects    ... 
+
+No JSON configure files (job.json.conf orca.json.conf) are found - preparing full output but without integrals and densities
+Calculating 1-electron integrals (SHTV)        ... done 
+Warning (ORCA_JSON): STEOM CIS file could not be found: job.cis
+                   : Did you remember to set `No such file or directorydci DoStoreSTEOM true end`?
+
+List of essential papers. We consider these as the minimum necessary citations
+
+  1. Neese, F.
+     Software update: The ORCA program system—Version 5.0
+     WIRES Comput. Molec. Sci. 2022 12(1), e1606
+     doi.org/10.1002/wcms.1606
+  2. Neese, F.
+     The SHARK Integral Generation and Digestion System
+     J. Comp. Chem. 2022 44(3), 381
+     doi.org/10.1002/jcc.26942
+done
+Exporting the JSON data 
+Writing the JSON file         ... 0.000141 s done

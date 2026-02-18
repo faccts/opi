@@ -5,7 +5,7 @@ from opi.output.models.base.strict_types import (
 )
 
 
-class RoCiEnergy(GetItem):
+class RoCisEnergy(GetItem):
     """
     This class contains infos about the restricted open shell CI energies
 

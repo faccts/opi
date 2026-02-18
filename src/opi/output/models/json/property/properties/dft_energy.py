@@ -25,8 +25,6 @@ class DftEnergy(GetItem):
         Calculated energy of the charge neutral level
     exc: StrictFiniteFloat | None, default = None
         Calculated exchange-correlation energy
-    eembed: StrictFiniteFloat | None, default = None
-        Calculated energy from embedded DFT
     finalen: StrictFiniteFloat | None, default = None
         Total calculated energy
     """
@@ -38,5 +36,4 @@ class DftEnergy(GetItem):
     ecorr: StrictFiniteFloat | None = None
     ecnl: StrictFiniteFloat | None = None
     exc: StrictFiniteFloat | None = None
-    eembed: StrictFiniteFloat | None = None
     finalen: StrictFiniteFloat | None = None

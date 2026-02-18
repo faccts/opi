@@ -164,7 +164,7 @@ class Block(BaseModel, ABC):
                 elif isinstance(value, SimpleKeyword):
                     s += f'    {key} "{str(value).lower()}"\n'  # add quotations if value is of type SimpleKeyword
                 else:
-                    s += f"    {key} {str(value).lower()}\n"  # print key value pairs
+                    s += f"    {key} {value}\n"  # print key value pairs as they are
         s += "end"
 
         return s

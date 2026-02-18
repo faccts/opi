@@ -12,13 +12,12 @@ from opi.output.core import Output
 
 
 def run_exmp040(working_dir: Path | None = Path("RUN")) -> Output:
-    current_folder = Path(__file__).parent
-    working_dir = current_folder / "RUN"
+    example_folder = Path(__file__).parent
     shutil.rmtree(working_dir, ignore_errors=True)
     working_dir.mkdir()
 
-    struc_file = current_folder / "struc.xyz"
-    lib_file = current_folder / "frag_lib.xyz"
+    struc_file = example_folder / "struc.xyz"
+    lib_file = example_folder / "frag_lib.xyz"
 
     shutil.copy(struc_file, working_dir)
     shutil.copy(lib_file, working_dir)

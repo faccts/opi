@@ -7,9 +7,9 @@ from opi.output.core import Output
 @pytest.mark.examples
 @pytest.mark.orca
 @pytest.mark.slow
-def test_exmp047_trj() -> None:
+def test_exmp047_trj(tmp_path) -> None:
     """Ensure that OPI can read multi-xyz (trj) files and run single-point energy calculations on all structures."""
-    output_list = run_exmp047()
+    output_list = run_exmp047(working_dir=tmp_path)
 
     # Assert that 10 outputs are present
     assert len(output_list) == 10

@@ -28,8 +28,6 @@ class PopulationAnalysis(GetItem):
         Electronic state
     irrep : StrictInt | None, default = None
         Irreducible representation of the electronic state
-    atomiccharges: list[list[StrictFiniteFloat]] | None, default = None
-        Charges of the atoms according to the population analysis
     """
 
     natoms: StrictPositiveInt | None = None
@@ -39,16 +37,51 @@ class PopulationAnalysis(GetItem):
     mult: StrictPositiveInt | None = None
     state: StrictInt | None = None
     irrep: StrictInt | None = None
+
+
+class PopulationAnalysisWithAtomicCharges(PopulationAnalysis):
+    """
+    Class that extends `PopulationAnalysis` with atomic charges.
+
+    Attributes
+    ----------
+    atomiccharges: list[list[StrictFiniteFloat]] | None, default = None
+        Charges of the atoms according to the population analysis
+    """
+
     atomiccharges: list[list[StrictFiniteFloat]] | None = None
 
 
-class MullikenPopulationAnalysis(PopulationAnalysis):
-    """This class contains the information about the Mulliken population analysis"""
+class MullikenPopulationAnalysis(PopulationAnalysisWithAtomicCharges):
+    """This class contains the information about the Mulliken population analysis
+    Attributes
+    ----------
+    atomiccharges: list[list[StrictFiniteFloat]] | None, default = None
+        Charges of the atoms according to the population analysis
+    """
+
+    pass
 
 
-class LoewdinPopulationAnalysis(PopulationAnalysis):
-    """This class contains the information about the Loewdin population analysis"""
+class LoewdinPopulationAnalysis(PopulationAnalysisWithAtomicCharges):
+    """This class contains the information about the Loewdin population analysis
+
+    Attributes
+    ----------
+    atomiccharges: list[list[StrictFiniteFloat]] | None, default = None
+        Charges of the atoms according to the population analysis
+    """
+
+    pass
 
 
-class ChelpgPopulationAnalysis(PopulationAnalysis):
-    """This class contains the information about the CHELPG population analysis"""
+class ChelpgPopulationAnalysis(PopulationAnalysisWithAtomicCharges):
+    """This class contains the information about the CHELPG population analysis
+
+    Attributes
+    ----------
+    atomiccharges: list[list[StrictFiniteFloat]] | None, default = None
+        Charges of the atoms according to the population analysis
+    """
+
+    pass

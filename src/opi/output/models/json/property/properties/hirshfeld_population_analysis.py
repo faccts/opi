@@ -2,10 +2,12 @@ from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
     StrictNonNegativeFloat,
 )
-from opi.output.models.json.property.properties.population_analysis import PopulationAnalysis
+from opi.output.models.json.property.properties.population_analysis import (
+    PopulationAnalysisWithAtomicCharges,
+)
 
 
-class HirshfeldPopulationAnalysis(PopulationAnalysis):
+class HirshfeldPopulationAnalysis(PopulationAnalysisWithAtomicCharges):
     """
     Has the Information about the Hirshfeld population analysis
 

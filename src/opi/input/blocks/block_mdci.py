@@ -120,10 +120,10 @@ class BlockMdci(Block):
     dodidplot: bool | None = None
     covalpol: bool | None = None
     adld: bool | None = None
-    adld_mulliken: bool | None = None
-    adld_loewdin: bool | None = None
-    adld_hirshfeld: bool | None = None
-    adld_printspin: bool | None = None
+    ad_mulliken: bool | None = None
+    ad_loewdin: bool | None = None
+    ad_hirshfeld: bool | None = None
+    ad_printspin: bool | None = None
     lmoread: bool | None = None
     lmorefprint: bool | None = None
     domdoi: bool | None = None

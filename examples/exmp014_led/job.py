@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from opi.core import Calculator
+from opi.input.blocks import BlockMdci
 from opi.input.simple_keywords import Approximation, AuxBasisSet, BasisSet, Dlpno, Scf, Wft
 from opi.input.structures import Structure
 from opi.output.core import Output
@@ -33,7 +34,12 @@ def run_exmp014(
         Scf.TIGHTSCF,
         Approximation.RIJK,
         Dlpno.LED,
+        Dlpno.ADLD,  # atomic decomposition of london dispersion
+        Dlpno.ADEX,  # atomic decomposition of exchange
     )
+
+    # > Employ different charge schemes for atomic-decompositions
+    calc.input.add_blocks(BlockMdci(ad_loewdin=True, ad_mulliken=True))
 
     calc.write_input()
     calc.run()

@@ -13,4 +13,4 @@ except importlib.metadata.PackageNotFoundError as err:
     __version__ = "0.0.0"  # Fallback for development mode
 
 # // ORCA VERSION
-ORCA_MINIMAL_VERSION = OrcaVersion.from_str("6.1.0-f.0")
+ORCA_MINIMAL_VERSION = OrcaVersion.from_str("6.1.1-f.0")
