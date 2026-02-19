@@ -271,7 +271,9 @@ class BaseRunner:
 
     def check_version(self, *, ignore_errors: bool = False) -> bool | None:
         """
-        Check if the ORCA version of the binary is compatible with the current OPI version.
+        Check if the ORCA version of the main binary is compatible with the current OPI version.
+        ORCA does not include version tags in its auxiliary binaries.
+        Their version is implied from the the main binary.
 
         Parameters
         ----------
