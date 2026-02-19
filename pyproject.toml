@@ -65,8 +65,8 @@ dev = [
 tests = [
     "hypothesis>=6.133.0,<7",
     "jsonschema>=4.24.0,<5",
-    "pytest>=8.3.5,<9",
-    "pytest-randomly>=3.16.0,<4",
+    "pytest>=9,<10",
+    "pytest-randomly>=4,<5",
 ]
 lint = [
     "ruff>=0.11.12",
@@ -112,15 +112,22 @@ docs = [
 
 # ////  PYTEST  ////
 [tool.pytest]
-xfail_strict = true
-strict_markers = true
-
-[tool.pytest.ini_options]
+strict_xfail = true
+testpaths = [
+    "tests",
+]
+addopts = [
+    "--strict-markers",
+]
 markers = [
     "ase: tests that require ASE",
     "examples: tests that run an example",
     "orca: tests that require ORCA",
     "slow: tests that take longer",
+    "output: output side unit tests",
+    "input: input side unit tests",
+    "unit: unit tests",
+    "json_files: Export JSON files with --update-json-files",
 ]
 
 

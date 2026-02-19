@@ -12,6 +12,28 @@ from semantic_version import Version
 
 # needs_sphinx = '1.0'
 
+def git_branch(cwd) -> str:
+    """Returns the git branch name."""
+    try:
+        b = check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=cwd, text=True, timeout=5,
+        ).strip()
+    except CalledProcessError:
+        return "unknown"
+
+    return b
+
+def git_exact_tag(cwd) -> str | None:
+    """Returns the git exact tag name."""
+    try:
+        return check_output(
+            ["git", "describe", "--tags", "--exact-match"],
+            cwd=cwd, text=True, timeout=5,
+        ).strip()
+    except CalledProcessError:
+        return None
+
 extensions = [
     "sphinx-prompt",
     "sphinx.ext.autosectionlabel",
@@ -78,23 +100,30 @@ release_branch = "main"
 # > Disabling git advices
 os.environ["GIT_ADVICE"] = "0"
 try:
-    output = check_output(
-        ["git", "--no-pager", "describe", "--always"],
-        timeout=5,
-        cwd=origin,
-        text=True,
-    )
+    branch = git_branch(origin)
+    tag = git_exact_tag(origin)
 except (CalledProcessError, TimeoutExpired, OSError):
     traceback.print_exc()
     sys.exit(1)
 else:
     try:
-        full_version = Version(version_string=output.strip().removeprefix("v"))
-        # > The short X.Y version.
-        version_short = f"{full_version.major}.{full_version.minor}"
-        # > If version is '1.0.0-*' assume we are on "main" branch or some feature branch based off "main" directly
-        if not (full_version.major == 1 and full_version.minor == 0 and full_version.patch == 0):
-            release_branch = f"release/{version_short}"
+        release_branch = branch if branch != "HEAD" else "main"
+
+        if tag and tag.startswith("v"):
+            version_string = tag.removeprefix("v")
+            full_version = Version(version_string=version_string)
+            version_short = f"{full_version.major}.{full_version.minor}"
+        else:
+            # Not on a release tag
+            if branch == "main":
+                version_short = "nightly"
+            # on a release branch
+            elif branch.startswith("release/"):
+                # e.g. "release/1.0" -> "1.0-dev"
+                version_short = f"{branch.removeprefix('release/')}-dev"
+            # on a feature branch
+            else:
+                version_short = "dev"
     except:
         traceback.print_exc()
         sys.exit(1)

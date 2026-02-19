@@ -21,10 +21,6 @@ class CalcInfo(GetItem):
         Numbers of atoms in the molecule
     numofelectrons: StrictNonNegativeInt | None, default = None
         Number of electrons in the molecule
-    numoffcelectrons: StrictNonNegativeInt | None, default = None
-        Number of fc electrons
-    numofcorrelectrons: StrictNonNegativeInt | None, default = None
-        Number of corr electrons
     numofbasisfuncts: PositiveInt | None, default = None
         Number of basis function
     numofauxcbasisfuncts: StrictNonNegativeInt | None, default = None
@@ -41,8 +37,6 @@ class CalcInfo(GetItem):
     mult: StrictPositiveInt | None = None
     numofatoms: StrictPositiveInt | None = None
     numofelectrons: StrictNonNegativeInt | None = None
-    numoffcelectrons: StrictNonNegativeInt | None = None
-    numofcorrelectrons: StrictNonNegativeInt | None = None
     numofbasisfuncts: StrictNonNegativeInt | None = None
     numofauxcbasisfuncts: StrictNonNegativeInt | None = None
     numofauxjbasisfuncts: StrictNonNegativeInt | None = None

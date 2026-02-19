@@ -89,6 +89,8 @@ class Output:
         JSON tree of read from `<basename>.json`.
     do_redump_jsons: bool, default: False
         Redump JSONs files after parsing. This is mostly meant for debugging.
+    config_dict : dict[str, Any] | None, default: None
+        Config dict class used in getter functions for creating json files with desired integrals.
     """
 
     def __init__(
@@ -145,6 +147,9 @@ class Output:
         # > // PARSED JSON TREES
         self.results_properties: PropertyResults | None = None
         self.results_gbw: list[GbwResults] | None = None
+
+        # > // CONFIG DICT
+        self.config_dict: dict[str, Any] | None = None
 
         # // CREATE AND PARSE JSONS FILES
         if parse:
@@ -2009,14 +2014,19 @@ class Output:
         Parameters
         ----------
         recreate_json : bool, default = False
-            If True, recreate the gbw json file and request (exclusively) the overlap integrals to be included.
+            If True, recreate the gbw json file and request the overlap integrals to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
-            config_dict = {"1elIntegrals": ["S"]}
-            self.recreate_gbw_results(config_dict, gbw_index)
+            if self.config_dict is None:
+                self.config_dict = {}
+            if "1elIntegrals" not in self.config_dict:
+                self.config_dict["1elIntegrals"] = []
+            self.config_dict["1elIntegrals"].append("S")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get overlap from gbw json files
         overlap_list = self._safe_get("results_gbw", gbw_index, "molecule", "s_matrix")
@@ -2036,14 +2046,19 @@ class Output:
         Parameters
         ----------
         recreate_json : bool, default = False
-            If True, recreate the gbw json file and request (exclusively) the hcore integrals to be included.
+            If True, recreate the gbw json file and request the hcore integrals to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
-            config_dict = {"1elIntegrals": ["H"]}
-            self.recreate_gbw_results(config_dict, gbw_index)
+            if self.config_dict is None:
+                self.config_dict = {}
+            if "1elIntegrals" not in self.config_dict:
+                self.config_dict["1elIntegrals"] = []
+            self.config_dict["1elIntegrals"].append("H")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get hcore from gbw json files
         hcore_list = self._safe_get("results_gbw", gbw_index, "molecule", "h_matrix")
@@ -2062,14 +2077,19 @@ class Output:
         Parameters
         ----------
         recreate_json : bool, default = False
-            If True, recreate the gbw json file and request (exclusively) the fock correction integrals to be included.
+            If True, recreate the gbw json file and request the fock correction integrals to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
-            config_dict = {"FockMatrix": ["F"]}
-            self.recreate_gbw_results(config_dict, gbw_index)
+            if self.config_dict is None:
+                self.config_dict = {}
+            if "FockMatrix" not in self.config_dict:
+                self.config_dict["FockMatrix"] = []
+            self.config_dict["FockMatrix"].append("F")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get hcore from gbw json files
         fock_list = self._safe_get("results_gbw", gbw_index, "molecule", "f_matrix")
@@ -2088,14 +2108,19 @@ class Output:
         Parameters
         ----------
         recreate_json : bool, default = False
-            If True, recreate the gbw json file and request (exclusively) J to be included.
+            If True, recreate the gbw json file and request J to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
-            config_dict = {"FockMatrix": ["J"]}
-            self.recreate_gbw_results(config_dict, gbw_index)
+            if self.config_dict is None:
+                self.config_dict = {}
+            if "FockMatrix" not in self.config_dict:
+                self.config_dict["FockMatrix"] = []
+            self.config_dict["FockMatrix"].append("J")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get hcore from gbw json files
         j_list = self._safe_get("results_gbw", gbw_index, "molecule", "j_matrix")
@@ -2114,14 +2139,19 @@ class Output:
         Parameters
         ----------
         recreate_json : bool, default = False
-            If True, recreate the gbw json file and request (exclusively) K to be included.
+            If True, recreate the gbw json file and request K to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
             Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
-            config_dict = {"FockMatrix": ["K"]}
-            self.recreate_gbw_results(config_dict, gbw_index)
+            if self.config_dict is None:
+                self.config_dict = {}
+            if "FockMatrix" not in self.config_dict:
+                self.config_dict["FockMatrix"] = []
+            self.config_dict["FockMatrix"].append("K")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get hcore from gbw json files
         k_list = self._safe_get("results_gbw", gbw_index, "molecule", "k_matrix")

@@ -51,9 +51,7 @@
                 #########################################################
 
 
-                         Program Version 6.1.0  -  RELEASE   -
-                                (GIT: $679e74b$)
-                          ($2025-06-10 18:02:51 +0200$)
+                         Program Version 6.1.1-f.0  -   RELEASE   -
 
 
  With contributions from (in alphabetic order):
@@ -171,10 +169,10 @@ interface, adapt or use parts of their codes:
 
 
   ***********************************
-  * Starting time: Thu Aug 28 15:31:57 2025
-  * Host name:     hn-tuxedo
-  * Process ID:    43761
-  * Working dir.:  /home/hagen-neugebauer/devel/github/opi/examples/exmp045_existing_calc
+  * Starting time: Tue Feb 10 18:04:34 2026
+  * Host name:     tite-faccts
+  * Process ID:    562097
+  * Working dir.:  /home/tite/Repos/opi_project/opi/examples/exmp001_scf/RUN
   ***********************************
 
 ================================================================================
@@ -198,13 +196,18 @@ NAME = job.inp
 |  3> !def2-svp
 |  4> !sp
 |  5> 
-|  6> * xyz 0 1
-|  7> O            -3.5662600000000002             1.7763899999999999             0.0000000000000000
-|  8> H            -2.5962600000000000             1.7763899999999999             0.0000000000000000
-|  9> H            -3.8895900000000001             1.3604000000000001            -0.8144400000000001
-| 10> *
-| 11> 
-| 12>                          ****END OF INPUT****
+|  6> %output
+|  7>     jsonpropfile True
+|  8>     jsongbwfile True
+|  9> end
+| 10> 
+| 11> * xyz 0 1
+| 12> O            -3.5662600000000002             1.7763899999999999             0.0000000000000000
+| 13> H            -2.5962600000000000             1.7763899999999999             0.0000000000000000
+| 14> H            -3.8895900000000001             1.3604000000000001            -0.8144400000000001
+| 15> *
+| 16> 
+| 17>                          ****END OF INPUT****
 ================================================================================
 
                        ****************************
@@ -326,7 +329,7 @@ Calculating Nuclear repulsion               ... done (  0.0 sec) ENN=      9.062
 
 Diagonalization of the overlap matrix:
 Smallest eigenvalue                        ... 3.975e-02
-Time for diagonalization                   ...    0.001 sec
+Time for diagonalization                   ...    0.000 sec
 Threshold for overlap eigenvalues          ... 1.000e-07
 Number of eigenvalues below threshold      ... 0
 Time for construction of square roots      ...    0.000 sec
@@ -354,7 +357,7 @@ Average number of grid points per atom       ...     4251
 Grids setup in   0.0 sec
 Initializing property integral containers    ... done (  0.0 sec)
 
-SHARK setup successfully completed in   0.0 seconds
+SHARK setup successfully completed in   0.1 seconds
 
 Maximum memory used throughout the entire STARTUP-calculation: 6.8 MB
 -------------------------------------------------------------------------------
@@ -471,21 +474,21 @@ Maximum memory used throughout the entire GUESS-calculation: 3.5 MB
 Iteration    Energy (Eh)           Delta-E    RMSDP     MaxDP     DIISErr   Damp  Time(sec)
 -------------------------------------------------------------------------------------------
                ***  Starting incremental Fock matrix formation  ***
-    1    -75.8668995918862521     0.00e+00  8.93e-03  6.45e-02  3.12e-01  0.700   0.0
-    2    -75.9031744718411971    -3.63e-02  6.02e-03  4.46e-02  1.88e-01  0.700   0.0
+    1    -75.8668995918862805     0.00e+00  8.93e-03  6.45e-02  3.12e-01  0.700   0.0
+    2    -75.9031744718412256    -3.63e-02  6.02e-03  4.46e-02  1.88e-01  0.700   0.0
                                ***Turning on AO-DIIS***
-    3    -75.9225238823746480    -1.93e-02  2.32e-03  2.01e-02  1.04e-01  0.700   0.0
-    4    -75.9341867661750882    -1.17e-02  1.43e-03  1.30e-02  7.05e-02  0.700   0.0
-    5    -75.9419153168874743    -7.73e-03  3.39e-03  3.12e-02  5.04e-02  0.000   0.0
-    6    -75.9593008772059051    -1.74e-02  3.44e-04  2.22e-03  4.29e-03  0.000   0.0
+    3    -75.9225238823747475    -1.93e-02  2.32e-03  2.01e-02  1.04e-01  0.700   0.0
+    4    -75.9341867661752730    -1.17e-02  1.43e-03  1.30e-02  7.05e-02  0.700   0.0
+    5    -75.9419153168875880    -7.73e-03  3.39e-03  3.12e-02  5.04e-02  0.000   0.0
+    6    -75.9593008772060472    -1.74e-02  3.44e-04  2.22e-03  4.29e-03  0.000   0.0
                               *** Initializing SOSCF ***
 ---------------------------------------S-O-S-C-F--------------------------------------
 Iteration    Energy (Eh)           Delta-E    RMSDP     MaxDP     MaxGrad    Time(sec)
 --------------------------------------------------------------------------------------
-    7    -75.9593283435524000    -2.75e-05  2.03e-04  1.11e-03  1.54e-03     0.0
+    7    -75.9593283435525706    -2.75e-05  2.03e-04  1.11e-03  1.54e-03     0.0
                *** Restarting incremental Fock matrix formation ***
-    8    -75.9593343153086522    -5.97e-06  8.45e-05  5.67e-04  3.66e-04     0.0
-    9    -75.9593349856426130    -6.70e-07  6.18e-05  3.21e-04  1.62e-04     0.0
+    8    -75.9593343153089080    -5.97e-06  8.45e-05  5.67e-04  3.66e-04     0.0
+    9    -75.9593349856428404    -6.70e-07  6.18e-05  3.21e-04  1.62e-04     0.0
                  **** Energy Check signals convergence ****
 
                *****************************************************
@@ -499,17 +502,17 @@ Iteration    Energy (Eh)           Delta-E    RMSDP     MaxDP     MaxGrad    Tim
 TOTAL SCF ENERGY
 ----------------
 
-Total Energy       :        -75.95933513032539 Eh           -2066.95859 eV
+Total Energy       :        -75.95933513032561 Eh           -2066.95859 eV
 
 Components:
 Nuclear Repulsion  :          9.06276653714852 Eh             246.61041 eV
-Electronic Energy  :        -85.02210166747390 Eh           -2313.56901 eV
-One Electron Energy:       -122.82508602075809 Eh           -3342.24051 eV
+Electronic Energy  :        -85.02210166747413 Eh           -2313.56901 eV
+One Electron Energy:       -122.82508602075832 Eh           -3342.24051 eV
 Two Electron Energy:         37.80298435328419 Eh            1028.67150 eV
 
 Virial components:
-Potential Energy   :       -151.67667440499605 Eh           -4127.33214 eV
-Kinetic Energy     :         75.71733927467068 Eh            2060.37355 eV
+Potential Energy   :       -151.67667440499662 Eh           -4127.33214 eV
+Kinetic Energy     :         75.71733927467099 Eh            2060.37355 eV
 Virial Ratio       :          2.00319604278192
 
 ---------------
@@ -633,7 +636,7 @@ LOEWDIN REDUCED ORBITAL CHARGES
 
   ATOM       NA         ZA         QA         VA         BVA        FA
   0 O      8.3762     8.0000    -0.3762     1.9755     1.9755    -0.0000
-  1 H      0.8119     1.0000     0.1881     0.9955     0.9955    -0.0000
+  1 H      0.8119     1.0000     0.1881     0.9955     0.9955     0.0000
   2 H      0.8119     1.0000     0.1881     0.9955     0.9955     0.0000
 
   Mayer bond orders larger than 0.100000
@@ -645,27 +648,27 @@ TIMINGS
 
 Total SCF time: 0 days 0 hours 0 min 0 sec 
 
-Total time                  ....       0.038 sec
-Sum of individual times     ....       0.032 sec  ( 84.6%)
+Total time                  ....       0.063 sec
+Sum of individual times     ....       0.048 sec  ( 75.7%)
 
-SCF preparation             ....       0.012 sec  ( 31.6%)
-Fock matrix formation       ....       0.016 sec  ( 42.7%)
-  Startup                   ....       0.000 sec  (  0.7% of F)
-  Coulomb+Exchange Fock     ....       0.017 sec  (102.8% of F)
+SCF preparation             ....       0.016 sec  ( 26.2%)
+Fock matrix formation       ....       0.024 sec  ( 37.7%)
+  Startup                   ....       0.000 sec  (  1.3% of F)
+  Coulomb+Exchange Fock     ....       0.024 sec  (100.7% of F)
 Diagonalization             ....       0.000 sec  (  0.0%)
-Density matrix formation    ....       0.001 sec  (  1.5%)
+Density matrix formation    ....       0.002 sec  (  3.2%)
 Total Energy calculation    ....       0.000 sec  (  0.3%)
-Population analysis         ....       0.001 sec  (  1.9%)
-Orbital Transformation      ....       0.000 sec  (  0.6%)
+Population analysis         ....       0.001 sec  (  1.2%)
+Orbital Transformation      ....       0.001 sec  (  0.9%)
 Orbital Orthonormalization  ....       0.000 sec  (  0.0%)
-DIIS solution               ....       0.002 sec  (  5.1%)
-SOSCF solution              ....       0.000 sec  (  1.0%)
-Finished LeanSCF after   0.0 sec
+DIIS solution               ....       0.003 sec  (  4.2%)
+SOSCF solution              ....       0.001 sec  (  2.0%)
+Finished LeanSCF after   0.1 sec
 
-Maximum memory used throughout the entire LEANSCF-calculation: 6.2 MB
+Maximum memory used throughout the entire LEANSCF-calculation: 6.1 MB
 
 -------------------------   --------------------
-FINAL SINGLE POINT ENERGY       -75.959335130325
+FINAL SINGLE POINT ENERGY       -75.959335130326
 -------------------------   --------------------
 
 
@@ -732,7 +735,7 @@ Method             : SCF
 Type of density    : Electron Density
 Multiplicity       :   1
 Irrep              :   0
-Energy             :   -75.9593351303253854 Eh
+Energy             :   -75.9593351303256128 Eh
 Basis              : AO
                                 X                 Y                 Z
 Electronic contribution:     -0.068853228       0.044292161       0.086716580
@@ -761,6 +764,7 @@ x,y,z [Debye]:     0.000005    -2.066582     0.000000
 Dipole moment calculation done in   0.0 sec 
 
 Maximum memory used throughout the entire PROP-calculation: 1.4 MB
+Converting job.gbw to JSON (see job.2jsonout) ... done
 
 --------------------------------
 SUGGESTED CITATIONS FOR THIS RUN
@@ -781,13 +785,20 @@ Therefore, if you are a happy ORCA user, please consider citing a few of the pap
 In addition to the list printed below, the program has created the file job.bibtex that contains the list in bibtex format
 You can import this file easily into all common literature databanks and citation aid programs
 
+It goes without saying that in many instances, there are alternative algorithms to achieve similar
+results as the ones you have gotten from ORCA. It is, of course, also the case that in some instances
+ORCA just re-implements algorithms worked out by others. We are fully aware of that and we are also
+fully appreciative of our colleagues work. Hence this citation list should not be read as indicating
+that the listed papers, which are focused on our own work, are the only ones worth citing. It simply
+meant to make it easier for users to cite ORCA specific papers. It is not a substitute for doing your
+own literature research and citing the relevant literature in a scientifically appropriate manner.
 
 List of essential papers. We consider these as the minimum necessary citations
 
   1. Neese, F.
      Software update: the ORCA program system, version 6.0
      WIRES Comput. Molec. Sci. 2025 15(1), e70019
-     doi.org/10.1002/wcms.7019
+     doi.org/10.1002/wcms.70019
 
 List of papers to cite with high priority. The work reported in these papers was absolutely
 necessary for this run to complete.
@@ -829,9 +840,9 @@ List of optional additional citations
 
 Timings for individual modules:
 
-Sum of individual times          ...        0.174 sec (=   0.003 min)
-Startup calculation              ...        0.065 sec (=   0.001 min)  37.3 %
-SCF iterations                   ...        0.086 sec (=   0.001 min)  49.6 %
-Property calculations            ...        0.023 sec (=   0.000 min)  13.1 %
+Sum of individual times          ...        0.225 sec (=   0.004 min)
+Startup calculation              ...        0.072 sec (=   0.001 min)  32.0 %
+SCF iterations                   ...        0.122 sec (=   0.002 min)  53.9 %
+Property calculations            ...        0.032 sec (=   0.001 min)  14.1 %
                              ****ORCA TERMINATED NORMALLY****
-TOTAL RUN TIME: 0 days 0 hours 0 minutes 0 seconds 230 msec
+TOTAL RUN TIME: 0 days 0 hours 0 minutes 0 seconds 314 msec

@@ -6,7 +6,8 @@ from opi.input.structures import Structure
 
 @pytest.mark.examples
 @pytest.mark.orca
-def test_exmp030_eom(example_input_file, tmp_path) -> None:
+@pytest.mark.json_files
+def test_exmp030_eom(example_input_file, tmp_path, json_files_exporter) -> None:
     """Ensure EOM-CCSD example runs successfully and produces an energy."""
     # Get input file from example folder
     input_file = example_input_file(run_exmp030)
@@ -17,3 +18,6 @@ def test_exmp030_eom(example_input_file, tmp_path) -> None:
 
     # Assert negative final energy
     assert output.get_final_energy() < 0
+
+    # optional export of json files
+    json_files_exporter.export_jsons_from(tmp_path)
