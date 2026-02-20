@@ -2,6 +2,7 @@ from pydantic import Field, StrictFloat, StrictInt, StrictStr
 
 from opi.output.models.base.get_item import GetItem
 from opi.output.models.json.gbw.properties.atoms import Atoms
+from opi.output.models.json.gbw.properties.densities import Densities
 from opi.output.models.json.gbw.properties.molecular_orbitals import (
     MolecularOrbitals,
 )
@@ -42,6 +43,8 @@ class Molecule(GetItem):
         Pointgroup of the molecule
     td_dft: TdDft | None default = None
         Contains information about td-dft calculation
+    densities: Densities | None default = None
+        Contains the available densities
     """
 
     atoms: list[Atoms] | None = None
@@ -59,6 +62,7 @@ class Molecule(GetItem):
     k_matrix: list[list[list[StrictFloat]]] | None = Field(default=None, alias="k-matrix")
     pointgroup: StrictStr | None = None
     td_dft: list[TdDft] | None = Field(None, alias="td-dft")
+    densities: Densities | None = None
 
     class Configuration:
         allow_population_by_field_name = True

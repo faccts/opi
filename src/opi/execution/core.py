@@ -664,8 +664,8 @@ class Runner:
             # > Create JSON-config file if given:
             if config_fmt := self.format_gbw_json_config(config):
                 config_file.write_text(config_fmt)
-            # > Create JSON from GBW file
-            gbw_filename = str(gbw_json_file.with_suffix(suffix))
+            # > Create JSON from GBW file - Use only the filename to not confuse orca
+            gbw_filename = str(gbw_json_file.with_suffix(suffix).name)
             self.run_orca_2json([gbw_filename])
 
     @staticmethod

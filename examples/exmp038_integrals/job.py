@@ -59,6 +59,8 @@ def run_exmp038(
     print(output.get_int_j(recreate_json=True))
     print("Printing Exchange matrix K")
     print(output.get_int_k(recreate_json=True))
+    print("Printing Density matrix")
+    print(output.get_scf_density(recreate_json=True))
 
     return output
 
