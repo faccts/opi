@@ -1,11 +1,7 @@
 # Tests
 
 This directory contains the test suite for **OPI**.\
-Tests are executed via **nox**, typically using **uv**.
-
-By default, only tests that **do not require ORCA** are run.\
-Tests that require ORCA must be requested explicitly and are never run
-in CI.
+This project uses the Pytest framework.
 
 ------------------------------------------------------------------------
 
@@ -19,13 +15,12 @@ OPI distinguishes between two main kinds of tests:
     -   Output-side tests (JSON → Pydantic models → getters)
     -   General unit tests but no input formatting tests
 2.  **Example tests (local-only)**\
-    These tests execute the examples using ORCA and can therefore only be run locally.
+    These tests execute the examples using ORCA.
     -   Used for end-to-end validation
     -   Also used to generate/update JSON files for output unit tests in the CI
-    -   Must be explicitly requested (marker `examples`)
 
-Example code lives in the top-level `examples/` directory but is
-**imported and executed by tests** defined under `tests/examples`.
+Example code lives in the top-level `examples/` directory while
+the corresponding tests are defined in `tests/examples`.
 
 ------------------------------------------------------------------------
 
@@ -35,23 +30,14 @@ Tests are run via **nox**. A typical invocation is:
 
     uv run nox -s tests
 
-### Default behavior (`-s tests`)
-
-this executes all tests.
+This executes all tests.
 
 Running
 
     uv run nox -s unit_tests
 
-Will execute only the unit tests.
-This is the mode used in CI.
-
-------------------------------------------------------------------------
-
-## ORCA example tests
-
-Tests that require a local ORCA installation marked by `orca` are run 
-with the default session `tests`
+will execute only the unit tests.
+This is the mode typically used in CI.
 
 ------------------------------------------------------------------------
 
@@ -106,7 +92,7 @@ The following pytest markers are used:
     Tests that require **ASE**
 
 -   `examples`\
-    Tests that execute example workflows
+    Tests that execute examples from the top level `examples/` directory.
 
 -   `orca`\
     Tests that require **ORCA**
@@ -135,6 +121,6 @@ Markers can be combined using standard pytest syntax, for example:
 
 ## CI policy (summary)
 
--   CI runs unit tests only
--   CI does not run ORCA
+-   CI typically runs unit tests only
+-   CI does not run ORCA by default
 -   JSON fixtures ensure output parsing is fully tested in CI
