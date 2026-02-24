@@ -43,7 +43,7 @@ class Molecule(GetItem):
         Pointgroup of the molecule
     td_dft: TdDft | None default = None
         Contains information about td-dft calculation
-    densities: Densities | None default = None
+    densities: Densities | None, default = None
         Contains the available densities
     """
 

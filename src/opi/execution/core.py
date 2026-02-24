@@ -124,7 +124,9 @@ class Runner(BaseRunner):
             timeout=timeout,
         )
 
-    def run_orca_2json(self, args: Sequence[str] = (), /) -> None:
+    def run_orca_2json(
+        self, args: Sequence[str] = (), /, *, working_dir: Path | None = None
+    ) -> None:
         """
         Execute `orca_2json` with given arguments.
 
@@ -133,7 +135,7 @@ class Runner(BaseRunner):
         args : Sequence[str], default: ()
             Arguments to pass to `orca_2json`.
         """
-        self.run(OrcaBinary.ORCA_2JSON, args)
+        self.run(OrcaBinary.ORCA_2JSON, args, cwd=working_dir)
 
     def create_property_json(self, basename: str, /, *, force: bool = False) -> None:
         """
@@ -194,7 +196,7 @@ class Runner(BaseRunner):
                 config_file.write_text(config_fmt)
             # > Create JSON from GBW file - Use only the filename to not confuse orca
             gbw_filename = str(gbw_json_file.with_suffix(suffix).name)
-            self.run_orca_2json([gbw_filename])
+            self.run_orca_2json([gbw_filename], working_dir=gbw_json_file.parent)
 
     @staticmethod
     def format_gbw_json_config(config: dict[str, bool | str | list[str | int]] | None) -> str:
