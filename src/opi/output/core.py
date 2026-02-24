@@ -242,9 +242,9 @@ class Output:
             self.collect_gbw_json_files()
         # // Create missing GBW JSON files
         if do_create_gbw_json is None:
-            self.create_missing_gbw_json()
+            self.create_missing_gbw_json(config=self.config_dict)
         elif do_create_gbw_json:
-            self.create_gbw_json(force=True)
+            self.create_gbw_json(force=True, config=self.config_dict)
 
         # // read the GBW files
         self.gbw_json_data = self._process_json_files(self.gbw_json_files, continue_on_error=True)
@@ -2023,9 +2023,12 @@ class Output:
         if recreate_json:
             if self.config_dict is None:
                 self.config_dict = {}
+            # // 1elIntegrals
             if "1elIntegrals" not in self.config_dict:
                 self.config_dict["1elIntegrals"] = []
-            self.config_dict["1elIntegrals"].append("S")
+            # // S Integrals
+            if "S" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("S")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get overlap from gbw json files
@@ -2055,9 +2058,12 @@ class Output:
         if recreate_json:
             if self.config_dict is None:
                 self.config_dict = {}
+            # // 1elIntegrals
             if "1elIntegrals" not in self.config_dict:
                 self.config_dict["1elIntegrals"] = []
-            self.config_dict["1elIntegrals"].append("H")
+            # // H Integrals
+            if "H" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("H")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get hcore from gbw json files
@@ -2086,12 +2092,14 @@ class Output:
         if recreate_json:
             if self.config_dict is None:
                 self.config_dict = {}
+            # // FockMatrix
             if "FockMatrix" not in self.config_dict:
                 self.config_dict["FockMatrix"] = []
-            self.config_dict["FockMatrix"].append("F")
+            # // F (full Fock matrix)
+            if "F" not in self.config_dict["FockMatrix"]:
+                self.config_dict["FockMatrix"].append("F")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        # > get hcore from gbw json files
         fock_list = self._safe_get("results_gbw", gbw_index, "molecule", "f_matrix")
 
         if fock_list is not None:
@@ -2117,12 +2125,14 @@ class Output:
         if recreate_json:
             if self.config_dict is None:
                 self.config_dict = {}
+            # // FockMatrix
             if "FockMatrix" not in self.config_dict:
                 self.config_dict["FockMatrix"] = []
-            self.config_dict["FockMatrix"].append("J")
+            # // J contribution to Fock matrix
+            if "J" not in self.config_dict["FockMatrix"]:
+                self.config_dict["FockMatrix"].append("J")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        # > get hcore from gbw json files
         j_list = self._safe_get("results_gbw", gbw_index, "molecule", "j_matrix")
 
         if j_list is not None:
@@ -2148,12 +2158,14 @@ class Output:
         if recreate_json:
             if self.config_dict is None:
                 self.config_dict = {}
+            # // FockMatrix
             if "FockMatrix" not in self.config_dict:
                 self.config_dict["FockMatrix"] = []
-            self.config_dict["FockMatrix"].append("K")
+            # // K contribution to Fock matrix
+            if "K" not in self.config_dict["FockMatrix"]:
+                self.config_dict["FockMatrix"].append("K")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        # > get hcore from gbw json files
         k_list = self._safe_get("results_gbw", gbw_index, "molecule", "k_matrix")
 
         if k_list is not None:

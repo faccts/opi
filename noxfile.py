@@ -40,6 +40,17 @@ nox.options.default_venv_backend = "uv"
 # ///         UNIT TESTS: pytest         ///
 # //////////////////////////////////////////
 @nox.session(default=False)
+def unit_tests(session):
+    session.run_install(
+        "uv",
+        "sync",
+        "--group",
+        "tests",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.run("pytest","-m unit", *session.posargs)
+
+@nox.session(default=False)
 def tests(session):
     session.run_install(
         "uv",
@@ -50,6 +61,16 @@ def tests(session):
     )
     session.run("pytest", *session.posargs)
 
+@nox.session(default=False)
+def json_gen(session):
+    session.run_install(
+        "uv",
+        "sync",
+        "--group",
+        "tests",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.run("pytest","-m json_files","--update-json-files", *session.posargs)
 
 # //////////////////////////////////////////
 # ///     STATIC TYPE CHECKING: mypy     ///
