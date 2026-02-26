@@ -1,5 +1,5 @@
 ## Closes Issues
-Closes
+Closes #<issue-id>
 ...
 
 ## Description
