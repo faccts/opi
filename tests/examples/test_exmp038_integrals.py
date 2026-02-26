@@ -49,11 +49,5 @@ def test_exmp038_integrals(example_input_file, tmp_path, json_files_exporter) ->
     assert k.dtype == np.float64
     assert k.ndim == 2
 
-    # scfp
-    scfp = output.get_scf_density(recreate_json=True)
-    assert isinstance(scfp, np.ndarray)
-    assert scfp.dtype == np.float64
-    assert scfp.ndim == 2
-
     # optional export of json files
     json_files_exporter.export_jsons_from(tmp_path)

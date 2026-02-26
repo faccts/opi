@@ -2193,7 +2193,6 @@ class Output:
             # // Densities
             if "Densities" not in self.config_dict:
                 self.config_dict["Densities"] = []
-            self.config_dict["Densities"].append("scfp")
             # // scfp - SCF density matrix P
             if "scfp" not in self.config_dict["Densities"]:
                 self.config_dict["Densities"].append("scfp")
@@ -2203,6 +2202,38 @@ class Output:
 
         if scfp_list is not None:
             return np.array(scfp_list, dtype=np.float64)
+        else:
+            return None
+
+    def get_scf_spin_density(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the SCF spin-density matrix.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request scfr to be included.
+            The request for the density will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+            Non-negative index of gbw file in `self.gbw_json_files` for which densities are requested. Default 0 refers to the main gbw file.
+        """
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            # // Densities
+            if "Densities" not in self.config_dict:
+                self.config_dict["Densities"] = []
+            # // scfr - SCF spin-density matrix
+            if "scfr" not in self.config_dict["Densities"]:
+                self.config_dict["Densities"].append("scfr")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        scfr_list = self._safe_get("results_gbw", gbw_index, "molecule", "densities", "scfr")
+
+        if scfr_list is not None:
+            return np.array(scfr_list, dtype=np.float64)
         else:
             return None
 

@@ -10,7 +10,7 @@ from opi.input.structures import Structure
 from opi.output.core import Output
 
 
-def run_exmp038(
+def run_exmp052(
     structure: Structure | None = None, working_dir: Path | None = Path("RUN")
 ) -> Output:
     # > recreate the working dir
@@ -19,7 +19,7 @@ def run_exmp038(
 
     # > if no structure is given read structure from inp.xyz
     if structure is None:
-        structure = Structure.from_xyz("inp.xyz")
+        structure = Structure.from_xyz("inp.xyz", charge=1, multiplicity=2)
 
     calc = Calculator(basename="job", working_dir=working_dir)
     calc.structure = structure
@@ -49,19 +49,13 @@ def run_exmp038(
         print("SCF DID NOT CONVERGE")
         sys.exit(1)
 
-    print("Printing overlap integrals")
-    print(output.get_int_overlap(recreate_json=True))
-    print("Printing Hcore integrals")
-    print(output.get_int_hcore(recreate_json=True))
-    print("Printing F two-electron integrals")
-    print(output.get_int_f(recreate_json=True))
-    print("Printing Coulomb matrix J")
-    print(output.get_int_j(recreate_json=True))
-    print("Printing Exchange matrix K")
-    print(output.get_int_k(recreate_json=True))
+    print("Printing density matrix")
+    print(output.get_scf_density(recreate_json=True))
+    print("Printing spin-density matrix")
+    print(output.get_scf_spin_density(recreate_json=True))
 
     return output
 
 
 if __name__ == "__main__":
-    run_exmp038()
+    run_exmp052()

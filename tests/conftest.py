@@ -82,6 +82,8 @@ def json_file_list(json_dir: Path) -> list[Path]:
         "property/test_exmp028_nevp2_job.property.json",
         "gbw/test_exmp038_integrals_job.json",
         "property/test_exmp038_integrals_job.property.json",
+        "gbw/test_exmp052_densities_job.json",
+        "property/test_exmp052_densities_job.property.json",
     ]
 
     return [json_dir / f for f in filenames]
