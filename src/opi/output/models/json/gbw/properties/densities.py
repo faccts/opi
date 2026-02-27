@@ -11,7 +11,7 @@ class Densities(GetItem):
     ----------
     scfp: list[list[StrictFloat]]
         Density matrix from SCF.
-    scfp: list[list[StrictFloat]]
+    scfr: list[list[StrictFloat]]
         Spin-density matrix from SCF. (P_alpha - P_beta)
     """
 
