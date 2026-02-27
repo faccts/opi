@@ -6,6 +6,9 @@ The ORCA Python Interface OPI is designed as an open-source community project an
 
 The development of OPI is based on [GitHub](https://github.com/faccts/opi).
 If you want to contribute, we recommend to fork the project and submit your changes and improvements via pull-requests.
+Please use the pull request template. In the template, indicate which issue(s) are closed or affected by your pull request,
+provide a short description of your changes, and document what should be added to the release notes.
+For release notes, the project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Problems and/or bugs are tracked via [GitHub issues](https://github.com/faccts/opi/issues).
 
 ## License & CLA
