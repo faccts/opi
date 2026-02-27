@@ -72,5 +72,5 @@ python3 job.py
 - exmp049_arbitrary_block_variable: Use arbitrary block variable in the SCF block
 - exmp050_docker: Use DOCKER to dock water with water
 - exmp051_libxc: Shows modification of DFT LibXC parameters via the method block
-- exmp052_densities: Perfor UHF calculation and obtain density and spin-density in AO-basis
+- exmp052_densities: Perform UHF calculation and obtain density and spin-density in AO-basis
 
