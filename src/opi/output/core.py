@@ -1993,7 +1993,8 @@ class Output:
         Parameters
         ----------
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which the json file should be created. Default 0 refers to the main gbw file.
+            Index (>= 0) of the gbw file in `self.gbw_json_files` for which the json file should be created.
+            Negative indices are not allowed. Default 0 refers to the main gbw file.
 
         """
         self.create_gbw_json(force=True, config=config_dict, gbw_index=gbw_index)
@@ -2017,7 +2018,8 @@ class Output:
             If True, recreate the gbw json file and request the overlap integrals to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -2052,7 +2054,8 @@ class Output:
             If True, recreate the gbw json file and request the hcore integrals to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -2086,7 +2089,8 @@ class Output:
             If True, recreate the gbw json file and request the fock correction integrals to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -2119,7 +2123,8 @@ class Output:
             If True, recreate the gbw json file and request J to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -2152,7 +2157,8 @@ class Output:
             If True, recreate the gbw json file and request K to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -2185,7 +2191,8 @@ class Output:
             If True, recreate the gbw json file and request scfp to be included.
             The request for the density will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which densities are requested. Default 0 refers to the main gbw file.
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which densities are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
         """
         if recreate_json:
             if self.config_dict is None:
@@ -2217,7 +2224,8 @@ class Output:
             If True, recreate the gbw json file and request scfr to be included.
             The request for the density will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which densities are requested. Default 0 refers to the main gbw file.
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which densities are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
         """
         if recreate_json:
             if self.config_dict is None:
