@@ -116,6 +116,7 @@ class BlockMethod(Block):
     scaldfx: float | None = None
     scalggac: float | None = None
     scalldac: float | None = None
+    scalmp2c: float | None = None
     extparamx: ExternalParam | None = None
     extparamc: ExternalParam | None = None
     extparamxc: ExternalParam | None = None
