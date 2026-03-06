@@ -26,7 +26,9 @@ class CalculationTiming(GetItem):
 
     gstep: StrictNonNegativeFloat | None = None
     gtoint: StrictNonNegativeFloat | None = None
+    mdci: StrictNonNegativeFloat | None = None
     prop: StrictNonNegativeFloat | None = None
+    propint: StrictNonNegativeFloat | None = None
     scf: StrictNonNegativeFloat | None = None
     scfgrad: StrictNonNegativeFloat | None = None
     sum: StrictNonNegativeFloat | None = None
