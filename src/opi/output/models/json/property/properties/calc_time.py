@@ -14,8 +14,12 @@ class CalculationTiming(GetItem):
         Time of geometry steps
     gtoint: StrictNonNegativeFloat | None, default = None
         Time of integral generation
+    mdci: StrictNonNegativeFloat | None = None
+        Time spend in the MDCI modulen
     prop: StrictNonNegativeFloat | None, default = None
         Time of property generation
+    propint: StrictNonNegativeFloat | None, default = None
+        Time to evaluate property integrals
     scf: StrictNonNegativeFloat | None, default = None
         Time of solving the SCF
     scfgrad: StrictNonNegativeFloat | None, default = None
@@ -26,7 +30,9 @@ class CalculationTiming(GetItem):
 
     gstep: StrictNonNegativeFloat | None = None
     gtoint: StrictNonNegativeFloat | None = None
+    mdci: StrictNonNegativeFloat | None = None
     prop: StrictNonNegativeFloat | None = None
+    propint: StrictNonNegativeFloat | None = None
     scf: StrictNonNegativeFloat | None = None
     scfgrad: StrictNonNegativeFloat | None = None
     sum: StrictNonNegativeFloat | None = None

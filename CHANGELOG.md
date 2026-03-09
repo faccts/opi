@@ -3,6 +3,7 @@
 ## [Unreleased] - ReleaseDate
 
 - Improve support for OpenCOSMO-RS (#205)
+- Add missing pydantic fields for calculation timings (#211)
 
 ## [2.0.0] - 2026-02-10
 
