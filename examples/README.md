@@ -73,4 +73,5 @@ python3 job.py
 - exmp050_docker: Use DOCKER to dock water with water
 - exmp051_libxc: Shows modification of DFT LibXC parameters via the method block
 - exmp052_densities: Perform UHF calculation and obtain density and spin-density in AO-basis
+- exmp053_opencosmors: Run OpenCOSMO-RS task 
 

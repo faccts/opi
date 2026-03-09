@@ -2270,3 +2270,25 @@ class Output:
                 break
 
         return ir_dict or None
+
+    def get_free_solvation_energy_opencosmors(self) -> float | None:
+        """
+        Returns the free solvation energy
+
+        Returns
+        -------
+        free_solvation_energy: float | None
+            Free solvation energy, or None if it is not found.
+        """
+        out_jsonfile = self.get_file("_out.json")
+        if not out_jsonfile:
+            raise FileNotFoundError("No out json file found")
+
+        with open(out_jsonfile, "r") as f:
+            out_dict = json.load(f)
+
+        try:
+            free_solv_energy = out_dict["dGsolv"][0][0][0]
+        except (KeyError, IndexError):
+            return None
+        return float(free_solv_energy)
