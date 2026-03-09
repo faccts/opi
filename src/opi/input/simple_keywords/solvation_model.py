@@ -22,3 +22,4 @@ class SolvationModel(SimpleKeywordBox):
 
     CPCM = SolvationModelAndSolvent("CPCM")
     SMD = SolvationModelAndSolvent("SMD")
+    COSMORS = SolvationModelAndSolvent("COSMORS")

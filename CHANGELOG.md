@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased] - ReleaseDate
+
+- Improve support for OpenCOSMO-RS (#205)
+
 ## [2.0.0] - 2026-02-10
 
 ### Breaking Changes
