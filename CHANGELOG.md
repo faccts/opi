@@ -4,6 +4,7 @@
 
 - Improve support for OpenCOSMO-RS (#205)
 - Add missing pydantic fields for calculation timings (#211)
+- Added `scalmp2c` to `BlockMethod` (#212)
 
 ## [2.0.0] - 2026-02-10
 
