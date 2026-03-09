@@ -1,6 +1,6 @@
 import inspect
 from pathlib import Path
-from typing import Any, Set, get_args, get_origin
+from typing import Any, get_args, get_origin
 
 import pytest
 from pydantic import BaseModel
@@ -89,8 +89,8 @@ class TestOutputAttributes:
         assert not output_attr
 
     def get_all_attributes(
-        self, model: type[BaseModel], visited: Set[type] = None, prefix: str = ""
-    ) -> Set[str]:
+        self, model: type[BaseModel], visited: set[type] = None, prefix: str = ""
+    ) -> set[str]:
         """
         Recursively get all attribute names from a Pydantic model, including nested custom types.
         Attribute names include their parent class prefix (e.g., "A.attr1.attr2").
@@ -164,7 +164,7 @@ class TestOutputAttributes:
         depth: int = -1,
         prefix: str | None = None,
         _visited=None,
-    ) -> Set[str]:
+    ) -> set[str]:
         """
         Collect a set of attribute paths whose values are not None.
         - Accepts a single object or a list of objects

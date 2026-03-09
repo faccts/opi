@@ -1,6 +1,6 @@
 import types
 from io import StringIO
-from typing import Any, Optional, TextIO, Type
+from typing import Any, TextIO
 
 
 class TrackingTextIO:
@@ -20,9 +20,9 @@ class TrackingTextIO:
 
     def __exit__(
         self,
-        _exc_type: Optional[Type[BaseException]],
-        _exc_value: Optional[BaseException],
-        _traceback: Optional[types.TracebackType],
+        _exc_type: type[BaseException] | None,
+        _exc_value: BaseException | None,
+        _traceback: types.TracebackType | None,
     ) -> bool | None:
         self._stream.close()
         return None

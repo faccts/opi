@@ -4,9 +4,9 @@ It's mostly based on the ORCA's two JSONs files.
 """
 
 import json
-from collections.abc import Sequence
+from collections.abc import Sequence, Callable
 from pathlib import Path
-from typing import Any, Callable, cast
+from typing import Any, cast
 from warnings import warn
 
 import numpy as np

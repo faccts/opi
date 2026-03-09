@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Tuple
 
 
 @dataclass
@@ -25,7 +24,7 @@ class IrMode:
     wavenumber: float
     eps: float
     intensity: float
-    dipole: Tuple[float, float, float]
+    dipole: tuple[float, float, float]
 
     @classmethod
     def from_string(cls, line: str) -> "IrMode":
