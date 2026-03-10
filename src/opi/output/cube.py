@@ -1,5 +1,5 @@
-from pathlib import Path
 from collections.abc import Iterator
+from pathlib import Path
 
 
 class CubeOutput:

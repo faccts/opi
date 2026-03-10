@@ -4,7 +4,7 @@ It's mostly based on the ORCA's two JSONs files.
 """
 
 import json
-from collections.abc import Sequence, Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, cast
 from warnings import warn

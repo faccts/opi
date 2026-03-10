@@ -3,8 +3,8 @@ Module that contains `Runner` class which facilities execution of ORCA binaries.
 """
 
 import json
-from pathlib import Path
 from collections.abc import Sequence
+from pathlib import Path
 
 from opi.execution.base import BaseRunner
 from opi.lib.orca_binary import OrcaBinary

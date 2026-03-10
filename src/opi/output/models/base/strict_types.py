@@ -17,7 +17,6 @@ StrictNegativeFloat = Annotated[FiniteFloat, Strict(), Field(lt=0)]
 
 StrictPositiveFloatOrMinusOne = Annotated[
     Annotated[FiniteFloat, Strict(), Field(gt=0)]  # Positive float
-    | Literal[-1]
-    ,
+    | Literal[-1],
     Field(description="Positive float or -1"),
 ]

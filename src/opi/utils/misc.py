@@ -1,9 +1,9 @@
 import os
 import platform
 import sys
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, cast
-from collections.abc import Mapping, Sequence
 
 from opi import ORCA_MINIMAL_VERSION
 from opi.lib.orca_binary import OrcaBinary

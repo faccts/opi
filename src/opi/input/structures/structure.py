@@ -1,5 +1,5 @@
 import re
-from collections.abc import Iterator, Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast

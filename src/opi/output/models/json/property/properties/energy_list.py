@@ -1,5 +1,5 @@
-from typing import ClassVar
 from collections.abc import Iterator
+from typing import ClassVar
 
 from pydantic import ConfigDict, RootModel
 

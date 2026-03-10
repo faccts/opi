@@ -14,11 +14,11 @@ R:
 import os
 import shutil
 import subprocess
+from collections.abc import Callable, Sequence
 from contextlib import nullcontext
 from io import TextIOWrapper
 from pathlib import Path
 from subprocess import CompletedProcess
-from collections.abc import Callable, Sequence
 from typing import Any, Concatenate, ParamSpec, TypeVar, cast
 
 from opi import ORCA_MINIMAL_VERSION

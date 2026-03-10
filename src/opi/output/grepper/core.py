@@ -1,4 +1,4 @@
-from collections.abc import Iterator, Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from re import IGNORECASE, Pattern, RegexFlag, compile, escape, split
 from typing import Any
