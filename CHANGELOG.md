@@ -2,9 +2,18 @@
 
 ## [Unreleased] - ReleaseDate
 
+### Added
 - Improve support for OpenCOSMO-RS (#205)
 - Add missing pydantic fields for calculation timings (#211)
 - Added `scalmp2c` to `BlockMethod` (#212)
+- Add SCF (spin-)density matrix to `Output` (#204)
+
+### Changed
+- Refactored methods from Runner into BaseRunner (#193)
+
+### Deprecated
+### Removed
+### Fixed
 
 ## [2.0.0] - 2026-02-10
 
