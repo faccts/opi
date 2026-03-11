@@ -140,8 +140,8 @@ class OrcaMmRunner(BaseRunner):
         OrcaMmException
             If `raise_on_error` is set and `orca_mm` reports an error.
         """
-        with tempfile.NamedTemporaryFile() as tmp:
-            path = Path(tmp.name)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "stderr.txt"
             self.run(
                 OrcaBinary.ORCA_MM,
                 [f"-{command}"] + list(arguments),
