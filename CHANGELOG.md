@@ -14,6 +14,7 @@
 ### Deprecated
 ### Removed
 ### Fixed
+- Updated deprecated `typing` types to be compliant with Python >=3.11 guidelines (#216)
 
 ## [2.0.0] - 2026-02-10
 
