@@ -18,6 +18,7 @@ from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
 from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
+    get_error_message,
     get_float_from_line,
     get_lines_from_block,
     has_geometry_optimization_converged,
@@ -671,6 +672,13 @@ class Output:
             return has_terminated_normally(outfile)
         except FileNotFoundError:
             return False
+
+    def error_message(self) -> str | None:
+        outfile = self.get_outfile()
+        try:
+            return get_error_message(outfile)
+        except FileNotFoundError:
+            return "Output File Not Found"
 
     def scf_converged(self) -> bool:
         """
