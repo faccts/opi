@@ -107,8 +107,8 @@ This CLA is an adapted industry-standard CLA (Apache CLA) with minor modificatio
 
 If you use OPI in your research, please consider citing the following:
 
-- **Software:** [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.15688425-blue)](https://doi.org/10.5281/zenodo.15688425)
-- **OPI 2.0 Paper:** [![DOI](https://img.shields.io/badge/DOI-10.1021%2Faces.jctc.5c02141-blue)](https://doi.org/10.1021/acs.jctc.5c02141)
+- **Software:** https://doi.org/10.5281/zenodo.15688425
+- **OPI 2.0 Paper:** https://doi.org/10.1021/acs.jctc.5c02141
 
 ## Contact
 
