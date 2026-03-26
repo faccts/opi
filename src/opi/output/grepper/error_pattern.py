@@ -23,6 +23,7 @@ class ErrorPattern:
     message: str
     extractor: Callable[[str], str] | None = None
 
+
 # > extractor functions for more elaborate error messages
 def _extract_keyword(line: str) -> str:
     # e.g. parse "Unknown keyword: BLYPP" from the matched line
