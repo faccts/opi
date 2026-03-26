@@ -27,4 +27,4 @@ class ErrorPattern:
 # > extractor functions for more elaborate error messages
 def _extract_keyword(line: str) -> str:
     # e.g. parse "Unknown keyword: BLYPP" from the matched line
-    return f"Unknown/duplicate keyword: {line.split()[-1].strip()}"
+    return f"Unknown/duplicate keyword(s): {line.strip()}"
