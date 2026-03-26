@@ -7,3 +7,22 @@ version: v1.0
 doi: 10.5281/zenodo.15688425
 date-released: 2025-06-17
 url: "https://github.com/faccts/opi"
+references:
+- type: article
+  authors:
+  - family-names: "Tetenberg"
+    given-names: "Tim"
+  - family-names: "Neugebauer"
+    given-names: "Hagen"
+  - family-names: "Plett"
+    given-names: "Christoph"
+  - family-names: "Santhosh"
+    given-names: "Nakul"
+  - family-names: "Bursch"
+    given-names: "Markus"
+  - family-names: "Riplinger"
+    given-names: "Christoph"
+  title: "ORCA Meets Python─The ORCA Python Interface OPI"
+  journal: "Journal of Chemical Theory and Computation"
+  doi: 10.1021/acs.jctc.5c02141
+  url: "https://doi.org/10.1021/acs.jctc.5c02141"
