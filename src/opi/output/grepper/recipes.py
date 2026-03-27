@@ -21,10 +21,7 @@ def get_error_messages(file_name: Path) -> list[str] | None:
         if match:
             if pattern.extractor:
                 # > If an extractor function is defined we get additional context and call the extractor
-                context_line = grepper.search(
-                    pattern.grep_string, case_sensitive=True, skip_lines=1
-                )
-                detail = pattern.extractor(context_line[-1])
+                detail = pattern.extractor(pattern.grep_string, grepper)
             else:
                 # > If no extractor function is defined we just print the designated message
                 detail = pattern.message

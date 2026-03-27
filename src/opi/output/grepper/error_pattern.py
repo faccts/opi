@@ -2,6 +2,8 @@
 from dataclasses import dataclass
 from typing import Callable
 
+from opi.output.grepper.core import Grepper
+
 
 @dataclass
 class ErrorPattern:
@@ -21,10 +23,19 @@ class ErrorPattern:
 
     grep_string: str
     message: str
-    extractor: Callable[[str], str] | None = None
+    extractor: Callable[[str, Grepper], str] | None = None
 
 
 # > extractor functions for more elaborate error messages
-def _extract_keyword(line: str) -> str:
-    # e.g. parse "Unknown keyword: BLYPP" from the matched line
-    return f"Unknown/duplicate keyword(s): {line.strip()}"
+
+
+def _simple_keywords(grep_string: str, grepper: Grepper) -> str:
+    """parse "Unknown keyword: BLYPP" from the matched line"""
+    match = grepper.search(grep_string, case_sensitive=True, skip_lines=1)
+    return f"Unknown/duplicate keyword(s): {match[0]}" if match else ""
+
+
+def _unknown_block(grep_string: str, grepper: Grepper) -> str:
+    """"""
+    match = grepper.search(grep_string, case_sensitive=True, skip_lines=0)
+    return f"Unknown Block: {match[0].split()[-1]}" if match else ""
