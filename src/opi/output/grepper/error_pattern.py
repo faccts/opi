@@ -32,10 +32,20 @@ class ErrorPattern:
 def _simple_keywords(grep_string: str, grepper: Grepper) -> str:
     """parse "Unknown keyword: BLYPP" from the matched line"""
     match = grepper.search(grep_string, case_sensitive=True, skip_lines=1)
-    return f"Unknown/duplicate keyword(s): {match[0]}" if match else ""
+    return f"Unknown/duplicate simple keyword(s): {match[0]}" if match else ""
 
 
 def _unknown_block(grep_string: str, grepper: Grepper) -> str:
     """"""
     match = grepper.search(grep_string, case_sensitive=True, skip_lines=0)
-    return f"Unknown Block: {match[0].split()[-1]}" if match else ""
+    return f"Unknown block: {match[0].split()[-1]}" if match else ""
+
+def _unknown_block_key(grep_string: str, grepper: Grepper) -> str:
+    """parse "Unknown keyword: BLYPP" from the matched line"""
+    match = grepper.search(grep_string, case_sensitive=True, skip_lines=1)
+    return f"Unknown block key: {match[0].split(':')[-1]}" if match else ""
+
+def _unknown_block_value(grep_string: str, grepper: Grepper) -> str:
+    """"""
+    match = grepper.search(grep_string, case_sensitive=True, skip_lines=1)
+    return f"Unknown block value: {match[0].split(':')[-1]}" if match else ""

@@ -1,4 +1,4 @@
-from opi.output.grepper.error_pattern import ErrorPattern, _simple_keywords, _unknown_block
+from opi.output.grepper.error_pattern import ErrorPattern, _simple_keywords, _unknown_block, _unknown_block_key, _unknown_block_value
 
 # > Success strings
 TERMINATED_NORMALLY = "****ORCA TERMINATED NORMALLY****"
@@ -22,11 +22,11 @@ ERROR_PATTERNS: list[ErrorPattern] = [
         "An unrecognized or duplicated simple keyword was requested",
         extractor=_simple_keywords,
     ),
-    ErrorPattern("Unknown identifier", "An unknown block was requested", extractor=_unknown_block),
+    ErrorPattern("Invalid assignment", "An invalid value was requested in a block", extractor=_unknown_block_value),
     ErrorPattern(
-        "Unknown identifier in", "An unknown block option was requested", extractor=_unknown_block
+        "Unknown identifier in", "An unknown block option was requested", extractor=_unknown_block_key
     ),
-    ErrorPattern("Invalid assignment", "An invalid value was requested in a block"),
+    ErrorPattern("Unknown identifier", "An unknown block was requested", extractor=_unknown_block),
     ErrorPattern(
         "The Coupled-Cluster iterations have NOT converged", "Coupled-Cluster did not converge"
     ),
