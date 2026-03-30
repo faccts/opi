@@ -35,7 +35,7 @@ def unknown_block_value(
     # calc.input.add_arbitrary_string("!hf hf hf")
     # calc.input.add_arbitrary_string("%novalidblock")
     scf_block = BlockScf()
-    scf_block.add_option(name="maxiter", val="invalid_key")
+    scf_block.add_option(name="maxiter", val="invalid_value")
     calc.input.add_blocks(scf_block)
 
     # > write the input and run the calculation
