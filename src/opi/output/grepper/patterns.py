@@ -4,6 +4,7 @@ from opi.output.grepper.error_pattern import (
     _unknown_block,
     _unknown_block_key,
     _unknown_block_value,
+    _invalid_line
 )
 
 # > Success strings
@@ -21,7 +22,7 @@ HAS_ABORTING = "aborting"
 # > In decreasing order of priority
 ERROR_PATTERNS: list[ErrorPattern] = [
     ErrorPattern(
-        "ERROR: expect a '$', '!', '%', '*' or '[' in the input", "Invalid input line in ORCA input"
+        "ERROR: expect a '$', '!', '%', '*' or '[' in the input", "Invalid input line in ORCA input",extractor=_invalid_line
     ),
     ErrorPattern(
         "UNRECOGNIZED OR DUPLICATED KEYWORD(S) IN SIMPLE INPUT LINE",
