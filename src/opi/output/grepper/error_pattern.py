@@ -41,7 +41,7 @@ def _invalid_line(grep_string: str, grepper: Grepper) -> str:
 
 
 def _simple_keywords(grep_string: str, grepper: Grepper) -> str:
-    """parse "Unknown keyword: BLYPP" from the matched line"""
+    """Get the duplicate or unknown keywords from the ORCA output file."""
     match = grepper.search(grep_string, case_sensitive=True, skip_lines=1)
     return f"Unknown/duplicate simple keyword(s): {match[0]}" if match else ""
 
