@@ -43,6 +43,10 @@ ERROR_PATTERNS: list[ErrorPattern] = [
     ),
     ErrorPattern("Unknown identifier", "An unknown block was requested", extractor=_unknown_block),
     ErrorPattern(
+        "You must have a [COORDS] ... [END] block in your input",
+        "No coordinates in the ORCA input.",
+    ),
+    ErrorPattern(
         "The Coupled-Cluster iterations have NOT converged", "Coupled-Cluster did not converge"
     ),
     ErrorPattern("CIS/TDA-DFT did not converge", "CIS/TDA-DFT did not converge"),

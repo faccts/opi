@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-import shutil
 import sys
-from pathlib import Path
+
+import pytest
 
 from opi.core import Calculator
 from opi.input.simple_keywords import BasisSet, Method, Scf, Task
@@ -10,19 +10,15 @@ from opi.input.structures import Structure
 from opi.output.core import Output
 
 
-def unknown_simple_keyword(
-    structure: Structure | None = None, working_dir: Path | None = Path("RUN")
-) -> Output:
-    # > recreate the working dir
-    shutil.rmtree(working_dir, ignore_errors=True)
-    working_dir.mkdir()
+@pytest.mark.examples
+@pytest.mark.orca
+@pytest.mark.xfail
+def test_invalid_line(tmp_path) -> Output:
 
-    # > if no structure is given take a smiles
-    if structure is None:
-        structure = Structure.from_smiles("O")
+    structure = Structure.from_smiles("O")
 
     # > set up the calculator
-    calc = Calculator(basename="job", working_dir=working_dir)
+    calc = Calculator(basename="job", working_dir=tmp_path)
     calc.structure = structure
     calc.input.add_simple_keywords(
         Scf.NOAUTOSTART,
@@ -31,8 +27,7 @@ def unknown_simple_keyword(
         Task.SP,
     )
 
-    calc.input.add_arbitrary_string("!hf hf hf")
-    # calc.input.add_arbitrary_string("%novalidblock")
+    calc.input.add_arbitrary_string("invalid_line some_more_invalid_stuff")
 
     # > write the input and run the calculation
     calc.write_input()
@@ -65,4 +60,4 @@ def unknown_simple_keyword(
 
 
 if __name__ == "__main__":
-    output = unknown_simple_keyword()
+    pytest.main([__file__, "-v", "-s"])

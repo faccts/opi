@@ -1,37 +1,27 @@
 #!/usr/bin/env python3
 
-import shutil
 import sys
-from pathlib import Path
+
+import pytest
 
 from opi.core import Calculator
 from opi.input.simple_keywords import BasisSet, Method, Scf, Task
-from opi.input.structures import Structure
 from opi.output.core import Output
 
 
-def unknown_block_value(
-    structure: Structure | None = None, working_dir: Path | None = Path("RUN")
-) -> Output:
-    # > recreate the working dir
-    shutil.rmtree(working_dir, ignore_errors=True)
-    working_dir.mkdir()
-
-    # > if no structure is given take a smiles
-    if structure is None:
-        structure = Structure.from_smiles("O")
+@pytest.mark.examples
+@pytest.mark.orca
+@pytest.mark.xfail
+def test_no_coords(tmp_path) -> Output:
 
     # > set up the calculator
-    calc = Calculator(basename="job", working_dir=working_dir)
-    calc.structure = structure
+    calc = Calculator(basename="job", working_dir=tmp_path)
     calc.input.add_simple_keywords(
         Scf.NOAUTOSTART,
         Method.HF,
         BasisSet.DEF2_SVP,
         Task.SP,
     )
-
-    calc.input.add_arbitrary_string("invalid_line some_more_invalid_stuff")
 
     # > write the input and run the calculation
     calc.write_input()
@@ -64,4 +54,4 @@ def unknown_block_value(
 
 
 if __name__ == "__main__":
-    output = unknown_block_value()
+    pytest.main([__file__, "-v", "-s"])

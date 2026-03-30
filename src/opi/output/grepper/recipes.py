@@ -17,6 +17,7 @@ def get_error_messages(file_name: Path) -> list[str] | None:
     grepper = Grepper(file_name)
     hits: list[str] = []
     for pattern in ERROR_PATTERNS:
+        # > put this into the pattern class, implement boolean if something was found
         match = grepper.search(pattern.grep_string, case_sensitive=True)
         if match:
             if pattern.extractor:

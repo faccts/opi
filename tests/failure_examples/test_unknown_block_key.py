@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-import shutil
 import sys
-from pathlib import Path
+
+import pytest
 
 from opi.core import Calculator
 from opi.input.blocks import BlockScf
@@ -11,19 +11,15 @@ from opi.input.structures import Structure
 from opi.output.core import Output
 
 
-def unknown_block_value(
-    structure: Structure | None = None, working_dir: Path | None = Path("RUN")
-) -> Output:
-    # > recreate the working dir
-    shutil.rmtree(working_dir, ignore_errors=True)
-    working_dir.mkdir()
+@pytest.mark.examples
+@pytest.mark.orca
+@pytest.mark.xfail
+def test_unknown_block_key(tmp_path) -> Output:
 
-    # > if no structure is given take a smiles
-    if structure is None:
-        structure = Structure.from_smiles("O")
+    structure = Structure.from_smiles("O")
 
     # > set up the calculator
-    calc = Calculator(basename="job", working_dir=working_dir)
+    calc = Calculator(basename="job", working_dir=tmp_path)
     calc.structure = structure
     calc.input.add_simple_keywords(
         Scf.NOAUTOSTART,
@@ -32,10 +28,8 @@ def unknown_block_value(
         Task.SP,
     )
 
-    # calc.input.add_arbitrary_string("!hf hf hf")
-    # calc.input.add_arbitrary_string("%novalidblock")
     scf_block = BlockScf()
-    scf_block.add_option(name="maxiter", val="invalid_value")
+    scf_block.add_option(name="invalid_key", val="none")
     calc.input.add_blocks(scf_block)
 
     # > write the input and run the calculation
@@ -69,4 +63,4 @@ def unknown_block_value(
 
 
 if __name__ == "__main__":
-    output = unknown_block_value()
+    pytest.main([__file__, "-v", "-s"])
