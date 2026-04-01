@@ -40,7 +40,7 @@ class Calculator:
     _input | input: Input
         Contains all ORCA input parameters except for the primary structural information.
     version_check: bool, default: True
-        Activates version check when running an ORCA calculation. When running a complete series of input generation, calculation, 
+        Activates version check when running an ORCA calculation. When running a complete series of input generation, calculation,
         and output processing, it overrides the get_output version check attribute.
     """
 
@@ -310,9 +310,7 @@ class Calculator:
         runner = self._create_runner()
         runner.create_jsons(self.basename, force=force)
 
-    def get_output(self, 
-                   *, 
-                   version_check: bool | None = None) -> "Output":
+    def get_output(self, *, version_check: bool | None = None) -> "Output":
         """
         Get an instance of `Output` setup for the current job.
         Can be called before execution of job.
