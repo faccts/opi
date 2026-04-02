@@ -24,7 +24,7 @@ class OrcaVersion(Version):  # type: ignore
         re.VERBOSE | re.IGNORECASE,
     )
     RGX_OUTPUT_VERSION = re.compile(
-        r"^[ \t]*Program Version[ \t]+([1-9]+\.[0-9]+(\.[0-9]+(-f.[0-9]+)?)?)",
+        r"^[ \t]*Program Version[ \t]+([1-9]+\.[0-9]+(?:\.[0-9x]+)?(?:-f\.[0-9]+)?)",
         re.MULTILINE,
     )
 
@@ -37,6 +37,10 @@ class OrcaVersion(Version):  # type: ignore
         ----------
         version_str : str
         """
+        # > Replace ".x" suffix with large number
+        if ".x" in version_str:
+            version_str = version_str.replace(".x",".9")
+
         mmatch = cls.RGX_VERSION.fullmatch(version_str)
 
         try:
@@ -88,8 +92,6 @@ class OrcaVersion(Version):  # type: ignore
         """
         try:
             version = json_data["calculation_status"]["version"]
-            # > Remove ".x" suffix
-            version = version.removesuffix(".x")
             return OrcaVersion.from_str(version)
 
         except (AttributeError, KeyError, ValueError) as err:
