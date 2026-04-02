@@ -318,7 +318,7 @@ class Calculator:
         ----------
         version_check : bool | None, default=None
             Whether to perform a version check on the output.
-            If ``None``, the value of ``self.version_check`` is used.
+            If `None`, the value of `self.version_check` is used.
         """
         vc = self.version_check if version_check is None else version_check
 
