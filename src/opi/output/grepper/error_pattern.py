@@ -1,15 +1,14 @@
 # patterns.py
 import re
-from dataclasses import dataclass
 from typing import Callable
 
 from opi.output.grepper.core import Grepper
 
 
-@dataclass
 class ErrorPattern:
     """
     Represents an error pattern in the ORCA output file.
+    More complex error patterns derive from this class and override the extractor
 
     Attributes
     ----------
@@ -17,48 +16,115 @@ class ErrorPattern:
         The string that is searched in the output file.
     message: str
         A human-readable error message of the given error pattern.
-    extractor: Callable | None, default = None
-        Optional function for extracting more details from the matched line
+    critical: bool, default = False
+        When the error is critical we will stop searching for further errors after finding it.
+    extractor: Callable[[Grepper], str] | None, default = None
+        Optional function for extracting more details from the matched line.
 
     """
 
-    grep_string: str
-    message: str
-    extractor: Callable[[str, Grepper], str] | None = None
+    def __init__(
+        self,
+        grep_string: str | None = None,
+        message: str | None = None,
+        critical: bool = False,
+        extractor: Callable[[Grepper], str] | None = None,
+    ) -> None:
+        if grep_string is not None:
+            self.grep_string = grep_string
+        if message is not None:
+            self.message = message
+        if critical is not None:
+            self.critical = critical
+        self.extractor = extractor
+
+    def match(self, grepper: Grepper) -> str | None:
+        hit = grepper.search(self.grep_string, case_sensitive=True)
+        if not hit:
+            return None
+        if self.extractor:
+            return self.extractor(grepper)
+        return self.extract(grepper) or self.message
+
+    def extract(self, grepper: Grepper) -> str | None:
+        return None
 
 
-# > Extractor functions for more elaborate error messages.
-# > They extract additional information from the ORCA output file for more descriptive error messages.
+class InvalidLineError(ErrorPattern):
+    """
+    Triggered when ORCA encounters an invalid line in the input file.
+    This typically means a line does not start with a valid ORCA input
+    character such as '$', '!', '%', '*' or '['.
+    """
+
+    grep_string = "ERROR: expect a '$', '!', '%', '*' or '[' in the input"
+    message = "Invalid input line in ORCA input"
+    critical = True
+
+    def extract(self, grepper: Grepper) -> str | None:
+        match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)
+        if match:
+            m = re.search(r"\((.+?)\)", match[0])
+            result = m.group(1) if m else None
+            return f"Invalid line starting with: {result}" if result else None
+        return None
 
 
-def _invalid_line(grep_string: str, grepper: Grepper) -> str:
-    """Retrieves the first variable from an invalid line."""
-    match = grepper.search(grep_string, case_sensitive=True, skip_lines=1)
-    if match:
-        m = re.search(r"\((.+?)\)", match[0])
-        match = m.group(1) if m else None
-    return f"Invalid line starting with: {match}" if match else ""
+class SimpleKeywordsError(ErrorPattern):
+    """
+    Triggered when ORCA encounters an unrecognized or duplicated keyword
+    in the simple input line (the '!' line).
+    """
+
+    grep_string = "UNRECOGNIZED OR DUPLICATED KEYWORD(S) IN SIMPLE INPUT LINE"
+    message = "An unrecognized or duplicated simple keyword was requested"
+    critical = True
+
+    def extract(self, grepper: Grepper) -> str | None:
+        match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)
+        return f"Unknown/duplicate simple keyword(s): {match[0]}" if match else None
 
 
-def _simple_keywords(grep_string: str, grepper: Grepper) -> str:
-    """Get the duplicate or unknown keywords from the ORCA output file."""
-    match = grepper.search(grep_string, case_sensitive=True, skip_lines=1)
-    return f"Unknown/duplicate simple keyword(s): {match[0]}" if match else ""
+class UnknownBlockError(ErrorPattern):
+    """
+    Triggered when ORCA encounters an unknown block name in the input file,
+    i.e. a '%blockname' that ORCA does not recognize.
+    """
+
+    grep_string = "Unknown identifier"
+    message = "An unknown block was requested"
+    critical = True
+
+    def extract(self, grepper: Grepper) -> str | None:
+        match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=0)
+        return f"Unknown block: {match[0].split()[-1]}" if match else None
 
 
-def _unknown_block(grep_string: str, grepper: Grepper) -> str:
-    """Retrieves the name of an unknown block and returns it in a string."""
-    match = grepper.search(grep_string, case_sensitive=True, skip_lines=0)
-    return f"Unknown block: {match[0].split()[-1]}" if match else ""
+class UnknownBlockKeyError(ErrorPattern):
+    """
+    Triggered when ORCA encounters an unknown key inside a block,
+    i.e. a valid block name but an unrecognized option within it.
+    """
+
+    grep_string = "Unknown identifier in"
+    message = "An unknown block option was requested"
+    critical = True
+
+    def extract(self, grepper: Grepper) -> str | None:
+        match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)
+        return f"Unknown block key: {match[0].split(':')[-1]}" if match else None
 
 
-def _unknown_block_key(grep_string: str, grepper: Grepper) -> str:
-    """Retrieves the name of an unknown block key and returns it in a string."""
-    match = grepper.search(grep_string, case_sensitive=True, skip_lines=1)
-    return f"Unknown block key: {match[0].split(':')[-1]}" if match else ""
+class UnknownBlockValueError(ErrorPattern):
+    """
+    Triggered when ORCA encounters an invalid value for a block option,
+    i.e. the key is recognized but the assigned value is not valid.
+    """
 
+    grep_string = "Invalid assignment"
+    message = "An invalid value was requested in a block"
+    critical = True
 
-def _unknown_block_value(grep_string: str, grepper: Grepper) -> str:
-    """Retrieves the name of an unknown block value and returns it in a string."""
-    match = grepper.search(grep_string, case_sensitive=True, skip_lines=1)
-    return f"Unknown block value: {match[0].split(':')[-1]}" if match else ""
+    def extract(self, grepper: Grepper) -> str | None:
+        match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)
+        return f"Unknown block value: {match[0].split(':')[-1]}" if match else None

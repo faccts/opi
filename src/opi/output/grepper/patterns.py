@@ -1,10 +1,10 @@
 from opi.output.grepper.error_pattern import (
     ErrorPattern,
-    _invalid_line,
-    _simple_keywords,
-    _unknown_block,
-    _unknown_block_key,
-    _unknown_block_value,
+    InvalidLineError,
+    SimpleKeywordsError,
+    UnknownBlockError,
+    UnknownBlockKeyError,
+    UnknownBlockValueError,
 )
 
 # > Success strings
@@ -18,40 +18,40 @@ HAS_GEOMETRY_OPT = "Geometry Optimization Run"
 HAS_SCF = "SCF SETTINGS"
 HAS_ABORTING = "aborting"
 
-# > List of known error patterns
-# > In decreasing order of priority
+# > Error patterns in order of priority.
+# > Critical errors are listed first and will stop scanning when matched.
+# > Non-critical errors are listed after and will all be reported.
 ERROR_PATTERNS: list[ErrorPattern] = [
-    ErrorPattern(
-        "ERROR: expect a '$', '!', '%', '*' or '[' in the input",
-        "Invalid input line in ORCA input",
-        extractor=_invalid_line,
-    ),
-    ErrorPattern(
-        "UNRECOGNIZED OR DUPLICATED KEYWORD(S) IN SIMPLE INPUT LINE",
-        "An unrecognized or duplicated simple keyword was requested",
-        extractor=_simple_keywords,
-    ),
-    ErrorPattern(
-        "Invalid assignment",
-        "An invalid value was requested in a block",
-        extractor=_unknown_block_value,
-    ),
-    ErrorPattern(
-        "Unknown identifier in",
-        "An unknown block option was requested",
-        extractor=_unknown_block_key,
-    ),
-    ErrorPattern("Unknown identifier", "An unknown block was requested", extractor=_unknown_block),
+    # > Critical input errors - stop scanning on first match
+    InvalidLineError(),
+    SimpleKeywordsError(),
+    UnknownBlockValueError(),
+    UnknownBlockKeyError(),
+    UnknownBlockError(),
     ErrorPattern(
         "You must have a [COORDS] ... [END] block in your input",
         "No coordinates in the ORCA input.",
+        critical=True,
+    ),
+    # > Non-critical convergence errors - all reported
+    ErrorPattern(
+        "Error (SHARK/CP-SCF Solver): Unfortunately, the calculation did not converge.",
+        "CP-SCF did not converge",
+        critical=True,
     ),
     ErrorPattern(
-        "The Coupled-Cluster iterations have NOT converged", "Coupled-Cluster did not converge"
+        "The Coupled-Cluster iterations have NOT converged",
+        "Coupled-Cluster did not converge",
+        critical=True,
     ),
     ErrorPattern("CIS/TDA-DFT did not converge", "CIS/TDA-DFT did not converge"),
-    ErrorPattern("SCF NOT CONVERGED", "SCF did not converge"),
-    ErrorPattern("The optimization did not converge", "Geometry optimization did not converge"),
+    ErrorPattern("SCF NOT CONVERGED", "SCF did not converge", critical=True),
+    ErrorPattern(
+        "The optimization did not converge",
+        "Geometry optimization did not converge",
+        critical=False,
+    ),
+    # > Unspecific errors - these could potentially be dropped
     ErrorPattern("ABORTING THE RUN", "ORCA aborted the run"),
     ErrorPattern("ERROR", "ORCA encountered an error"),
 ]

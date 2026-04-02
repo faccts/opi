@@ -13,20 +13,15 @@ from opi.output.grepper.patterns import (
 
 
 def get_error_messages(file_name: Path) -> list[str] | None:
-    """Return all matched error messages, or None if none found"""
+    """Return all errors from the output files."""
     grepper = Grepper(file_name)
     hits: list[str] = []
     for pattern in ERROR_PATTERNS:
-        # > put this into the pattern class, implement boolean if something was found
-        match = grepper.search(pattern.grep_string, case_sensitive=True)
-        if match:
-            if pattern.extractor:
-                # > If an extractor function is defined we get additional context and call the extractor
-                detail = pattern.extractor(pattern.grep_string, grepper)
-            else:
-                # > If no extractor function is defined we just print the designated message
-                detail = pattern.message
-            hits.append(detail)
+        msg = pattern.match(grepper)
+        if msg:
+            hits.append(msg)
+            if pattern.critical:
+                break
     return hits if hits else None
 
 

@@ -6,7 +6,7 @@ from opi.input.blocks import BlockScf
 from opi.input.structures import Structure
 
 """
-Contains ORCA examples of failures to test OPI´s error handling capabilities.
+Contains ORCA examples of input failures to test OPI´s error handling capabilities.
 The functions error_message() will search in the ORCA output file for a respective error string and will compose the
 error message we assert here.
 """
