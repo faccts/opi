@@ -37,9 +37,9 @@ class OrcaVersion(Version):  # type: ignore
         ----------
         version_str : str
         """
-        # > Replace ".x" suffix with large number
+        # > Replace ".x" with large number
         if ".x" in version_str:
-            version_str = version_str.replace(".x",".9")
+            version_str = version_str.replace(".x", ".9")
 
         mmatch = cls.RGX_VERSION.fullmatch(version_str)
 
