@@ -22,7 +22,7 @@ def calc(tmp_path):
 
 
 @pytest.mark.orca
-def test_scf_fail(calc):
+def test_scf_conv_fail(calc):
     """Test error_message for SCF failure"""
     calc.input.add_blocks(BlockScf(maxiter=1))
     # > write the input and run the calculation
@@ -34,7 +34,7 @@ def test_scf_fail(calc):
     assert output.error_message() == "SCF did not converge"
 
 
-def test_cc_fail(calc):
+def test_cc_conv_fail(calc):
     """Test error_message for CC not converging"""
     calc.input.add_blocks(BlockMdci(maxiter=1))
     calc.input.add_simple_keywords(Wft.CCSD_T)
@@ -47,7 +47,7 @@ def test_cc_fail(calc):
     assert output.error_message() == "Coupled-Cluster did not converge"
 
 
-def test_dlpno_cc_fail(calc):
+def test_dlpno_cc_conv_fail(calc):
     """Test error_message for DLPNO-CC not converging"""
     calc.input.add_blocks(BlockMdci(maxiter=1))
     calc.input.add_simple_keywords(Wft.DLPNO_CCSD_T, AuxBasisSet.AUTOAUX)
@@ -60,8 +60,8 @@ def test_dlpno_cc_fail(calc):
     assert output.error_message() == "Coupled-Cluster did not converge"
 
 
-def test_opt_fail(calc):
-    """Test error_message for optimization not converging"""
+def test_opt_conv_fail(calc):
+    """Test error_message for geometry optimization not converging"""
     calc.input.add_blocks(BlockGeom(maxiter=1))
     calc.input.add_simple_keywords(Task.OPT)
     # > write the input and run the calculation
@@ -73,7 +73,7 @@ def test_opt_fail(calc):
     assert output.error_message() == "Geometry optimization did not converge"
 
 
-def test_cpscf_fail(calc):
+def test_cpscf_conv_fail(calc):
     """Test error_message for CP-SCF not converging"""
     calc.input.add_blocks(BlockMethod(z_maxiter=1))
     calc.input.add_simple_keywords(Task.FREQ)

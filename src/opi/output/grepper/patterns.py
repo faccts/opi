@@ -1,6 +1,7 @@
 from opi.output.grepper.error_pattern import (
     ErrorPattern,
     InvalidLineError,
+    NotEnoughMemoryScfError,
     SimpleKeywordsError,
     UnknownBlockError,
     UnknownBlockKeyError,
@@ -19,8 +20,8 @@ HAS_SCF = "SCF SETTINGS"
 HAS_ABORTING = "aborting"
 
 # > Error patterns in order of priority.
-# > Critical errors are listed first and will stop scanning when matched.
-# > Non-critical errors are listed after and will all be reported.
+# > Critical errors will stop scanning when matched.
+# > Non-critical errors will just be added and reported.
 ERROR_PATTERNS: list[ErrorPattern] = [
     # > Critical input errors - stop scanning on first match
     InvalidLineError(),
@@ -33,7 +34,7 @@ ERROR_PATTERNS: list[ErrorPattern] = [
         "No coordinates in the ORCA input.",
         critical=True,
     ),
-    # > Non-critical convergence errors - all reported
+    # > Convergence errors
     ErrorPattern(
         "Error (SHARK/CP-SCF Solver): Unfortunately, the calculation did not converge.",
         "CP-SCF did not converge",
@@ -51,7 +52,28 @@ ERROR_PATTERNS: list[ErrorPattern] = [
         "Geometry optimization did not converge",
         critical=False,
     ),
-    # > Unspecific errors - these could potentially be dropped
+    # > Memory Errors
+    NotEnoughMemoryScfError(),
+    ErrorPattern(
+        "Error (ORCA_MDCI): not enough memory for computing triples",
+        "Not enough memory for triples calculation",
+        critical=True,
+    ),
+    ErrorPattern("ERROR - OUT OF MEMORY !!!", "Calculation ran out of memory", critical=False),
+    # > Module terminates not normally
+    ErrorPattern(
+        "ORCA finished by error termination in MDCI",
+        "Error in MDCI part of the calculation",
+        critical=True,
+    ),
+    ErrorPattern(
+        "ORCA finished by error termination in MP2",
+        "Error in MP2 part of the calculation",
+        critical=True,
+    ),
+    # > Potentially MPI related error
+    ErrorPattern("-" * 74, "Potentially an Open MPI related error occurred.", critical=False),
+    # > Unspecific errors
     ErrorPattern("ABORTING THE RUN", "ORCA aborted the run"),
     ErrorPattern("ERROR", "ORCA encountered an error"),
 ]

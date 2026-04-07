@@ -128,3 +128,25 @@ class UnknownBlockValueError(ErrorPattern):
     def extract(self, grepper: Grepper) -> str | None:
         match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)
         return f"Unknown block value: {match[0].split(':')[-1]}" if match else None
+
+
+class NotEnoughMemoryScfError(ErrorPattern):
+    """
+    Triggered when there is not enough memory available for the SCF
+    """
+
+    grep_string = "Error  (ORCA_SCF): Not enough memory available!"
+    message = "Not enough memory for SCF available"
+    critical = True
+
+    def extract(self, grepper: Grepper) -> str | None:
+        mem_avail = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)[-1].split(
+            ":"
+        )[-1]
+        mem_estimated = grepper.search(self.grep_string, case_sensitive=True, skip_lines=2)[
+            -1
+        ].split(":")[-1]
+        if mem_estimated and mem_avail:
+            return f"Not enough memory available for SCF. Available: {mem_avail}, Required: {mem_estimated}"
+        else:
+            return None
