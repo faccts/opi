@@ -13,6 +13,7 @@ TERMINATED_NORMALLY = "****ORCA TERMINATED NORMALLY****"
 SCF_CONVERGED = "SUCCESS"
 GEOMETRY_CONVERGED = "HURRAY"
 CC_CONVERGED = "The Coupled-Cluster iterations have converged"
+CASSCF_CONVERGED = "---- THE CAS-SCF GRADIENT HAS CONVERGED ----"
 
 # > Has strings
 HAS_GEOMETRY_OPT = "Geometry Optimization Run"

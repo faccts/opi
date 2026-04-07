@@ -2,6 +2,8 @@ from pathlib import Path
 
 from opi.output.grepper.core import Grepper
 from opi.output.grepper.patterns import (
+    CASSCF_CONVERGED,
+    CC_CONVERGED,
     ERROR_PATTERNS,
     GEOMETRY_CONVERGED,
     HAS_ABORTING,
@@ -273,3 +275,37 @@ def has_scf_converged(file_name: Path, /) -> bool:
         True if expression is found in file else False
     """
     return has_string_in_file(file_name, SCF_CONVERGED)
+
+
+def has_casscf_converged(file_name: Path, /) -> bool:
+    """
+    Searches for the message '---- THE CAS-SCF GRADIENT HAS CONVERGED ----' as indicator that the CAS-SCF converged.
+
+    Parameter
+    ---------
+    file_name: Path
+        Name of the output file
+
+    Returns
+    -------
+    bool
+        True if expression is found in file else False
+    """
+    return has_string_in_file(file_name, CASSCF_CONVERGED)
+
+
+def has_cc_converged(file_name: Path, /) -> bool:
+    """
+    Searches for the message 'The Coupled-Cluster iterations have converged' as indicator that the CC converged.
+
+    Parameter
+    ---------
+    file_name: Path
+        Name of the output file
+
+    Returns
+    -------
+    bool
+        True if expression is found in file else False
+    """
+    return has_string_in_file(file_name, CC_CONVERGED)

@@ -4,7 +4,7 @@
 ![Static Badge](https://img.shields.io/badge/contributing-CLA-red)
 ![Static Badge](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.15688425-blue)
 ![Static Badge](https://img.shields.io/badge/release-2.0.0-%2300AEC3)
-[![JCTC Paper](https://img.shields.io/badge/JCTC-10.1021%2Faces.jctc.5c02141-blue?logo=doi)](https://doi.org/10.1021/acs.jctc.5c02141)
+[![JCTC Paper](https://img.shields.io/badge/JCTC-10.1021%2Facs.jctc.5c02141-blue?logo=doi)](https://doi.org/10.1021/acs.jctc.5c02141)
 
 The ORCA Python Interface (OPI) is a Python library to create input and parse output of [ORCA](https://www.faccts.de/orca/). It is designed as an open source community effort to make ORCA calculations as accessible as possible and is consistently supported by [FACCTs](https://www.faccts.de/), the co-developers of the ORCA quantum chemistry program package. Note that OPI is first introduced with ORCA 6.1 and is not compatible with earlier versions. 
 OPI version 2.0 and upward requires ORCA 6.1.1 as minimal ORCA version.

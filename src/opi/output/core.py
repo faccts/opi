@@ -21,6 +21,8 @@ from opi.output.grepper.recipes import (
     get_error_message,
     get_float_from_line,
     get_lines_from_block,
+    has_casscf_converged,
+    has_cc_converged,
     has_geometry_optimization_converged,
     has_scf_converged,
     has_terminated_normally,
@@ -694,6 +696,40 @@ class Output:
         outfile = self.get_outfile()
         try:
             return has_scf_converged(outfile)
+        except FileNotFoundError:
+            return False
+
+    def casscf_converged(self) -> bool:
+        """
+        Determine if ORCA CAS-SCF converged, by looking for "THE CAS-SCF GRADIENT HAS CONVERGED" in the ".out" file.
+        Check only if ORCA CAS-SCF was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if string is found in ".out" file else False
+        """
+        outfile = self.get_outfile()
+        try:
+            return has_casscf_converged(outfile)
+        except FileNotFoundError:
+            return False
+
+    def cc_converged(self) -> bool:
+        """
+        Determine if ORCA coupled-cluster iterations converged, by looking for "The Coupled-Cluster iterations have converged" in the ".out" file.
+        Check only if CC was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if string is found in ".out" file else False
+        """
+        outfile = self.get_outfile()
+        try:
+            return has_cc_converged(outfile)
         except FileNotFoundError:
             return False
 
