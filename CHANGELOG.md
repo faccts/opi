@@ -7,6 +7,7 @@
 - Add missing pydantic fields for calculation timings (#211)
 - Added `scalmp2c` to `BlockMethod` (#212)
 - Add SCF (spin-)density matrix to `Output` (#204)
+- Add version check attribute to Calculator, which is parsed to get_output (#225)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
