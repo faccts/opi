@@ -24,7 +24,7 @@ class OrcaVersion(Version):  # type: ignore
         re.VERBOSE | re.IGNORECASE,
     )
     RGX_OUTPUT_VERSION = re.compile(
-        r"^[ \t]*Program Version[ \t]+([1-9]+\.[0-9]+(?:\.[0-9x]+)?(?:-f\.[0-9]+)?)",
+r"^\s*Program Version\s+[1-9]+\.\d+\.([xX]|\d+(-f.\d+)?)",
         re.MULTILINE,
     )
 
