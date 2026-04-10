@@ -112,11 +112,9 @@ class OrcaMmRunner(BaseRunner):
         missing_outputs = [path for path in expected_outputs if not path.exists()]
         if len(missing_outputs) == 0:
             return
-        elif len(missing_outputs) == 1:
-            raise FileNotFoundError(f"Expected output '{missing_outputs[0]}' does not exist.")
 
         formatted_outputs = ", ".join(f"'{path}'" for path in missing_outputs)
-        raise FileNotFoundError(f"Expected output files do not exist: {formatted_outputs}.")
+        raise FileNotFoundError(f"Expected output file(s) do not exist: {formatted_outputs}.")
 
     def run_orca_mm(
         self,
