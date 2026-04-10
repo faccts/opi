@@ -120,7 +120,7 @@ class OrcaMmRunner(BaseRunner):
         timeout: int = -1,
     ):
         """
-        Execute `orca_mm` with the provided command and arguments.
+        Execute `orca_mm` with the provided subcommand and arguments.
 
         Parameters
         ----------
