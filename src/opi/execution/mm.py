@@ -61,25 +61,33 @@ class OrcaMmException(Exception):
         super().__init__(message)
 
 
-def _replace_suffix(path: Path, new: str, suffix: str) -> Path:
+def _add_infix_to_path(path: Path, infix: str, suffix: str) -> Path:
     """
-    Return a sibling path with a suffix-preserving name replacement.
+    Adds `infix` to the `path` whilst preserving the given `suffix`.
 
     Parameters
     ----------
     path : Path
         Source file path.
-    new : str
+    infix : str
         String inserted before `suffix` in the filename.
     suffix : str
-        Suffix that is replaced in the original filename.
+        Suffix of file path to preserve.
 
     Returns
     -------
     Path
         Updated path in the same directory.
+        
+    Examples
+    --------
+    >>> path = Path.cwd() / "system.ORCAFF.prms"
+    >>> suffix = ".ORCAFF.prms
+    >>> _replace_infix(path, "_merged", suffix)
+    Path("system_merged.ORCAFF.prms")
     """
-    return path.parent / f"{path.name.removesuffix(suffix)}{new}{suffix}"
+ 
+    return path.parent / f"{path.name.removesuffix(suffix)}{infix}{suffix}"
 
 
 class OrcaMmRunner(BaseRunner):
@@ -243,7 +251,7 @@ class OrcaMmRunner(BaseRunner):
             raise ValueError("All atoms must be positive integers.")
 
         expected_outputs = [
-            _replace_suffix(orcaff_file, f"_split{split + 1}", self._orca_ff_suffix)
+            _add_infix_to_path(orcaff_file, f"_split{split + 1}", self._orca_ff_suffix)
             for split in range(len(sorted_atoms) + 1)
         ]
 
@@ -284,7 +292,7 @@ class OrcaMmRunner(BaseRunner):
         if len(orcaff_files) < 2:
             raise ValueError("Must provide at least 2 orca ff files to merge")
 
-        expected_output = _replace_suffix(orcaff_files[0], "_merged", self._orca_ff_suffix)
+        expected_output = _add_infix_to_path(orcaff_files[0], "_merged", self._orca_ff_suffix)
 
         arguments = [str(f) for f in orcaff_files]
         with self._expect_output_files(expected_output):
@@ -327,7 +335,7 @@ class OrcaMmRunner(BaseRunner):
         if repeat < 1:
             raise ValueError("'repeat' must be a positive integer")
 
-        expected_output = _replace_suffix(orcaff_file, f"_repeat{repeat}", self._orca_ff_suffix)
+        expected_output = _add_infix_to_path(orcaff_file, f"_repeat{repeat}", self._orca_ff_suffix)
 
         arguments = [f"{orcaff_file}", str(repeat)]
         with self._expect_output_files(expected_output):
@@ -379,7 +387,7 @@ class OrcaMmRunner(BaseRunner):
             raise ValueError("All atoms must be positive integers.")
 
         expected_outputs = [
-            _replace_suffix(pdb_file, f"_split{split + 1}", ".pdb")
+            _add_infix_to_path(pdb_file, f"_split{split + 1}", ".pdb")
             for split in range(len(sorted_atoms) + 1)
         ]
 
@@ -420,7 +428,7 @@ class OrcaMmRunner(BaseRunner):
         if len(pdb_files) < 2:
             raise ValueError("Must provide at least 2 orca ff files to merge")
 
-        expected_output = _replace_suffix(pdb_files[0], "_merged", ".pdb")
+        expected_output = _add_infix_to_path(pdb_files[0], "_merged", ".pdb")
 
         arguments = [str(f) for f in pdb_files]
         with self._expect_output_files(expected_output):
