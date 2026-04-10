@@ -163,7 +163,7 @@ class OrcaMmRunner(BaseRunner):
         timeout: int = -1,
     ) -> Path:
         """
-        Executes the orca_mm binary with the -convff flag and passes in the forcefield type
+        Executes the `orca_mm` binary with the `-convff` flag and passes in the forcefield type
         and forcefield files as arguments to the binary.
 
         Parameters
