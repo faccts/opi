@@ -113,7 +113,7 @@ class RunResult:
 
 class BaseRunner:
     """
-    Base class that facilitates the execution of ORCA binaries.
+    Base class that facilitates the execution of ORCA binaries, especially the main ORCA binary.
     Makes sure that correct ORCA binary and MPI libraries are used.
     This class is intended to be subclassed to execute an ORCA binary.
     """
