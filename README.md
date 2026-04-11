@@ -103,6 +103,51 @@ This CLA is an adapted industry-standard CLA (Apache CLA) with minor modificatio
 - [Individual CLA (ICLA) for personal contributions](CLA.md),
 - Corporate CLA (CCLA) for contributions made on behalf of an employer (available upon request to info@faccts.de).
 
+## AIMNet2 / MLIP integration
+
+OPI already supports ORCA external methods through `! extopt` and `%method ProgExt ... end`.
+This local patch adds a first-class AIMNetCentral helper so OPI can target maintained AIMNet2 models instead of the deprecated `aimnet2calc` / archived `AIMNet2` path.
+
+Local usage after this patch:
+
+```python
+from opi.core import Calculator
+from opi.external_methods import AimnetCentralConfig, create_aimnetcentral_extopt
+from opi.input.simple_keywords import Task
+from opi.input.structures import Structure
+
+calc = Calculator(basename="job", working_dir="RUN", version_check=False)
+calc.structure = Structure.from_xyz("inp.xyz")
+
+extopt_kw, aimnet_block = create_aimnetcentral_extopt(
+    AimnetCentralConfig(
+        model="aimnet2_2025",
+        device="cuda",
+        compile_model=True,
+        coulomb_method="dsf",
+        coulomb_cutoff=15.0,
+        dftd3_cutoff=15.0,
+    )
+)
+
+calc.input.add_simple_keywords(extopt_kw, Task.OPT)
+calc.input.add_blocks(aimnet_block)
+calc.write_input()
+```
+
+What this wrapper exposes from AIMNetCentral:
+- latest maintained model aliases such as `aimnet2`, `aimnet2_2025`, `aimnet2nse`, and `aimnet2pd`
+- optional `torch.compile` acceleration
+- adaptive neighbor lists / modern batching through the upstream `AIMNet2Calculator`
+- configurable long-range Coulomb modes (`simple`, `dsf`, `ewald`)
+- configurable external DFT-D3 cutoff / smoothing
+- Hugging Face or local model loading through the AIMNetCentral calculator API
+
+Current limitations of this local patch:
+- the ORCA ExtOpt text interface is single-structure, so AIMNetCentral batch inference is used internally for neighbor handling but not yet for multi-geometry ORCA-side dispatch
+- point charges from ORCA's optional external file are parsed by OPI but are not yet forwarded into AIMNetCentral
+- periodic cell reconstruction from ORCA ExtOpt files is not implemented yet; the wrapper currently targets molecular optimization / gradient workflows
+
 ## Citation
 
 If you use OPI in your research, please consider citing the following:
