@@ -112,9 +112,12 @@ class OpiServer:
             # Therefore, first set up the command line call for the server script
             # Build the command list:
             # optional exe + [server_script] + -b ID:port + optional args
-            cmd = [self.serverpath] if not exe else [exe, self.serverpath]
-            cmd.append("-b")
-            cmd.append(f"{self._host_id}:{self._port}")
+            cmd = [exe] if exe else []
+            cmd += [
+                self.serverpath,
+                "-b",
+                f"{self._host_id}:{self._port}"
+                ]
             if cmd_arguments:
                 cmd.append(cmd_arguments)
             # Start the server
