@@ -47,7 +47,7 @@ class OrcaVersion(Version):  # type: ignore
             minor = int(mmatch.group("minor"))
             # > Patch level has to be a number. Cannot be None or "x".
             if g := mmatch.group("micro"):
-                patch = 9 if g == "x" else int(g)
+                patch = 9 if g.lower() == "x" else int(g)
             else:
                 patch = 0
             prerelease = g.split(".") if (g := mmatch.group("bugfix")) else None
