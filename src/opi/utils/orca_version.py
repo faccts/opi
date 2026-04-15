@@ -17,14 +17,14 @@ class OrcaVersion(Version):  # type: ignore
         r"\.(?P<minor>\d+)"
         r"("
         # micro version [optional]
-        r"\.(?P<micro>\d+)"
+        r"\.(?P<micro>\d+|x)"
         # bugfix version [optional]
         r"(-(?P<bugfix>f\.\d+))?"
         r")?",
         re.VERBOSE | re.IGNORECASE,
     )
     RGX_OUTPUT_VERSION = re.compile(
-        r"^[ \t]*Program Version[ \t]+([1-9]+\.[0-9]+(?:\.[0-9x]+)?(?:-f\.[0-9]+)?)",
+        r"^\s*Program Version\s+([1-9]+\.\d+\.([xX]|\d+(-f\.\d+)?))",
         re.MULTILINE,
     )
 
@@ -37,10 +37,6 @@ class OrcaVersion(Version):  # type: ignore
         ----------
         version_str : str
         """
-        # > Replace ".x" with large number
-        if ".x" in version_str:
-            version_str = version_str.replace(".x", ".9")
-
         mmatch = cls.RGX_VERSION.fullmatch(version_str)
 
         try:
@@ -49,8 +45,11 @@ class OrcaVersion(Version):  # type: ignore
             # > Parts of version string
             major = int(mmatch.group("major"))
             minor = int(mmatch.group("minor"))
-            # > Patch level has to be a number. Cannot be None.
-            patch = int(g) if (g := mmatch.group("micro")) else 0
+            # > Patch level has to be a number. Cannot be None or "x".
+            if g := mmatch.group("micro"):
+                patch = 9 if g == "x" else int(g)
+            else:
+                patch = 0
             prerelease = g.split(".") if (g := mmatch.group("bugfix")) else None
 
             return cls(
