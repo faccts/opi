@@ -26,8 +26,8 @@ server = OpiServer(
     serverpath="/path/to/working/server/script/from/orca-external-tools"
 )
 
-# Start server
-status = server.start_server(exe="bash")
+# Start server. Change the method to the method that should be used, e.g., AIMNet2 or UMA.
+status = server.start_server(cmd_arguments="method")
 if status != ServerStatus.RUNNING:
     if status == ServerStatus.ALREADY_RUNNING:
         warnings.warn("Some server was already running. Using old one.")
