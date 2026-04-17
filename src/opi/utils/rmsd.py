@@ -1,11 +1,10 @@
-import numpy as np
 import os
-from typing import Tuple, List, Union
+from typing import List, Tuple, Union
+
+import numpy as np
 
 
-def read_xyz(
-    data: Union[str, Tuple[List[str], np.ndarray]]
-) -> Tuple[List[str], np.ndarray]:
+def read_xyz(data: Union[str, Tuple[List[str], np.ndarray]]) -> Tuple[List[str], np.ndarray]:
     """
     Read geometry from:
     - XYZ file path
@@ -18,11 +17,7 @@ def read_xyz(
     coords : (N, 3) ndarray
     """
 
-    # -------------------------
-    # Case 1: string input
-    # -------------------------
     if isinstance(data, str):
-
         # Case 1a: a file path
         if os.path.isfile(data):
             with open(data, "r") as f:
@@ -36,7 +31,7 @@ def read_xyz(
         symbols = []
         coords = []
 
-        for line in lines[2:2 + n_atoms]:
+        for line in lines[2 : 2 + n_atoms]:
             parts = line.split()
             sym = parts[0]
             xyz = [float(x) for x in parts[1:4]]
@@ -46,26 +41,8 @@ def read_xyz(
 
         return symbols, np.array(coords, dtype=np.float64)
 
-    # -------------------------
-    # Case 2: in-memory tuple
-    # -------------------------
-    elif isinstance(data, tuple) and len(data) == 2:
-        symbols, coords = data
-
-        coords = np.asarray(coords, dtype=np.float64)
-
-        if coords.ndim != 2 or coords.shape[1] != 3:
-            raise ValueError("Coordinates must be an (N,3) array")
-
-        if len(symbols) != len(coords):
-            raise ValueError("Symbols and coordinates must have same length")
-
-        return list(symbols), coords
-
     else:
-        raise TypeError(
-            "Input must be: file path, XYZ string, or (symbols, coords)"
-        )
+        raise TypeError("Input must be: file path or XYZ string")
 
 
 def _validate_geometries(symA: List[str], symB: List[str]) -> None:
