@@ -188,7 +188,6 @@ def _read_xyz(data: Union[str, Tuple[List[str], np.ndarray]]) -> Tuple[List[str]
     Read geometry from:
     - XYZ file path
     - XYZ block string
-    - (symbols, coords) tuple
 
     Returns
     -------

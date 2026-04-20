@@ -9,7 +9,6 @@ def read_xyz(data: Union[str, Tuple[List[str], np.ndarray]]) -> Tuple[List[str],
     Read geometry from:
     - XYZ file path
     - XYZ block string
-    - (symbols, coords) tuple
 
     Returns
     -------
@@ -65,9 +64,9 @@ def kabsch_rmsd(
     Parameters
     ----------
     ref_xyz : str
-        Path to reference geometry.
+        Reference geometry.
     target_xyz : str
-        Path to target geometry.
+        Target geometry.
     align : bool, default True
         Whether to perform optimal alignment (Kabsch).
 
