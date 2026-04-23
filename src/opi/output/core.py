@@ -676,11 +676,20 @@ class Output:
             return False
 
     def error_message(self) -> str | None:
+        """
+        Return the most important error message found in the ORCA output file, or None if no error is detected.
+        If the output file does not exist, also return None.
+
+        Returns
+        -------
+        str | None
+            Error message string if an error was detected, else None.
+        """
         outfile = self.get_outfile()
         try:
             return get_error_message(outfile)
         except FileNotFoundError:
-            return "Output File Not Found"
+            return None
 
     def scf_converged(self) -> bool:
         """

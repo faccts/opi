@@ -5,6 +5,12 @@ from opi.core import Calculator
 from opi.input.blocks import BlockGeom, BlockMdci, BlockMethod, BlockScf
 from opi.input.simple_keywords import AuxBasisSet, Task, Wft
 from opi.input.structures import Structure
+from opi.output.grepper.patterns import (
+    CC_NOT_CONVERGED_ERROR,
+    CPSCF_NOT_CONVERGED_ERROR,
+    OPT_NOT_CONVERGED_ERROR,
+    SCF_NOT_CONVERGED_ERROR,
+)
 
 """
 Contains ORCA examples of convergence failures to test OPI´s error handling capabilities.
@@ -31,7 +37,7 @@ def test_scf_conv_fail(calc):
     # > get the output and check some results
     output = calc.get_output()
     assert not output.terminated_normally()
-    assert output.error_message() == "SCF did not converge"
+    assert output.error_message() == SCF_NOT_CONVERGED_ERROR.message
 
 
 def test_cc_conv_fail(calc):
@@ -44,7 +50,7 @@ def test_cc_conv_fail(calc):
     # > get the output and check some results
     output = calc.get_output()
     assert not output.terminated_normally()
-    assert output.error_message() == "Coupled-Cluster did not converge"
+    assert output.error_message() == CC_NOT_CONVERGED_ERROR.message
 
 
 def test_dlpno_cc_conv_fail(calc):
@@ -57,7 +63,7 @@ def test_dlpno_cc_conv_fail(calc):
     # > get the output and check some results
     output = calc.get_output()
     assert not output.terminated_normally()
-    assert output.error_message() == "Coupled-Cluster did not converge"
+    assert output.error_message() == CC_NOT_CONVERGED_ERROR.message
 
 
 def test_opt_conv_fail(calc):
@@ -70,7 +76,7 @@ def test_opt_conv_fail(calc):
     # > get the output and check some results
     output = calc.get_output()
     assert output.terminated_normally()
-    assert output.error_message() == "Geometry optimization did not converge"
+    assert output.error_message() == OPT_NOT_CONVERGED_ERROR.message
 
 
 def test_cpscf_conv_fail(calc):
@@ -83,4 +89,4 @@ def test_cpscf_conv_fail(calc):
     # > get the output and check some results
     output = calc.get_output()
     assert not output.terminated_normally()
-    assert output.error_message() == "CP-SCF did not converge"
+    assert output.error_message() == CPSCF_NOT_CONVERGED_ERROR.message

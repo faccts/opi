@@ -20,6 +20,64 @@ HAS_GEOMETRY_OPT = "Geometry Optimization Run"
 HAS_SCF = "SCF SETTINGS"
 HAS_ABORTING = "aborting"
 
+# > Named error pattern instances
+NO_COORDS_ERROR = ErrorPattern(
+    "You must have a [COORDS] ... [END] block in your input",
+    "No coordinates in the ORCA input.",
+    critical=True,
+)
+CPSCF_NOT_CONVERGED_ERROR = ErrorPattern(
+    "Error (SHARK/CP-SCF Solver): Unfortunately, the calculation did not converge.",
+    "CP-SCF did not converge",
+    critical=True,
+)
+CC_NOT_CONVERGED_ERROR = ErrorPattern(
+    "The Coupled-Cluster iterations have NOT converged",
+    "Coupled-Cluster did not converge",
+    critical=True,
+)
+CIS_TDA_NOT_CONVERGED_ERROR = ErrorPattern(
+    "CIS/TDA-DFT did not converge",
+    "CIS/TDA-DFT did not converge",
+)
+SCF_NOT_CONVERGED_ERROR = ErrorPattern(
+    "SCF NOT CONVERGED",
+    "SCF did not converge",
+    critical=True,
+)
+OPT_NOT_CONVERGED_ERROR = ErrorPattern(
+    "The optimization did not converge",
+    "Geometry optimization did not converge",
+    critical=False,
+)
+TRIPLES_OOM_ERROR = ErrorPattern(
+    "Error (ORCA_MDCI): not enough memory for computing triples",
+    "Not enough memory for triples calculation",
+    critical=True,
+)
+OOM_ERROR = ErrorPattern(
+    "ERROR - OUT OF MEMORY !!!",
+    "Calculation ran out of memory",
+    critical=False,
+)
+MDCI_ERROR = ErrorPattern(
+    "ORCA finished by error termination in MDCI",
+    "Error in MDCI part of the calculation",
+    critical=True,
+)
+MP2_ERROR = ErrorPattern(
+    "ORCA finished by error termination in MP2",
+    "Error in MP2 part of the calculation",
+    critical=True,
+)
+MPI_ERROR = ErrorPattern(
+    "-" * 74,
+    "Potentially an Open MPI related error occurred.",
+    critical=False,
+)
+ABORTING_ERROR = ErrorPattern("ABORTING THE RUN", "ORCA aborted the run")
+GENERIC_ERROR = ErrorPattern("ERROR", "ORCA encountered an error")
+
 # > Error patterns in order of priority.
 # > Critical errors will stop scanning when matched.
 # > Non-critical errors will just be added and reported.
@@ -30,51 +88,23 @@ ERROR_PATTERNS: list[ErrorPattern] = [
     UnknownBlockValueError(),
     UnknownBlockKeyError(),
     UnknownBlockError(),
-    ErrorPattern(
-        "You must have a [COORDS] ... [END] block in your input",
-        "No coordinates in the ORCA input.",
-        critical=True,
-    ),
+    NO_COORDS_ERROR,
     # > Convergence errors
-    ErrorPattern(
-        "Error (SHARK/CP-SCF Solver): Unfortunately, the calculation did not converge.",
-        "CP-SCF did not converge",
-        critical=True,
-    ),
-    ErrorPattern(
-        "The Coupled-Cluster iterations have NOT converged",
-        "Coupled-Cluster did not converge",
-        critical=True,
-    ),
-    ErrorPattern("CIS/TDA-DFT did not converge", "CIS/TDA-DFT did not converge"),
-    ErrorPattern("SCF NOT CONVERGED", "SCF did not converge", critical=True),
-    ErrorPattern(
-        "The optimization did not converge",
-        "Geometry optimization did not converge",
-        critical=False,
-    ),
-    # > Memory Errors
+    CPSCF_NOT_CONVERGED_ERROR,
+    CC_NOT_CONVERGED_ERROR,
+    CIS_TDA_NOT_CONVERGED_ERROR,
+    SCF_NOT_CONVERGED_ERROR,
+    OPT_NOT_CONVERGED_ERROR,
+    # > Memory errors
     NotEnoughMemoryScfError(),
-    ErrorPattern(
-        "Error (ORCA_MDCI): not enough memory for computing triples",
-        "Not enough memory for triples calculation",
-        critical=True,
-    ),
-    ErrorPattern("ERROR - OUT OF MEMORY !!!", "Calculation ran out of memory", critical=False),
+    TRIPLES_OOM_ERROR,
+    OOM_ERROR,
     # > Module terminates not normally
-    ErrorPattern(
-        "ORCA finished by error termination in MDCI",
-        "Error in MDCI part of the calculation",
-        critical=True,
-    ),
-    ErrorPattern(
-        "ORCA finished by error termination in MP2",
-        "Error in MP2 part of the calculation",
-        critical=True,
-    ),
+    MDCI_ERROR,
+    MP2_ERROR,
     # > Potentially MPI related error
-    ErrorPattern("-" * 74, "Potentially an Open MPI related error occurred.", critical=False),
+    MPI_ERROR,
     # > Unspecific errors
-    ErrorPattern("ABORTING THE RUN", "ORCA aborted the run"),
-    ErrorPattern("ERROR", "ORCA encountered an error"),
+    ABORTING_ERROR,
+    GENERIC_ERROR,
 ]

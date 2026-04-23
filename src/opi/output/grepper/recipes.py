@@ -16,10 +16,9 @@ from opi.output.grepper.patterns import (
 
 def get_error_messages(file_name: Path) -> list[str] | None:
     """Return all errors from the output files."""
-    grepper = Grepper(file_name)
     hits: list[str] = []
     for pattern in ERROR_PATTERNS:
-        msg = pattern.match(grepper)
+        msg = pattern.match(file_name)
         if msg:
             hits.append(msg)
             if pattern.critical:

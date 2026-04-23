@@ -5,6 +5,7 @@ from opi.core import Calculator
 from opi.input.blocks import BlockMdci
 from opi.input.simple_keywords import BasisSet, Scf, Wft
 from opi.input.structures import Structure
+from opi.output.grepper.patterns import OOM_ERROR, TRIPLES_OOM_ERROR
 
 """
 Contains ORCA examples of memory failures to test OPI´s error handling capabilities.
@@ -49,7 +50,7 @@ def test_mp2_mem_fail(calc):
     # > get the output and check some results
     output = calc.get_output()
     assert not output.terminated_normally()
-    assert "Calculation ran out of memory" == output.error_message()
+    assert output.error_message() == OOM_ERROR.message
 
 
 @pytest.mark.orca
@@ -64,4 +65,4 @@ def test_cc_mem_fail(calc):
     # > get the output and check some results
     output = calc.get_output()
     assert not output.terminated_normally()
-    assert "Not enough memory for triples calculation" == output.error_message()
+    assert output.error_message() == TRIPLES_OOM_ERROR.message

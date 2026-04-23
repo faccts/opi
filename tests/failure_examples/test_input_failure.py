@@ -4,6 +4,7 @@ import pytest
 from opi.core import Calculator
 from opi.input.blocks import BlockScf
 from opi.input.structures import Structure
+from opi.output.grepper.patterns import NO_COORDS_ERROR
 
 """
 Contains ORCA examples of input failures to test OPI´s error handling capabilities.
@@ -35,7 +36,7 @@ def test_no_coords(calc):
     # > get the output and check some results
     output = calc.get_output()
     assert not output.terminated_normally()
-    assert output.error_message() == "No coordinates in the ORCA input."
+    assert output.error_message() == NO_COORDS_ERROR.message
 
 
 @pytest.mark.orca

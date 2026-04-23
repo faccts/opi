@@ -1,6 +1,6 @@
 # patterns.py
 import re
-from typing import Callable
+from pathlib import Path
 
 from opi.output.grepper.core import Grepper
 
@@ -8,7 +8,7 @@ from opi.output.grepper.core import Grepper
 class ErrorPattern:
     """
     Represents an error pattern in the ORCA output file.
-    More complex error patterns derive from this class and override the extractor
+    More complex error patterns derive from this class and override extract.
 
     Attributes
     ----------
@@ -16,37 +16,36 @@ class ErrorPattern:
         The string that is searched in the output file.
     message: str
         A human-readable error message of the given error pattern.
-    critical: bool, default = False
+    critical: bool
         When the error is critical we will stop searching for further errors after finding it.
-    extractor: Callable[[Grepper], str] | None, default = None
-        Optional function for extracting more details from the matched line.
 
     """
 
+    grep_string: str = ""
+    message: str = ""
+    critical: bool = False
+
     def __init__(
         self,
-        grep_string: str | None = None,
-        message: str | None = None,
-        critical: bool = False,
-        extractor: Callable[[Grepper], str] | None = None,
+        grep_string: str = "",
+        message: str = "",
+        critical: bool | None = None,
     ) -> None:
-        if grep_string is not None:
+        if grep_string:
             self.grep_string = grep_string
-        if message is not None:
+        if message:
             self.message = message
         if critical is not None:
             self.critical = critical
-        self.extractor = extractor
 
-    def match(self, grepper: Grepper) -> str | None:
+    def match(self, file_path: Path) -> str | None:
+        grepper = Grepper(file_path)
         hit = grepper.search(self.grep_string, case_sensitive=True)
         if not hit:
             return None
-        if self.extractor:
-            return self.extractor(grepper)
-        return self.extract(grepper) or self.message
+        return self.extract(file_path) or self.message
 
-    def extract(self, grepper: Grepper) -> str | None:
+    def extract(self, file_path: Path) -> str | None:
         return None
 
 
@@ -61,7 +60,8 @@ class InvalidLineError(ErrorPattern):
     message = "Invalid input line in ORCA input"
     critical = True
 
-    def extract(self, grepper: Grepper) -> str | None:
+    def extract(self, file_path: Path) -> str | None:
+        grepper = Grepper(file_path)
         match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)
         if match:
             m = re.search(r"\((.+?)\)", match[0])
@@ -80,7 +80,8 @@ class SimpleKeywordsError(ErrorPattern):
     message = "An unrecognized or duplicated simple keyword was requested"
     critical = True
 
-    def extract(self, grepper: Grepper) -> str | None:
+    def extract(self, file_path: Path) -> str | None:
+        grepper = Grepper(file_path)
         match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)
         return f"Unknown/duplicate simple keyword(s): {match[0]}" if match else None
 
@@ -95,7 +96,8 @@ class UnknownBlockError(ErrorPattern):
     message = "An unknown block was requested"
     critical = True
 
-    def extract(self, grepper: Grepper) -> str | None:
+    def extract(self, file_path: Path) -> str | None:
+        grepper = Grepper(file_path)
         match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=0)
         return f"Unknown block: {match[0].split()[-1]}" if match else None
 
@@ -110,7 +112,8 @@ class UnknownBlockKeyError(ErrorPattern):
     message = "An unknown block option was requested"
     critical = True
 
-    def extract(self, grepper: Grepper) -> str | None:
+    def extract(self, file_path: Path) -> str | None:
+        grepper = Grepper(file_path)
         match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)
         return f"Unknown block key: {match[0].split(':')[-1]}" if match else None
 
@@ -125,7 +128,8 @@ class UnknownBlockValueError(ErrorPattern):
     message = "An invalid value was requested in a block"
     critical = True
 
-    def extract(self, grepper: Grepper) -> str | None:
+    def extract(self, file_path: Path) -> str | None:
+        grepper = Grepper(file_path)
         match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)
         return f"Unknown block value: {match[0].split(':')[-1]}" if match else None
 
@@ -139,14 +143,14 @@ class NotEnoughMemoryScfError(ErrorPattern):
     message = "Not enough memory for SCF available"
     critical = True
 
-    def extract(self, grepper: Grepper) -> str | None:
-        mem_avail = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)[-1].split(
-            ":"
-        )[-1]
-        mem_estimated = grepper.search(self.grep_string, case_sensitive=True, skip_lines=2)[
-            -1
-        ].split(":")[-1]
-        if mem_estimated and mem_avail:
-            return f"Not enough memory available for SCF. Available: {mem_avail}, Required: {mem_estimated}"
-        else:
+    def extract(self, file_path: Path) -> str | None:
+        grepper = Grepper(file_path)
+        avail_match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)
+        est_match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=2)
+        if not avail_match or not est_match:
             return None
+        mem_avail = avail_match[-1].split(":")[-1]
+        mem_estimated = est_match[-1].split(":")[-1]
+        if mem_avail and mem_estimated:
+            return f"Not enough memory available for SCF. Available: {mem_avail}, Required: {mem_estimated}"
+        return None
