@@ -88,28 +88,28 @@ GENERIC_ERROR = ErrorPattern("ERROR", "ORCA encountered an error")
 # > Non-critical errors will just be added and reported.
 ERROR_PATTERNS: list[ErrorPattern] = [
     # > Critical input errors — stop scanning on first match
-    InvalidLineError(),           # critical
-    SimpleKeywordsError(),        # critical
-    UnknownBlockValueError(),     # critical
-    UnknownBlockKeyError(),       # critical
-    UnknownBlockError(),          # critical
-    NO_COORDS_ERROR,              # critical
+    InvalidLineError(),  # critical
+    SimpleKeywordsError(),  # critical
+    UnknownBlockValueError(),  # critical
+    UnknownBlockKeyError(),  # critical
+    UnknownBlockError(),  # critical
+    NO_COORDS_ERROR,  # critical
     # > Convergence errors
-    CPSCF_NOT_CONVERGED_ERROR,    # critical
-    CC_NOT_CONVERGED_ERROR,       # critical
+    CPSCF_NOT_CONVERGED_ERROR,  # critical
+    CC_NOT_CONVERGED_ERROR,  # critical
     CIS_TDA_NOT_CONVERGED_ERROR,  # non-critical: scan continues
-    SCF_NOT_CONVERGED_ERROR,      # critical
-    OPT_NOT_CONVERGED_ERROR,      # non-critical: scan continues
+    SCF_NOT_CONVERGED_ERROR,  # critical
+    OPT_NOT_CONVERGED_ERROR,  # non-critical: scan continues
     # > Memory errors
-    NotEnoughMemoryScfError(),    # critical
-    TRIPLES_OOM_ERROR,            # critical
-    OOM_ERROR,                    # non-critical: scan continues
+    NotEnoughMemoryScfError(),  # critical
+    TRIPLES_OOM_ERROR,  # critical
+    OOM_ERROR,  # non-critical: scan continues
     # > Module terminates not normally
-    MDCI_ERROR,                   # critical
-    MP2_ERROR,                    # critical
+    MDCI_ERROR,  # critical
+    MP2_ERROR,  # critical
     # > Potentially MPI related error
-    MPI_ERROR,                    # non-critical: scan continues
+    MPI_ERROR,  # non-critical: scan continues
     # > Unspecific errors
-    ABORTING_ERROR,               # non-critical: scan continues
-    GENERIC_ERROR,                # non-critical: scan continues
+    ABORTING_ERROR,  # non-critical: scan continues
+    GENERIC_ERROR,  # non-critical: scan continues
 ]
