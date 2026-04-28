@@ -1,3 +1,8 @@
+"""
+Error pattern constants and the ordered ERROR_PATTERNS list used by the error extractor.
+Patterns are listed in priority order; scanning stops immediately on the first critical match.
+"""
+
 from opi.output.grepper.error_pattern import (
     ErrorPattern,
     InvalidLineError,
@@ -82,29 +87,29 @@ GENERIC_ERROR = ErrorPattern("ERROR", "ORCA encountered an error")
 # > Critical errors will stop scanning when matched.
 # > Non-critical errors will just be added and reported.
 ERROR_PATTERNS: list[ErrorPattern] = [
-    # > Critical input errors - stop scanning on first match
-    InvalidLineError(),
-    SimpleKeywordsError(),
-    UnknownBlockValueError(),
-    UnknownBlockKeyError(),
-    UnknownBlockError(),
-    NO_COORDS_ERROR,
+    # > Critical input errors — stop scanning on first match
+    InvalidLineError(),           # critical
+    SimpleKeywordsError(),        # critical
+    UnknownBlockValueError(),     # critical
+    UnknownBlockKeyError(),       # critical
+    UnknownBlockError(),          # critical
+    NO_COORDS_ERROR,              # critical
     # > Convergence errors
-    CPSCF_NOT_CONVERGED_ERROR,
-    CC_NOT_CONVERGED_ERROR,
-    CIS_TDA_NOT_CONVERGED_ERROR,
-    SCF_NOT_CONVERGED_ERROR,
-    OPT_NOT_CONVERGED_ERROR,
+    CPSCF_NOT_CONVERGED_ERROR,    # critical
+    CC_NOT_CONVERGED_ERROR,       # critical
+    CIS_TDA_NOT_CONVERGED_ERROR,  # non-critical: scan continues
+    SCF_NOT_CONVERGED_ERROR,      # critical
+    OPT_NOT_CONVERGED_ERROR,      # non-critical: scan continues
     # > Memory errors
-    NotEnoughMemoryScfError(),
-    TRIPLES_OOM_ERROR,
-    OOM_ERROR,
+    NotEnoughMemoryScfError(),    # critical
+    TRIPLES_OOM_ERROR,            # critical
+    OOM_ERROR,                    # non-critical: scan continues
     # > Module terminates not normally
-    MDCI_ERROR,
-    MP2_ERROR,
+    MDCI_ERROR,                   # critical
+    MP2_ERROR,                    # critical
     # > Potentially MPI related error
-    MPI_ERROR,
+    MPI_ERROR,                    # non-critical: scan continues
     # > Unspecific errors
-    ABORTING_ERROR,
-    GENERIC_ERROR,
+    ABORTING_ERROR,               # non-critical: scan continues
+    GENERIC_ERROR,                # non-critical: scan continues
 ]

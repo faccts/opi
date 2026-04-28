@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+Tests for error extraction from ORCA output files where convergence fails.
+Covers SCF, coupled-cluster, geometry optimization, and CP-SCF convergence failures.
+"""
+
 import pytest
 
 from opi.core import Calculator
@@ -11,12 +16,6 @@ from opi.output.grepper.patterns import (
     OPT_NOT_CONVERGED_ERROR,
     SCF_NOT_CONVERGED_ERROR,
 )
-
-"""
-Contains ORCA examples of convergence failures to test OPI´s error handling capabilities.
-The functions error_message() will search in the ORCA output file for a respective error string and will compose the
-error message we assert here.
-"""
 
 
 @pytest.fixture
@@ -40,6 +39,7 @@ def test_scf_conv_fail(calc):
     assert output.error_message() == SCF_NOT_CONVERGED_ERROR.message
 
 
+@pytest.mark.orca
 def test_cc_conv_fail(calc):
     """Test error_message for CC not converging"""
     calc.input.add_blocks(BlockMdci(maxiter=1))
@@ -53,6 +53,7 @@ def test_cc_conv_fail(calc):
     assert output.error_message() == CC_NOT_CONVERGED_ERROR.message
 
 
+@pytest.mark.orca
 def test_dlpno_cc_conv_fail(calc):
     """Test error_message for DLPNO-CC not converging"""
     calc.input.add_blocks(BlockMdci(maxiter=1))
@@ -66,6 +67,7 @@ def test_dlpno_cc_conv_fail(calc):
     assert output.error_message() == CC_NOT_CONVERGED_ERROR.message
 
 
+@pytest.mark.orca
 def test_opt_conv_fail(calc):
     """Test error_message for geometry optimization not converging"""
     calc.input.add_blocks(BlockGeom(maxiter=1))
@@ -79,6 +81,7 @@ def test_opt_conv_fail(calc):
     assert output.error_message() == OPT_NOT_CONVERGED_ERROR.message
 
 
+@pytest.mark.orca
 def test_cpscf_conv_fail(calc):
     """Test error_message for CP-SCF not converging"""
     calc.input.add_blocks(BlockMethod(z_maxiter=1))

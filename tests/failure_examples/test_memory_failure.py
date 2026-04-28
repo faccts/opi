@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+Tests for error extraction from ORCA output files where memory is insufficient.
+Covers SCF, MP2, and coupled-cluster triples memory failures.
+"""
+
+import re
+
 import pytest
 
 from opi.core import Calculator
@@ -6,12 +13,6 @@ from opi.input.blocks import BlockMdci
 from opi.input.simple_keywords import BasisSet, Scf, Wft
 from opi.input.structures import Structure
 from opi.output.grepper.patterns import OOM_ERROR, TRIPLES_OOM_ERROR
-
-"""
-Contains ORCA examples of memory failures to test OPI´s error handling capabilities.
-The functions error_message() will search in the ORCA output file for a respective error string and will compose the
-error message we assert here.
-"""
 
 
 @pytest.fixture
@@ -32,10 +33,10 @@ def test_scf_mem_fail(calc):
 
     # > get the output and check some results
     output = calc.get_output()
-    print(output.error_message())
     assert not output.terminated_normally()
-    assert (
-        "Not enough memory available for SCF. Available:           1.0 MB" in output.error_message()
+    assert re.search(
+        r"Not enough memory available for SCF\. Available:\s+1\.0 MB",
+        output.error_message() or "",
     )
 
 

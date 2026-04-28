@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
+"""
+Tests for error extraction from ORCA output files with malformed input.
+Covers invalid lines, unknown simple keywords, unknown blocks, and invalid block options.
+"""
+
 import pytest
 
 from opi.core import Calculator
 from opi.input.blocks import BlockScf
 from opi.input.structures import Structure
 from opi.output.grepper.patterns import NO_COORDS_ERROR
-
-"""
-Contains ORCA examples of input failures to test OPI´s error handling capabilities.
-The functions error_message() will search in the ORCA output file for a respective error string and will compose the
-error message we assert here.
-"""
 
 
 @pytest.fixture

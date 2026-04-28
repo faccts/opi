@@ -675,6 +675,13 @@ class Output:
         except FileNotFoundError:
             return False
 
+    def _has(self, has_func: Callable[[Path], bool]) -> bool:
+        outfile = self.get_outfile()
+        try:
+            return has_func(outfile)
+        except FileNotFoundError:
+            return False
+
     def error_message(self) -> str | None:
         """
         Return the most important error message found in the ORCA output file, or None if no error is detected.
@@ -702,11 +709,7 @@ class Output:
         bool
             True if "SUCCESS" is found in ".out" file else False
         """
-        outfile = self.get_outfile()
-        try:
-            return has_scf_converged(outfile)
-        except FileNotFoundError:
-            return False
+        return self._has(has_scf_converged)
 
     def casscf_converged(self) -> bool:
         """
@@ -719,11 +722,7 @@ class Output:
         bool
             True if string is found in ".out" file else False
         """
-        outfile = self.get_outfile()
-        try:
-            return has_casscf_converged(outfile)
-        except FileNotFoundError:
-            return False
+        return self._has(has_casscf_converged)
 
     def cc_converged(self) -> bool:
         """
@@ -736,11 +735,7 @@ class Output:
         bool
             True if string is found in ".out" file else False
         """
-        outfile = self.get_outfile()
-        try:
-            return has_cc_converged(outfile)
-        except FileNotFoundError:
-            return False
+        return self._has(has_cc_converged)
 
     def geometry_optimization_converged(self) -> bool:
         """
@@ -753,11 +748,7 @@ class Output:
         bool
             True if "HURRAY" is found in ".out" file else False
         """
-        outfile = self.get_outfile()
-        try:
-            return has_geometry_optimization_converged(outfile)
-        except FileNotFoundError:
-            return False
+        return self._has(has_geometry_optimization_converged)
 
     def print_graph(self, *, max_length: int = 3, depth: int = -1) -> None:
         """
