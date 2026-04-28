@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from opi.execution.mm import OrcaMmException, OrcaMmRunner
+from opi.execution.orca_mm import OrcaMmException, OrcaMmRunner
 
 
 def _set_fake_orca_path(self, orca_path: Path | None = None) -> None:

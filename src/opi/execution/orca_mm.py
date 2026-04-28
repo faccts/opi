@@ -78,7 +78,7 @@ def _add_infix_to_path(path: Path, infix: str, suffix: str) -> Path:
     -------
     Path
         Updated path in the same directory.
-        
+
     Examples
     --------
     >>> path = Path.cwd() / "system.ORCAFF.prms"
@@ -86,7 +86,7 @@ def _add_infix_to_path(path: Path, infix: str, suffix: str) -> Path:
     >>> _replace_infix(path, "_merged", suffix)
     Path("system_merged.ORCAFF.prms")
     """
- 
+
     return path.parent / f"{path.name.removesuffix(suffix)}{infix}{suffix}"
 
 
@@ -203,7 +203,7 @@ class OrcaMmRunner(BaseRunner):
         # - `orca_mm -convff -AMBER complex.prmtop` -> `complex.ORCAFF.prms`
         # - `orca_mm -convff -OPENMM complex.xml` -> `complex.ORCAFF.prms`
         expected_output = ff_files[0].with_suffix(self._orca_ff_suffix)
-        
+
         # If the expected forcefield file already exists and `force` is not specified, we skip running `orca_mm`
         if expected_output.is_file() and not force:
             return expected_output
