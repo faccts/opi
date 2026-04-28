@@ -169,8 +169,8 @@ class OrcaMmRunner(BaseRunner):
         timeout: int = -1,
     ) -> Path:
         """
-        Executes the `orca_mm` binary with the `-convff` flag and passes in the forcefield type
-        and forcefield files as arguments to the binary.
+        Executes the `orca_mm` binary with the `-convff` flag and passes in the
+        forcefield type and forcefield files as arguments to the binary.
 
         Parameters
         ----------
@@ -197,10 +197,18 @@ class OrcaMmRunner(BaseRunner):
         if len(ff_files) == 0:
             raise ValueError("Must supply at least 1 forcefield file.")
 
+        # `orca_mm -convff` will generate a file with the same stem as the first file but the suffix replaced by '.ORCAFF.prms'.
+        # For example:
+        # - `orca_mm -convff -CHARMM 1C1E.psf par_all36_prot.prm toppar_water_ions_namd.str` -> `1C1E.ORCAFF.prms`
+        # - `orca_mm -convff -AMBER complex.prmtop` -> `complex.ORCAFF.prms`
+        # - `orca_mm -convff -OPENMM complex.xml` -> `complex.ORCAFF.prms`
         expected_output = ff_files[0].with_suffix(self._orca_ff_suffix)
+        
+        # If the expected forcefield file already exists and `force` is not specified, we skip running `orca_mm`
         if expected_output.is_file() and not force:
             return expected_output
 
+        # Make sure that the forcefield file does not exist so that we can ensure that `orca_mm` succeeds.
         expected_output.unlink(missing_ok=True)
 
         arguments = [f"-{ffinput}"] + [str(f) for f in ff_files]
