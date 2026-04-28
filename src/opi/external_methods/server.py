@@ -84,7 +84,7 @@ class OpiServer:
     def start_server(
         self,
         cmd_arguments: str | None = None,
-        exe: str = sys.executable,
+        exe: str | None = None,
         max_boot_time: float = 20.0,
     ) -> ServerStatus:
         """
@@ -95,7 +95,7 @@ class OpiServer:
         ----------
         cmd_arguments: str | None, default: None
             cmd arguments that should be passed to the server
-        exe: str, default: sys.executable
+        exe: str | None, default: None
             Executable to use for starting the server
         max_boot_time: float, default: 5.0 (sec)
             Maximum time in sec to wait till server is booted
@@ -111,10 +111,9 @@ class OpiServer:
             # Start server by running a python process
             # Therefore, first set up the command line call for the server script
             # Build the command list:
-            # ["python", server_script] + -b ID:port + optional args
-            cmd = [exe, self.serverpath]
-            cmd.append("-b")
-            cmd.append(f"{self._host_id}:{self._port}")
+            # optional exe + [server_script] + -b ID:port + optional args
+            cmd = [exe] if exe else []
+            cmd += [self.serverpath, "-b", f"{self._host_id}:{self._port}"]
             if cmd_arguments:
                 cmd.append(cmd_arguments)
             # Start the server
