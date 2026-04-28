@@ -91,6 +91,21 @@ def _add_infix_to_path(path: Path, infix: str, suffix: str) -> Path:
 
 
 class OrcaMmRunner(BaseRunner):
+    """
+    This class should be used to execute `orca_mm` commands.
+
+    All command-specific methods delegate to `run_orca_mm`.
+    The following methods wrap the supported `orca_mm` commands:
+    - `run_convff` (`orca_mm -convff`)
+    - `run_splitff` (`orca_mm -splitff`)
+    - `run_mergeff` (`orca_mm -mergeff`)
+    - `run_repeatff` (`orca_mm -repeatff`)
+    - `run_splitpdb` (`orca_mm -splitpdb`)
+    - `run_mergepdb` (`orca_mm -mergepdb`)
+    - `run_makeff` (`orca_mm -makeff`)
+    - `run_get_h_dist` (`orca_mm -getHDist`)
+    """
+
     _orca_ff_suffix = ".ORCAFF.prms"
 
     @staticmethod
