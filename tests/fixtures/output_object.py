@@ -1,9 +1,12 @@
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from opi.output.core import Output
+
+_FALLBACK_OUT = Path(__file__).parent / "job_fallback.out"
 
 
 @pytest.fixture
@@ -34,3 +37,12 @@ def output_object_factory(json_dir: Path, json_file_list: list[Path]) -> Callabl
 @pytest.fixture
 def empty_output_object():
     return Output("empty", version_check=False)
+
+
+@pytest.fixture
+def output_no_json(tmp_path: Path) -> Output:
+    """Output object with a .out file but no JSON — exercises the grepper fallback."""
+    shutil.copy(_FALLBACK_OUT, tmp_path / "job.out")
+    output = Output("job", version_check=False)
+    output.working_dir = tmp_path
+    return output

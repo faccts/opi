@@ -145,6 +145,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=False,
         help="After json file generator tests pass, copy all produced *.json from tmp_path into tests/json_files/.",
     )
+    parser.addoption(
+        "--update-out-files",
+        action="store_true",
+        default=False,
+        help="After out file generator tests pass, extract grepper-relevant blocks from the produced .out file and write to tests/fixtures/job_fallback.out.",
+    )
 
 
 @dataclass(frozen=True)
@@ -224,4 +230,138 @@ def json_files_exporter(request: pytest.FixtureRequest, json_files_dir: Path) ->
         json_files_dir=json_files_dir,
         prefix=request.node.name,  # json_file basename
         enabled=request.config.getoption("--update-json-files"),
+    )
+
+
+def _is_separator(line: str) -> bool:
+    """Return True if the line contains only dashes, equals signs, and spaces (ORCA separator line)."""
+    stripped = line.strip()
+    return bool(stripped) and all(c in "-= " for c in stripped)
+
+
+def _extract_orca_blocks(src: Path) -> str:
+    """
+    Extract only the grepper-relevant blocks from a full ORCA .out file.
+
+    Strips all system-specific info (paths, hostnames, timings) and keeps only:
+      - Total Charge / Multiplicity lines (once each)
+      - Each CARTESIAN COORDINATES (ANGSTROEM) block
+      - Each FINAL SINGLE POINT ENERGY line (with surrounding separator lines)
+      - Each CARTESIAN GRADIENT block
+    """
+    lines = src.read_text().splitlines()
+    result: list[str] = []
+    charge_done = False
+    mult_done = False
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+
+        # Charge line (emit once)
+        if not charge_done and "Total Charge" in line and "Charge" in line and "...." in line:
+            result.append(line)
+            charge_done = True
+            i += 1
+            continue
+
+        # Mult line (emit once)
+        if not mult_done and "Multiplicity" in line and "Mult" in line and "...." in line:
+            result.append(line)
+            mult_done = True
+            i += 1
+            continue
+
+        # CARTESIAN COORDINATES block
+        if "CARTESIAN COORDINATES (ANGSTROEM)" in line:
+            result.append("")
+            if i > 0 and _is_separator(lines[i - 1]):
+                result.append(lines[i - 1])
+            result.append(line)
+            i += 1
+            if i < len(lines):
+                result.append(lines[i])  # separator after header
+                i += 1
+            while i < len(lines) and lines[i].strip():
+                result.append(lines[i])
+                i += 1
+            result.append("")
+            continue
+
+        # FINAL SINGLE POINT ENERGY line (with surrounding separators)
+        if "FINAL SINGLE POINT ENERGY" in line:
+            result.append("")
+            if i > 0 and _is_separator(lines[i - 1]):
+                result.append(lines[i - 1])
+            result.append(line)
+            if i + 1 < len(lines) and _is_separator(lines[i + 1]):
+                result.append(lines[i + 1])
+                i += 2
+            else:
+                i += 1
+            result.append("")
+            continue
+
+        # CARTESIAN GRADIENT block (match exact header, not "CARTESIAN GRADIENT NORMS")
+        if line.strip() == "CARTESIAN GRADIENT":
+            result.append("")
+            if i > 0 and _is_separator(lines[i - 1]):
+                result.append(lines[i - 1])
+            result.append(line)
+            i += 1
+            if i < len(lines):
+                result.append(lines[i])  # separator after header
+                i += 1
+            if i < len(lines):
+                result.append(lines[i])  # blank line between separator and data
+                i += 1
+            while i < len(lines) and lines[i].strip():
+                result.append(lines[i])
+                i += 1
+            result.append("")
+            continue
+
+        i += 1
+
+    # Collapse consecutive blank lines into one
+    cleaned: list[str] = []
+    prev_blank = False
+    for ln in result:
+        if not ln.strip():
+            if not prev_blank:
+                cleaned.append(ln)
+            prev_blank = True
+        else:
+            cleaned.append(ln)
+            prev_blank = False
+
+    return "\n".join(cleaned).rstrip() + "\n"
+
+
+@dataclass(frozen=True)
+class OutFileExporter:
+    out_file: Path
+    enabled: bool
+
+    def export_from(self, src: Path) -> None:
+        """Extract grepper-relevant blocks from src and write to self.out_file."""
+        if not self.enabled:
+            return
+        content = _extract_orca_blocks(src)
+        self.out_file.write_text(content)
+
+
+@pytest.fixture(scope="session")
+def fixtures_dir(request: pytest.FixtureRequest) -> Path:
+    return Path(request.config.rootpath) / "tests" / "fixtures"
+
+
+@pytest.fixture
+def out_file_exporter(request: pytest.FixtureRequest, fixtures_dir: Path) -> OutFileExporter:
+    if "out_files" not in request.node.keywords:
+        pytest.fail("out_file_exporter is intended for tests marked with @pytest.mark.out_files")
+
+    return OutFileExporter(
+        out_file=fixtures_dir / "job_fallback.out",
+        enabled=request.config.getoption("--update-out-files"),
     )
