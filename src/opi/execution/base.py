@@ -113,9 +113,10 @@ class RunResult:
 
 class BaseRunner:
     """
-    Base class that facilitates the execution of ORCA binaries, especially the main ORCA binary.
-    Makes sure that correct ORCA binary and MPI libraries are used.
-    This class is intended to be subclassed to execute an ORCA binary.
+    Base class for executing ORCA binaries, especially the main ORCA binary.
+    Ensures that the correct ORCA binary and MPI libraries are used.
+    Can be used directly, but is also intended to be subclassed to provide a more
+    convenient API for specific binaries.
     """
 
     def __init__(self, working_dir: Path | str | os.PathLike[str] | None = None) -> None:
