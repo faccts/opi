@@ -19,6 +19,7 @@ from opi.output.cube import CubeOutput
 from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
     get_error_message,
+    get_error_messages,
     get_float_from_line,
     get_lines_from_block,
     has_casscf_converged,
@@ -681,6 +682,23 @@ class Output:
             return has_func(outfile)
         except FileNotFoundError:
             return False
+
+    def error_messages(self) -> list[str] | None:
+        """
+        Return all error messages found in the ORCA output file, or None if no errors are detected.
+        Scanning stops early when a critical pattern is matched.
+        If the output file does not exist, also return None.
+
+        Returns
+        -------
+        list[str] | None
+            List of error message strings if any errors were detected, else None.
+        """
+        outfile = self.get_outfile()
+        try:
+            return get_error_messages(outfile)
+        except FileNotFoundError:
+            return None
 
     def error_message(self) -> str | None:
         """

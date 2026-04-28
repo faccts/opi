@@ -151,9 +151,11 @@ class NotEnoughMemoryScfError(ErrorPattern):
     def extract(self, file_path: Path) -> str:
         grepper = Grepper(file_path)
         avail_match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=1)
-        est_match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=2)
-        if not avail_match or not est_match:
+        if not avail_match:
             return ""
+        est_match = grepper.search(self.grep_string, case_sensitive=True, skip_lines=2)
+        if not est_match:
+            return self.message
         mem_avail = avail_match[-1].split(":")[-1]
         mem_estimated = est_match[-1].split(":")[-1]
         if mem_avail and mem_estimated:
