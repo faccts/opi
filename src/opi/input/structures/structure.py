@@ -19,7 +19,9 @@ from opi.input.structures.atom import (
     PointCharge,
 )
 from opi.input.structures.coordinates import Coordinates
-from opi.utils.element import Element
+from opi.utils.element import Element, ATOMIC_MASSES_FROM_ELEMENT
+from opi.utils import units, constants
+from opi.utils.rotconst import *
 from opi.utils.tracking_text_io import TrackingTextIO
 
 __all__ = ("Structure",)
@@ -31,7 +33,6 @@ if TYPE_CHECKING:
 
 RGX_FRAG_ID = re.compile(r"(?<=\()\d+(?=\))")
 RGX_ATOM_SYMBOL_FRAG_ID = re.compile(r"(?P<elem>[A-Za-z]{1,2})(\((?P<frag_id>\d+)\))?")
-
 
 class Structure:
     """
@@ -1066,3 +1067,322 @@ class Structure:
             n_struc += 1
             if n_struc_limit and n_struc >= n_struc_limit:
                 break
+
+    def centered_structure(self) -> "Structure":
+        """
+        Return a new Structure centered at its centroid.
+
+        Returns
+        -------
+        Structure
+            New Structure with centered coordinates.
+        """
+        import copy
+
+        coords = np.array([a.coordinates.coordinates for a in self.atoms], dtype=np.float64)
+        centered_coords = coords - coords.mean(axis=0)
+
+        new_structure = copy.deepcopy(self)
+        for atom, new_coord in zip(new_structure.atoms, centered_coords):
+            atom.coordinates = new_coord
+
+        return new_structure
+
+    def _filtered_atoms(
+        self,
+        only_atoms: Sequence[int],
+        ignore_hs: bool,
+    ) -> list[Atom]:
+        """
+        Return Atom instances after applying only_atoms and ignore_hs filters.
+        """
+        atom_list = self.atoms
+        if only_atoms:
+            candidates = [atom_list[i] for i in only_atoms]
+        elif ignore_hs:
+            candidates = [a for a in atom_list if isinstance(a, Atom) and a.element != Element.H]
+        else:
+            candidates = [a for a in atom_list if isinstance(a, Atom)]
+        return [a for a in candidates if isinstance(a, Atom)]
+
+    @staticmethod
+    def _validate_rmsd_compatibility(atoms1: list[Atom], atoms2: list[Atom]) -> None:
+        """
+        Raise ValueError if atoms1 and atoms2 differ in count or element order.
+        """
+        if len(atoms1) != len(atoms2):
+            raise ValueError(
+                f"Structures have different number of atoms: {len(atoms1)} vs {len(atoms2)}"
+            )
+        for i, (a, b) in enumerate(zip(atoms1, atoms2)):
+            if a.element != b.element:
+                raise ValueError(f"Atom mismatch at index {i}: {a.element!r} != {b.element!r}")
+
+    @staticmethod
+    def _rmsd_coords(
+        coords1: npt.NDArray[np.float64],
+        coords2: npt.NDArray[np.float64],
+    ) -> float:
+        """
+        Compute RMSD between two aligned (N, 3) coordinate arrays.
+        """
+        diff = coords1 - coords2
+        return float(np.sqrt(np.sum(diff**2) / len(coords1)))
+
+    def rmsd(
+        self,
+        other: "Structure",
+        /,
+        only_atoms: Sequence[int] = (),
+        *,
+        ignore_hs: bool = False,
+    ) -> float:
+        """
+        Compute RMSD between this structure and *other* (no rotational alignment).
+
+        Both structures are translated to their centroid before comparison.
+
+        Parameters
+        ----------
+        other : Structure
+            Structure to compare against.
+        only_atoms : Sequence[int], default ()
+            Atom indices to include. If non-empty, ``ignore_hs`` is ignored.
+        ignore_hs : bool, default False
+            Exclude hydrogen atoms from the RMSD computation.
+
+        Returns
+        -------
+        float
+            RMSD in Ångström.
+
+        Raises
+        ------
+        ValueError
+            If the filtered atom sets differ in size or element order.
+        """
+        atoms1 = self._filtered_atoms(only_atoms, ignore_hs)
+        atoms2 = other._filtered_atoms(only_atoms, ignore_hs)
+        self._validate_rmsd_compatibility(atoms1, atoms2)
+
+        coords1 = np.array([a.coordinates.coordinates for a in atoms1], dtype=np.float64)
+        coords2 = np.array([a.coordinates.coordinates for a in atoms2], dtype=np.float64)
+
+        coords1 -= coords1.mean(axis=0)
+        coords2 -= coords2.mean(axis=0)
+
+        return self._rmsd_coords(coords1, coords2)
+
+    def rmsd_kabsch(
+        self,
+        other: "Structure",
+        /,
+        only_atoms: Sequence[int] = (),
+        *,
+        ignore_hs: bool = False,
+    ) -> float:
+        """
+        Compute RMSD between this structure and *other* using the Kabsch algorithm.
+
+        Translates both structures to their centroid, then finds the optimal
+        rotation matrix via SVD before computing RMSD.
+
+        Parameters
+        ----------
+        other : Structure
+            Structure to compare against.
+        only_atoms : Sequence[int], default ()
+            Atom indices to include. If non-empty, ``ignore_hs`` is ignored.
+        ignore_hs : bool, default False
+            Exclude hydrogen atoms from the RMSD computation.
+
+        Returns
+        -------
+        float
+            RMSD in Ångström after optimal rotational alignment.
+
+        Raises
+        ------
+        ValueError
+            If the filtered atom sets differ in size or element order.
+        """
+        atoms1 = self._filtered_atoms(only_atoms, ignore_hs)
+        atoms2 = other._filtered_atoms(only_atoms, ignore_hs)
+        self._validate_rmsd_compatibility(atoms1, atoms2)
+
+        coords1 = np.array([a.coordinates.coordinates for a in atoms1], dtype=np.float64)
+        coords2 = np.array([a.coordinates.coordinates for a in atoms2], dtype=np.float64)
+
+        # Translate to centroid
+        coords1 -= coords1.mean(axis=0)
+        coords2_centered = coords2 - coords2.mean(axis=0)
+
+        # Kabsch algorithm: find optimal rotation matrix via SVD
+        # https://doi.org/10.1107/S0567739476001873
+
+        # ------------------------------------------------------------------
+        # Build covariance matrix
+        # ------------------------------------------------------------------
+        # H = B^T A
+        # This matrix captures how coordinates from B map onto A
+        H = coords2_centered.T @ coords1
+
+        # ------------------------------------------------------------------
+        # Singular Value Decomposition (SVD)
+        # ------------------------------------------------------------------
+        # H = U S V^T
+        # This decomposes the transformation into rotations + scaling  
+        U, _, Vt = np.linalg.svd(H)
+
+        # ------------------------------------------------------------------
+        # Optimal rotation matrix
+        # ------------------------------------------------------------------
+        # R = V U^T
+        # Reflection correction: ensure det(R) = +1
+        d = np.linalg.det(Vt.T @ U.T)
+        D = np.diag([1.0, 1.0, d])
+
+        R = Vt.T @ D @ U.T
+
+        coords2_rotated = coords2_centered @ R
+
+        return self._rmsd_coords(coords1, coords2_rotated)
+
+    def rotational_constants(
+        self,
+        masses: npt.NDArray[np.float64] | None = None,
+        weights: dict[str, float] | None = None,
+        atom_weights: dict[int, float] | None = None,
+    ) ->RotationalConstants | None:
+        """
+        Compute rotational constants for this structure.
+
+        Only Atom instances contribute; GhostAtom, PointCharge, and
+        EmbeddingPotential atoms are silently ignored.
+
+        Mass priority
+        -------------
+        masses > atom_weights > weights > default (ATOMIC_MASSES_FROM_ELEMENT)
+
+        Parameters
+        ----------
+        masses : npt.NDArray[np.float64] | None, default None
+            Per-atom masses (amu) for all Atom instances, overriding every
+            other mass source.
+        weights : dict[str, float] | None, default None
+            Per-element mass overrides keyed by element symbol string
+            (e.g. ``{"C": 13.003}``)
+        atom_weights : dict[int, float] | None, default None
+            Per-atom mass overrides keyed by index within the Atom list.
+
+        Returns
+        -------
+        RotationalConstants | None
+            None if no Atom instances are present or all masses are zero.
+
+        Raises
+        ------
+        ValueError
+            If the length of *masses* does not match the number of Atom
+            instances in the structure.
+        """
+        # --- Collect Atom instances only ---
+        atom_list = [a for a in self.atoms if isinstance(a, Atom)]
+
+        if not atom_list:
+            return None
+
+        coords = np.array([a.coordinates.coordinates for a in atom_list], dtype=np.float64)
+
+        # --- Prepare weight overrides ---
+        weights = {k: v for k, v in (weights or {}).items()}
+        atom_weights = atom_weights or {}
+
+        # --- Assign masses ---
+        if masses is not None:
+            masses = np.asarray(masses, dtype=np.float64)
+            if len(masses) != len(atom_list):
+                raise ValueError(
+                    f"masses length ({len(masses)}) does not match number of atoms ({len(atom_list)})"
+                )
+        else:
+            masses_list: list[float] = []
+            for i, atom in enumerate(atom_list):
+                if i in atom_weights:
+                    m = atom_weights[i]
+                elif atom.element.value in weights:
+                    m = weights[atom.element.value]
+                elif atom.element in ATOMIC_MASSES_FROM_ELEMENT:
+                    m = ATOMIC_MASSES_FROM_ELEMENT[atom.element]
+                else:
+                    warn(f"Unknown element '{atom.element.value}' → mass set to 0.0")
+                    m = 0.0
+                masses_list.append(m)
+            masses = np.array(masses_list, dtype=np.float64)
+
+        # --- Filter zero-mass atoms ---
+        mask = masses > 0.0
+        if not np.any(mask):
+            return None
+
+        masses = masses[mask]
+        coords = coords[mask]
+        total_mass = float(masses.sum())
+
+        # --- Center of mass ---
+        com = (masses[:, None] * coords).sum(axis=0) / total_mass
+        coords -= com
+
+        # --- Inertia tensor ---
+        inertia = np.zeros((3, 3), dtype=np.float64)
+        for m, r in zip(masses, coords):
+            inertia += m * (np.dot(r, r) * np.eye(3) - np.outer(r, r))
+
+        # --- Diagonalize: eigenvalues are the principal moments ---
+        moments_raw, _ = np.linalg.eigh(inertia)
+        moments_raw = np.maximum(moments_raw, 0.0)
+        Ia, Ib, Ic = moments_raw
+
+        # --- Convert moments (amu·Å²) to rotational constants (MHz) ---
+        def _moment_to_mhz(I: float) -> float | None:
+            if I < 1e-6:
+                return None
+            I_si = I * units.AMU_TO_KG * (units.ANGST_TO_M ** 2)
+            return constants.H_PLANCK / (8.0 * np.pi ** 2 * I_si) / 1e6
+
+        def _mhz_to_cm(mhz: float | None) -> float | None:
+            # MHz → cm⁻¹ : divide by speed of light in cm/s
+            return None if mhz is None else mhz * 1e6 / constants.C
+
+        A = _moment_to_mhz(Ia)
+        B = _moment_to_mhz(Ib)
+        C = _moment_to_mhz(Ic)
+
+        # --- Rotor classification ---
+        tol = 1e-3
+        n_zero = sum(moment < 1e-6 for moment in (Ia, Ib, Ic))
+
+        if n_zero == 3:
+            rotor = RotorType.MONOATOMIC
+        elif n_zero == 2:
+            rotor = RotorType.LINEAR
+        elif abs(Ia - Ib) < tol and abs(Ib - Ic) < tol:
+            rotor = RotorType.SPHERICAL_TOP
+        elif abs(Ia - Ib) < tol:
+            rotor = RotorType.OBLATE_TOP
+        elif abs(Ib - Ic) < tol:
+            rotor = RotorType.PROLATE_TOP
+        else:
+            rotor = RotorType.ASYMMETRIC_TOP
+
+        return RotationalConstants(
+            A=A,
+            B=B,
+            C=C,
+            A_cm=_mhz_to_cm(A),
+            B_cm=_mhz_to_cm(B),
+            C_cm=_mhz_to_cm(C),
+            moments=(float(Ia), float(Ib), float(Ic)),
+            rotor_type=rotor,
+        )
+    
