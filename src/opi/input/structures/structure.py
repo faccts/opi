@@ -19,9 +19,9 @@ from opi.input.structures.atom import (
     PointCharge,
 )
 from opi.input.structures.coordinates import Coordinates
-from opi.utils.element import Element, ATOMIC_MASSES_FROM_ELEMENT
-from opi.utils import units, constants
-from opi.utils.rotconst import *
+from opi.utils import constants, units
+from opi.utils.element import ATOMIC_MASSES_FROM_ELEMENT, Element
+from opi.utils.rotconst import RotationalConstants, RotorType
 from opi.utils.tracking_text_io import TrackingTextIO
 
 __all__ = ("Structure",)
@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 
 RGX_FRAG_ID = re.compile(r"(?<=\()\d+(?=\))")
 RGX_ATOM_SYMBOL_FRAG_ID = re.compile(r"(?P<elem>[A-Za-z]{1,2})(\((?P<frag_id>\d+)\))?")
+
 
 class Structure:
     """
@@ -1231,7 +1232,7 @@ class Structure:
         # Singular Value Decomposition (SVD)
         # ------------------------------------------------------------------
         # H = U S V^T
-        # This decomposes the transformation into rotations + scaling  
+        # This decomposes the transformation into rotations + scaling
         U, _, Vt = np.linalg.svd(H)
 
         # ------------------------------------------------------------------
@@ -1253,7 +1254,7 @@ class Structure:
         masses: npt.NDArray[np.float64] | None = None,
         weights: dict[str, float] | None = None,
         atom_weights: dict[int, float] | None = None,
-    ) ->RotationalConstants | None:
+    ) -> RotationalConstants | None:
         """
         Compute rotational constants for this structure.
 
@@ -1344,11 +1345,11 @@ class Structure:
         Ia, Ib, Ic = moments_raw
 
         # --- Convert moments (amu·Å²) to rotational constants (MHz) ---
-        def _moment_to_mhz(I: float) -> float | None:
-            if I < 1e-6:
+        def _moment_to_mhz(Inertia: float) -> float | None:
+            if Inertia < 1e-6:
                 return None
-            I_si = I * units.AMU_TO_KG * (units.ANGST_TO_M ** 2)
-            return constants.H_PLANCK / (8.0 * np.pi ** 2 * I_si) / 1e6
+            I_si = Inertia * units.AMU_TO_KG * (units.ANGST_TO_M**2)
+            return constants.H_PLANCK / (8.0 * np.pi**2 * I_si) / 1e6
 
         def _mhz_to_cm(mhz: float | None) -> float | None:
             # MHz → cm⁻¹ : divide by speed of light in cm/s
@@ -1385,4 +1386,3 @@ class Structure:
             moments=(float(Ia), float(Ib), float(Ic)),
             rotor_type=rotor,
         )
-    

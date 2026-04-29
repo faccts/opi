@@ -906,7 +906,6 @@ ATOMIC_NUMBERS_FROM_ELEMENT: dict[Element, int] = {
 # ============================================================
 ATOMIC_MASSES_FROM_ELEMENT: dict[Element, float] = {
     Element.X: 0.0,
-
     Element.H: 1.008,
     Element.HYDROGEN: 1.008,
     Element.HE: 4.003,
@@ -927,7 +926,6 @@ ATOMIC_MASSES_FROM_ELEMENT: dict[Element, float] = {
     Element.FLUORINE: 18.998,
     Element.NE: 20.179,
     Element.NEON: 20.179,
-
     Element.NA: 22.990,
     Element.SODIUM: 22.990,
     Element.MG: 24.305,
@@ -948,7 +946,6 @@ ATOMIC_MASSES_FROM_ELEMENT: dict[Element, float] = {
     Element.POTASSIUM: 39.100,
     Element.CA: 40.080,
     Element.CALCIUM: 40.080,
-
     Element.SC: 44.960,
     Element.SCANDIUM: 44.960,
     Element.TI: 47.900,
@@ -969,7 +966,6 @@ ATOMIC_MASSES_FROM_ELEMENT: dict[Element, float] = {
     Element.COPPER: 63.550,
     Element.ZN: 65.380,
     Element.ZINC: 65.380,
-
     Element.GA: 69.720,
     Element.GALLIUM: 69.720,
     Element.GE: 72.590,
@@ -990,7 +986,6 @@ ATOMIC_MASSES_FROM_ELEMENT: dict[Element, float] = {
     Element.YTTRIUM: 88.910,
     Element.ZR: 91.220,
     Element.ZIRCONIUM: 91.220,
-
     Element.NB: 92.910,
     Element.NIOBIUM: 92.910,
     Element.MO: 95.940,
@@ -1011,7 +1006,6 @@ ATOMIC_MASSES_FROM_ELEMENT: dict[Element, float] = {
     Element.INDIUM: 114.820,
     Element.SN: 118.690,
     Element.TIN: 118.690,
-
     Element.SB: 121.750,
     Element.ANTIMONY: 121.750,
     Element.TE: 127.600,
@@ -1032,7 +1026,6 @@ ATOMIC_MASSES_FROM_ELEMENT: dict[Element, float] = {
     Element.PRASEODYMIUM: 140.9077,
     Element.ND: 144.2400,
     Element.NEODYMIUM: 144.2400,
-
     Element.PM: 145.0000,
     Element.PROMETHIUM: 145.0000,
     Element.SM: 150.4000,
@@ -1053,7 +1046,6 @@ ATOMIC_MASSES_FROM_ELEMENT: dict[Element, float] = {
     Element.THULIUM: 168.9342,
     Element.YB: 173.0400,
     Element.YTTERBIUM: 173.0400,
-
     Element.LU: 174.9670,
     Element.LUTETIUM: 174.9670,
     Element.HF: 178.4900,
@@ -1074,7 +1066,6 @@ ATOMIC_MASSES_FROM_ELEMENT: dict[Element, float] = {
     Element.GOLD: 196.9665,
     Element.HG: 200.5900,
     Element.MERCURY: 200.5900,
-
     Element.TL: 204.3700,
     Element.THALLIUM: 204.3700,
     Element.PB: 207.2000,
@@ -1095,7 +1086,6 @@ ATOMIC_MASSES_FROM_ELEMENT: dict[Element, float] = {
     Element.ACTINIUM: 227.0278,
     Element.TH: 232.0381,
     Element.THORIUM: 232.0381,
-
     Element.PA: 231.0359,
     Element.PROTACTINIUM: 231.0359,
     Element.U: 238.0290,
@@ -1116,7 +1106,6 @@ ATOMIC_MASSES_FROM_ELEMENT: dict[Element, float] = {
     Element.EINSTEINIUM: 252.0000,
     Element.FM: 257.0000,
     Element.FERMIUM: 257.0000,
-
     Element.MD: 258.0000,
     Element.MENDELEVIUM: 258.0000,
     Element.NO: 259.0000,
@@ -1137,7 +1126,6 @@ ATOMIC_MASSES_FROM_ELEMENT: dict[Element, float] = {
     Element.MEITNERIUM: 278.0000,
     Element.DS: 281.0000,
     Element.DARMSTADTIUM: 281.0000,
-
     Element.RG: 281.0000,
     Element.ROENTGENIUM: 281.0000,
     Element.CN: 285.0000,

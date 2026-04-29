@@ -1,6 +1,10 @@
 from opi.models.string_enum import StringEnum
 
-__all__ = ("RotationalConstants", "RotorType",)
+__all__ = (
+    "RotationalConstants",
+    "RotorType",
+)
+
 
 # ============================================================
 # Rotor type classification
@@ -67,3 +71,4 @@ class RotationalConstants:
             f"  A = {fmt(self.A, 'MHz')}   ({fmt(self.A_cm, 'cm⁻¹')})\n"
             f"  B = {fmt(self.B, 'MHz')}   ({fmt(self.B_cm, 'cm⁻¹')})\n"
             f"  C = {fmt(self.C, 'MHz')}   ({fmt(self.C_cm, 'cm⁻¹')})"
+        )
