@@ -1,5 +1,5 @@
 """
-Error pattern constants and the ordered ERROR_PATTERNS list used by the error extractor.
+Error pattern constants and the ordered ERROR_PATTERNS list.
 Patterns are listed in priority order; scanning stops immediately on the first critical match.
 """
 

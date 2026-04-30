@@ -14,22 +14,22 @@ from opi.output.grepper.patterns import (
 )
 
 
-def get_error_messages(file_name: Path) -> list[str] | None:
-    """Return all errors from the output files."""
+def get_error_messages(file_name: Path) -> list[str]:
+    """Return all errors from the output files until a critical error is found."""
     hits: list[str] = []
     for pattern in ERROR_PATTERNS:
-        msg = pattern.match(file_name)
+        msg = pattern.extract(file_name)
         if msg:
             hits.append(msg)
             if pattern.critical:
                 break
-    return hits if hits else None
+    return hits if hits else []
 
 
-def get_error_message(file_name: Path) -> str | None:
-    """Return the most important matched error message, or None if none found."""
+def get_error_message(file_name: Path) -> str:
+    """Return the most important extracted error message."""
     messages = get_error_messages(file_name)
-    return next(iter(messages or []), None)
+    return next(iter(messages or []), "")
 
 
 def has_string_in_file(file_name: Path, search_for: str, /, *, strict: bool = True) -> bool:

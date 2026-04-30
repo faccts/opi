@@ -37,13 +37,6 @@ class ErrorPattern:
         if critical:
             self.critical = critical
 
-    def match(self, file_path: Path) -> str:
-        """
-        Return the error message if this pattern is found in the output file,
-        or an empty string if it is not. Delegates entirely to `extract`.
-        """
-        return self.extract(file_path)
-
     def extract(self, file_path: Path) -> str:
         """
         Search for `grep_string` in `file_path` and return `message` when found,

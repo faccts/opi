@@ -670,11 +670,7 @@ class Output:
         bool
             True if "ORCA TERMINATED NORMALLY" is found in ".out" file else False
         """
-        outfile = self.get_outfile()
-        try:
-            return has_terminated_normally(outfile)
-        except FileNotFoundError:
-            return False
+        return self._has(has_terminated_normally)
 
     def _has(self, has_func: Callable[[Path], bool]) -> bool:
         outfile = self.get_outfile()
