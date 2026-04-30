@@ -679,11 +679,11 @@ class Output:
         except FileNotFoundError:
             return False
 
-    def error_messages(self) -> list[str] | None:
+    def error_messages(self) -> list[str]:
         """
-        Return all error messages found in the ORCA output file, or None if no errors are detected.
-        Scanning stops early when a critical pattern is matched.
-        If the output file does not exist, also return None.
+        Return all known error messages found in the ORCA output file.
+        Scanning stops early when a critical pattern is matched. Critical patterns are patterns that directly terminate ORCA.
+        If the output file does not exist a corresponding error message is returned.
 
         Returns
         -------
@@ -694,12 +694,12 @@ class Output:
         try:
             return get_error_messages(outfile)
         except FileNotFoundError:
-            return None
+            return [f"Could not find output file: {outfile}"]
 
-    def error_message(self) -> str | None:
+    def error_message(self) -> str:
         """
-        Return the most important error message found in the ORCA output file, or None if no error is detected.
-        If the output file does not exist, also return None.
+        Return the most important error message found in the ORCA output file or an empty string if no known error was detected.
+        If the output file does not exist a corresponding error message is returned.
 
         Returns
         -------
@@ -710,7 +710,7 @@ class Output:
         try:
             return get_error_message(outfile)
         except FileNotFoundError:
-            return None
+            return f"Could not find output file: {outfile}"
 
     def scf_converged(self) -> bool:
         """
