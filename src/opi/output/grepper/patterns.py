@@ -1,6 +1,5 @@
 """
-Error pattern constants and the ordered ERROR_PATTERNS list.
-Patterns are listed in priority order; scanning stops immediately on the first critical match.
+Contains patterns for ORCA health checks and error checking capabilities.
 """
 
 from opi.output.grepper.error_pattern import (
@@ -13,14 +12,14 @@ from opi.output.grepper.error_pattern import (
     UnknownBlockValueError,
 )
 
-# > Success strings
+# > Success strings - String that indicate something finished with success
 TERMINATED_NORMALLY = "****ORCA TERMINATED NORMALLY****"
 SCF_CONVERGED = "SUCCESS"
 GEOMETRY_CONVERGED = "HURRAY"
 CC_CONVERGED = "The Coupled-Cluster iterations have converged"
 CASSCF_CONVERGED = "---- THE CAS-SCF GRADIENT HAS CONVERGED ----"
 
-# > Has strings
+# > Has strings - Strings that indicate something was requested
 HAS_GEOMETRY_OPT = "Geometry Optimization Run"
 HAS_SCF = "SCF SETTINGS"
 HAS_ABORTING = "aborting"

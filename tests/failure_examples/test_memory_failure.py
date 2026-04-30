@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Tests for error extraction from ORCA output files where memory is insufficient.
+Tests for error extraction capabilities from ORCA output files where memory is insufficient.
 Covers SCF, MP2, and coupled-cluster triples memory failures.
 """
 

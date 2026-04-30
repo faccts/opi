@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Tests for error extraction from ORCA output files where convergence fails.
+Tests for error extraction capabilities of OPI.
 Covers SCF, coupled-cluster, geometry optimization, and CP-SCF convergence failures.
 """
 
@@ -28,7 +28,7 @@ def calc(tmp_path):
 
 @pytest.mark.orca
 def test_scf_conv_fail(calc):
-    """Test error_message for SCF failure"""
+    """Test error_message for SCF not converging"""
     calc.input.add_blocks(BlockScf(maxiter=1))
     # > write the input and run the calculation
     calc.write_and_run()
@@ -77,6 +77,7 @@ def test_opt_conv_fail(calc):
 
     # > get the output and check some results
     output = calc.get_output()
+    # > Note that ORCA still terminates normally
     assert output.terminated_normally()
     assert output.error_message() == OPT_NOT_CONVERGED_ERROR.message
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Tests for error extraction from ORCA output files with malformed input.
+Tests for error extraction capabilities of OPI from the ORCA output with bad ORCA input.
 Covers invalid lines, unknown simple keywords, unknown blocks, and invalid block options.
 """
 

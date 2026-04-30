@@ -17,6 +17,7 @@ class ErrorPattern:
         A human-readable error message of the given error pattern.
     critical: bool
         When the error is critical we will stop searching for further errors after finding it.
+        Critical errors are errors after which ORCA will abort.
 
     """
 
