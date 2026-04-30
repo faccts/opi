@@ -16,6 +16,7 @@ from pathlib import Path
 import tempfile
 from typing import Iterable, Iterator, Literal, Sequence
 
+from opi.exceptions import OrcaMmError
 from opi.execution.base import BaseRunner
 from opi.lib.orca_binary import OrcaBinary
 
@@ -35,30 +36,6 @@ ChargeOption = Literal[
     "XTBOptPBE",
     "noChargeCalc",
 ]
-
-
-class OrcaMmException(Exception):
-    """
-    Exception raised when an `orca_mm` command reports an error.
-    """
-
-    def __init__(self, command: OrcaMmCommand, arguments: Sequence[str], error: str):
-        """
-        Parameters
-        ----------
-        command : OrcaMmCommand
-            `orca_mm` subcommand that was executed.
-        arguments : Sequence[str]
-            Command-line arguments passed to `orca_mm`.
-        error : str
-            Error output captured from `orca_mm` STDERR.
-        """
-        fmt_arguments = " ".join(arguments)
-        message = (
-            f"Failed running command: 'orca_mm -{command} {fmt_arguments}'.\n"
-            f"orca_mm failed with the following error:\n{error.strip()}"
-        )
-        super().__init__(message)
 
 
 def _add_infix_to_path(path: Path, infix: str, suffix: str) -> Path:
@@ -171,7 +148,7 @@ class OrcaMmRunner(BaseRunner):
                 timeout=timeout,
             )
             if raise_on_error and path.exists() and (error := path.read_text()):
-                raise OrcaMmException(command, arguments, error)
+                raise OrcaMmError(command, arguments, error)
 
     def run_convff(
         self,
