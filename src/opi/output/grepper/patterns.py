@@ -1,5 +1,6 @@
 """
 Contains patterns for ORCA health checks and error checking capabilities.
+At the end of the file the list of ErrorPatterns is found that is used to generate the output of `get_error_messages`.
 """
 
 from opi.output.grepper.error_pattern import (
@@ -62,7 +63,7 @@ TRIPLES_OOM_ERROR = ErrorPattern(
 OOM_ERROR = ErrorPattern(
     "ERROR - OUT OF MEMORY !!!",
     "Calculation ran out of memory",
-    critical=False,
+    critical=True,
 )
 MDCI_ERROR = ErrorPattern(
     "ORCA finished by error termination in MDCI",
@@ -93,19 +94,20 @@ ERROR_PATTERNS: list[ErrorPattern] = [
     UnknownBlockKeyError(),  # critical
     UnknownBlockError(),  # critical
     NO_COORDS_ERROR,  # critical
-    # > Convergence errors
+    # > Critical convergence errors
     CPSCF_NOT_CONVERGED_ERROR,  # critical
     CC_NOT_CONVERGED_ERROR,  # critical
-    CIS_TDA_NOT_CONVERGED_ERROR,  # non-critical: scan continues
     SCF_NOT_CONVERGED_ERROR,  # critical
-    OPT_NOT_CONVERGED_ERROR,  # non-critical: scan continues
     # > Memory errors
     NotEnoughMemoryScfError(),  # critical
     TRIPLES_OOM_ERROR,  # critical
-    OOM_ERROR,  # non-critical: scan continues
+    OOM_ERROR,  # critical
     # > Module terminates not normally
     MDCI_ERROR,  # critical
     MP2_ERROR,  # critical
+    # > non-critical convergence errors
+    OPT_NOT_CONVERGED_ERROR,  # non-critical: scan continues
+    CIS_TDA_NOT_CONVERGED_ERROR,  # non-critical: scan continues
     # > Potentially MPI related error
     MPI_ERROR,  # non-critical: scan continues
     # > Unspecific errors
