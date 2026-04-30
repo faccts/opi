@@ -9,7 +9,9 @@ from tests.conftest import OutFileExporter
 @pytest.mark.orca
 @pytest.mark.json_files
 @pytest.mark.out_files
-def test_exmp003_opt(example_input_file, tmp_path, json_files_exporter, out_file_exporter: OutFileExporter) -> None:
+def test_exmp003_opt(
+    example_input_file, tmp_path, json_files_exporter, out_file_exporter: OutFileExporter
+) -> None:
     """Ensure optimization example runs successfully and produces a final energy and structure."""
     # Get input file from example folder
     input_file = example_input_file(run_exmp003)
