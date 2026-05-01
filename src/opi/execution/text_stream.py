@@ -111,7 +111,8 @@ class TextStreamFanout(IO[str]):
 
 
 def _is_writable_stream(value: object) -> TypeGuard[IO[str]]:
-    """Detemines whether `value` is a writable stream.
+    """
+    Detemines whether `value` is a writable stream.
 
     To be considered a writable stream, the object must have a
     callable write method.
@@ -136,7 +137,8 @@ def _is_writable_stream(value: object) -> TypeGuard[IO[str]]:
 
 
 def target_spec_to_stream_targets(targets: StreamTargetSpec) -> StreamTargets:
-    """Normalizes `TargetDestination` and `Sequence[TargetDesination]` into a
+    """
+    Normalizes `TargetDestination` and `Sequence[TargetDesination]` into a
     `tuple[TargetDestination, ...]` to be used by the `TextStreamFanout` class.
 
     Parameters
@@ -194,7 +196,8 @@ def concatentate_stream_targets(*targets: StreamTargetSpec) -> StreamTargets:
 
 @contextmanager
 def open_text_stream_fanout(targets: StreamTargetSpec) -> Iterator[TextStreamFanout]:
-    """Context manager that creates an instance of `TextStreamFanout` which can be
+    """
+    Context manager that creates an instance of `TextStreamFanout` which can be
     used to pipe the output from a subprocess to multiple target streams. Closes all
     open streams on exit.
 
@@ -241,7 +244,8 @@ def pump_text_stream(
     target: TextStreamFanout,
     errors: list[BaseException],
 ) -> None:
-    """Pumps the output from `stream` to the `target` fanout.
+    """
+    Pumps the output from `stream` to the `target` fanout.
 
     Intended to be used to listen to a subprocess's stdout or
     stderr stream then iterates over every line sending it to the
@@ -262,7 +266,7 @@ def pump_text_stream(
         for line in stream:
             target.write(line)
     except BaseException as exc:
-        errors.append(exc)
+        errors.append(exc)  # TODO: should we raise immediately?
     finally:
         try:
             stream.close()
