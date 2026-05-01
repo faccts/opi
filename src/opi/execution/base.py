@@ -11,7 +11,6 @@ R:
     Helper variable for type annotation.
 """
 
-import itertools
 import os
 import shutil
 import subprocess
