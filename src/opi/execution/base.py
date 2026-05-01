@@ -167,123 +167,6 @@ class BaseRunner:
             # > Completely resolving path
             self._working_dir = value.expanduser().resolve()
 
-    # @_orca_environment
-    # def run(
-    #     self,
-    #     binary: OrcaBinary,
-    #     args: Sequence[str] = (),
-    #     /,
-    #     *,
-    #     stdin_str: str | None = None,
-    #     stdout: Path | None = None,
-    #     stderr: Path | None = None,
-    #     silent: bool = True,
-    #     capture: bool = False,
-    #     cwd: Path | None = None,
-    #     timeout: int = -1,
-    # ) -> subprocess.CompletedProcess[str] | None:
-    #     """
-    #     Function that executes ORCA binary.
-
-    #     Parameters
-    #     ----------
-    #     binary : OrcaBinary
-    #         Name of ORCA binary to be executed. Path is automatically resolved based on configuration.
-    #     args : Sequence[str], default: ()
-    #         Command line arguments to pass to ORCA binary.
-    #     stdin_str: str | None = None
-    #         String to be passed to stdin.
-    #     stdout : Path | None, default: None
-    #         Dump STDOUT to a file.
-    #     stderr : Path | None, default: None
-    #         Dump STDERR to a file.
-    #     silent : bool, default: True
-    #         Redirect STDOUT and STDERR to null-device.
-    #         Is overruled respectively by `stdout` and `stderr` and `capture`.
-    #     capture : bool, default: False
-    #         Capture STDOUT and STDERR and return with `CompletedProcess[str]` object.
-    #         Is overruled respectively by `stdout` and `stderr`.
-    #     cwd : Path | None, default: None
-    #         Set working directory for execution. Overrules `self.working_dir`.
-    #     timeout : int, default: -1
-    #         Optional timeout in seconds to wait for process to complete.
-
-    #     Returns
-    #     -------
-    #     subprocess.subprocess.CompletedProcess[str] | None:
-    #         Completed ORCA process.
-
-    #     Raises
-    #     ------
-    #     FileNotFound:
-    #       Error if path to ORCA binary cannot be resolved.
-    #     subprocess.TimeoutExpired:
-    #         If `timeout>-1` and the process times out.
-    #     """
-
-    #     # ------------------------------------------------------------
-    #     def determine_dump(source: Path | None = None) -> TextIOWrapper:
-    #         """
-    #         Determine where to dump `source` to.
-
-    #         Parameters
-    #         ----------
-    #         source : Path | None, default: None
-    #         """
-
-    #         if source:
-    #             return source.open("w")
-    #         elif capture:
-    #             return cast(TextIOWrapper, nullcontext(subprocess.PIPE))
-    #         elif silent:
-    #             return Path(os.devnull).open("w")
-    #         else:
-    #             return cast(TextIOWrapper, nullcontext())
-
-    #     # ------------------------------------------------------------
-
-    #     if not isinstance(binary, OrcaBinary):
-    #         raise ValueError(f"`binary` must be of type OrcaBinary, not: {type(binary)}")
-
-    #     # > Working dir
-    #     if not cwd:
-    #         cwd = self.working_dir
-
-    #     # > Get requested ORCA binary
-    #     orca_bin = self.get_orca_binary(binary)
-
-    #     # > STDOUT and STDERR capturing/dumping
-    #     outfile = determine_dump(stdout)
-    #     errfile = determine_dump(stderr)
-
-    #     # > Assembling full call
-    #     cmd = [str(orca_bin)]
-    #     if args:
-    #         cmd += list(args)
-
-    #     # Run the binary
-    #     proc = None
-    #     try:
-    #         with outfile as f_out, errfile as f_err:
-    #             proc = subprocess.run(
-    #                 cmd,
-    #                 input=stdin_str,
-    #                 stdout=f_out,
-    #                 stderr=f_err,
-    #                 cwd=cwd,
-    #                 text=True,
-    #                 timeout=timeout if timeout > 0 else None,
-    #             )
-    #         return proc
-    #     except subprocess.TimeoutExpired:
-    #         raise
-    #     finally:
-    #         # > Delete empty STDOUT and STDERR dumps
-    #         if stdout:
-    #             delete_empty_file(stdout)
-    #         if stderr:
-    #             delete_empty_file(stderr)
-
     @_orca_environment
     def run(
         self,
@@ -295,12 +178,62 @@ class BaseRunner:
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         cwd: Path | None = None,
-        timeout: int = -1,
+        timeout: float | None = None,
         # deprecated
         stdin_str: _Unset | str | None = UNSET,
         capture: _Unset | bool = UNSET,
         silent: _Unset | bool = UNSET,
     ) -> RunResult:
+        """
+        _summary_
+
+        The `stdout` and `stderr` arguments can be one or more `StreamTarget`.
+        A stream target can be a file object, a path to a file to write to, a callable
+        or the output can be captured into the `RunResult` using the target `subprocess.PIPE`.
+
+        Parameters
+        ----------
+        binary : OrcaBinary
+            Name of ORCA binary to be executed. Path is automatically resolved based on configuration.
+        args : Sequence[str], default: ()
+            Command line arguments to pass to ORCA binary
+        stdin : str | None, default: None
+            String to be passed to stdin.
+        stdout : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess `stdout` to.
+        stderr : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess `stderr` to.
+        cwd : Path | None, default: None
+            Set working directory for execution. Overrules `self.working_dir`.
+        timeout : float | None, by default None
+            Optional timeout in seconds to wait for process to complete. None or
+            negative timeout denotes no timeout.
+        stdin_str : _Unset | str | None, default: UNSET
+            DEPRECATED, use `stdin` instead.
+        capture : _Unset | bool, default: UNSET
+            DEPRECATED, use `stdout`/`stderr`=`subprocess.PIPE` instead.
+        silent : _Unset | bool, default: UNSET
+            DEPRECATED, use `stdout`/`stderr`=`()` instead.
+
+        Returns
+        -------
+        RunResult
+            Completed ORCA run result.
+
+        Raises
+        ------
+        ValueError
+            Raised if an invalid ORCA binary is passed in.
+        FileNotFound:
+            Error if path to ORCA binary cannot be resolved.
+        subprocess.TimeoutExpired
+            Raised by `run_subprocess_with_fanout` if a timeout is set and the process
+            times out.
+        BaseException
+            Raised by `run_subprocess_with_fanout`, after the process has finished, the
+            first error accumulated from a failed write is raised.
+        """
+
         if stdin_str is not UNSET:
             warnings.warn(
                 "`stdin_str` is deprecated; use `stdin` instead.",
@@ -332,7 +265,7 @@ class BaseRunner:
         # > Assembling full call
         cmd = (orca_bin,) + args
 
-        timeout_value = None if timeout < 0 else timeout
+        timeout_value = None if timeout is None or timeout < 0 else timeout
 
         # > Working dir
         if not cwd:
