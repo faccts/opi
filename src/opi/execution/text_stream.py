@@ -6,20 +6,16 @@ from typing import (
     IO,
     Callable,
     Sequence,
-    Literal,
     TypeAlias,
     Final,
     TypeGuard,
-    TYPE_CHECKING,
     Iterator,
 )
 import threading
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 
-CaptureType = Literal[-1]
-if TYPE_CHECKING:
-    assert subprocess.PIPE == -1
+CaptureType = int  # -1 is the sentinel value used by subprocess
 CAPTURE: Final[CaptureType] = subprocess.PIPE
 
 

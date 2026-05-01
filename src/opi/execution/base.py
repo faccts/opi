@@ -95,7 +95,7 @@ class RunResult:
         """Check for zero exit code"""
         return self.returncode == 0
 
-    def check_returncode(self):
+    def check_returncode(self) -> None:
         """Raise RuntimeError exit code is non-zero."""
         if not self.returncode_ok():
             raise RuntimeError(
