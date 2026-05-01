@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from opi.execution.core import Runner
+from opi.execution.text_stream import StreamTargetSpec
 from opi.input.blocks.block_output import BlockOutput
 from opi.input.core import Input
 from opi.input.structures.structure import Structure
@@ -107,13 +108,13 @@ class Calculator:
     # PROPERTIES
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     @property
-    def basename(self) -> str:
+    def basename(self) -> str:  # type: ignore[reportRedeclaration]
         if not self._basename:
             raise ValueError("The basename cannot be empty!")
         return self._basename
 
     @basename.setter
-    def basename(self, value: str) -> None:
+    def basename(self, value: str) -> None:  # type: ignore[reportRedeclaration]
         if not isinstance(value, str):
             raise TypeError(f"`basename` must be a string, not {type(value)}.")
         # > Check if basename contains whitespaces
@@ -154,11 +155,11 @@ class Calculator:
         raise AttributeError(f"{self.__class__.__name__}.inpfile: is a read-only property.")
 
     @property
-    def working_dir(self) -> Path:
+    def working_dir(self) -> Path:  # type: ignore[reportRedeclaration]
         return self._working_dir
 
     @working_dir.setter
-    def working_dir(self, value: Path | str | PathLike[str] | None) -> None:
+    def working_dir(self, value: Path | str | PathLike[str] | None) -> None:  # type: ignore[reportRedeclaration]
         """
         Parameters
         ----------
@@ -273,7 +274,9 @@ class Calculator:
         """Create a `Runner` object passing on `self.working_dir`."""
         return Runner(working_dir=self.working_dir)
 
-    def run(self, *, timeout: int = -1) -> bool:
+    def run(
+        self, *, stdout: StreamTargetSpec = (), stderr: StreamTargetSpec = (), timeout: int = -1
+    ) -> bool:
         """
         Execute ORCA calculation.
 
@@ -290,7 +293,7 @@ class Calculator:
         """
         runner = self._create_runner()
         assert self.inpfile
-        runner.run_orca(self.inpfile, timeout=timeout)
+        runner.run_orca(self.inpfile, stdout=stdout, stderr=stderr, timeout=timeout)
         output = self.get_output()
         return output.terminated_normally()
 
