@@ -6,18 +6,17 @@ import io
 import subprocess
 import sys
 import threading
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 import pytest
 
 from opi.execution.run import run_subprocess_with_fanout, SubprocessRunResult
-from opi.execution.text_stream import TextStreamFanout, open_text_stream_fanout, pump_text_stream
+from opi.execution.text_stream import TextStreamFanout, open_text_stream_fanout, StreamTargetSpec
 
 
 @pytest.mark.unit
-def test_fanout_capture_only() -> None:
+def test_fanout_capture_only():
+    """Test fanout captures output when explicitly calling write."""
     target = TextStreamFanout()
     target.add_capture()
 
@@ -30,7 +29,8 @@ def test_fanout_capture_only() -> None:
 
 
 @pytest.mark.unit
-def test_fanout_write_to_io_callback_and_capture() -> None:
+def test_fanout_write_multi():
+    """Test fanout can write to multiple targets."""
     target = TextStreamFanout()
 
     buffer = io.StringIO()
@@ -49,7 +49,8 @@ def test_fanout_write_to_io_callback_and_capture() -> None:
 
 
 @pytest.mark.unit
-def test_fanout_returns_none_when_capture_not_enabled() -> None:
+def test_fanout_no_capture():
+    """Test that no buffer is captured if not enabled."""
     target = TextStreamFanout()
     buffer = io.StringIO()
 
@@ -61,9 +62,10 @@ def test_fanout_returns_none_when_capture_not_enabled() -> None:
 
 
 @pytest.mark.unit
-def test_open_multi_text_io_supports_path_io_callback_and_capture(
+def test_open_text_stream_fanout(
     tmp_path: Path,
-) -> None:
+):
+    """Test open stream is able to write to multiple targets."""
     output_path = tmp_path / "stdout.txt"
     buffer = io.StringIO()
     callback_chunks: list[str] = []
@@ -92,7 +94,8 @@ def test_open_multi_text_io_supports_path_io_callback_and_capture(
 
 
 @pytest.mark.unit
-def test_popen_captures_stdout() -> None:
+def test_subprocess_captures_stdout():
+    """Test stdout is captured when running subprocess."""
     result = run_subprocess_with_fanout(
         [
             sys.executable,
@@ -108,7 +111,8 @@ def test_popen_captures_stdout() -> None:
 
 
 @pytest.mark.unit
-def test_popen_captures_stdout_and_stderr_separately() -> None:
+def test_subprocess_captures_stdout_and_stderr():
+    """Test both stdout and stderr are captured when running subprocess."""
     code = "import sys\n" "print('stdout text')\n" "print('stderr text', file=sys.stderr)\n"
 
     result = run_subprocess_with_fanout(
@@ -123,9 +127,8 @@ def test_popen_captures_stdout_and_stderr_separately() -> None:
 
 
 @pytest.mark.unit
-def test_popen_fans_out_stdout_to_capture_file_io_and_callback(
-    tmp_path: Path,
-) -> None:
+def test_subprocess_fanout_multi(tmp_path: Path):
+    """Test subprocess output fans out to multiple target streams"""
     output_path = tmp_path / "child.out"
     buffer = io.StringIO()
     callback_chunks: list[str] = []
@@ -152,7 +155,8 @@ def test_popen_fans_out_stdout_to_capture_file_io_and_callback(
 
 
 @pytest.mark.unit
-def test_popen_accepts_stdin_str() -> None:
+def test_subprocess_accepts_stdin():
+    """Check subprocess can accept input from stdin"""
     code = "import sys\n" "data = sys.stdin.read()\n" "print(data.upper(), end='')\n"
 
     result = run_subprocess_with_fanout(
@@ -166,23 +170,26 @@ def test_popen_accepts_stdin_str() -> None:
 
 
 @pytest.mark.unit
-def test_popen_streams_before_process_exits() -> None:
+def test_subprocess_streams_before_process_exits():
     """
-    This is the important streaming test.
+    Test subprocess streams output during execution.
 
-    The child prints 'started', flushes, then sleeps before printing 'finished'.
+    Ensures that we are able to capture output before the process exits.
 
-    We run the parent-side runner in a thread. The callback should receive
-    'started' while the subprocess is still sleeping, before the runner returns.
+    1. Child process prints 'started' and flushes.
+    2. Child process sleeps for 1s.
+    3. Child process prints 'finished' and exits.
 
-    If this fails, your pump is probably buffering until EOF.
+    We run a separate thread from the parent process which uses a threading.Event
+    with a timeout of 0.5s. As the child process is waiting for 1s we should recieve
+    the 'started' signle while the subprocess is still sleeping.
     """
     saw_started = threading.Event()
     runner_finished = threading.Event()
 
     callback_chunks: list[str] = []
 
-    def on_stdout(chunk: str) -> None:
+    def on_stdout(chunk: str):
         callback_chunks.append(chunk)
         if "started" in chunk:
             saw_started.set()
@@ -196,7 +203,7 @@ def test_popen_streams_before_process_exits() -> None:
 
     result_holder: dict[str, SubprocessRunResult] = {}
 
-    def run() -> None:
+    def run():
         result_holder["result"] = run_subprocess_with_fanout(
             [sys.executable, "-c", code],
             stdout=[subprocess.PIPE, on_stdout],
@@ -222,13 +229,14 @@ def test_popen_streams_before_process_exits() -> None:
 
 
 @pytest.mark.unit
-def test_popen_streams_stderr_before_process_exits() -> None:
+def test_subprocess_streams_stderr_before_process_exits():
+    """Same logic as the stdout streaming test with stderr."""
     saw_warning = threading.Event()
     runner_finished = threading.Event()
 
     stderr_chunks: list[str] = []
 
-    def on_stderr(chunk: str) -> None:
+    def on_stderr(chunk: str):
         stderr_chunks.append(chunk)
         if "warning" in chunk:
             saw_warning.set()
@@ -242,7 +250,7 @@ def test_popen_streams_stderr_before_process_exits() -> None:
 
     result_holder: dict[str, SubprocessRunResult] = {}
 
-    def run() -> None:
+    def run():
         result_holder["result"] = run_subprocess_with_fanout(
             [sys.executable, "-c", code],
             stderr=[subprocess.PIPE, on_stderr],
@@ -265,7 +273,8 @@ def test_popen_streams_stderr_before_process_exits() -> None:
 
 
 @pytest.mark.unit
-def test_popen_raises_timeout_expired() -> None:
+def test_subprocess_raises_timeout_expired():
+    """Test subprocess fanout raises subprocess.TimeoutExpired"""
     code = "import time\n" "time.sleep(10)\n"
 
     with pytest.raises(subprocess.TimeoutExpired):
@@ -287,7 +296,8 @@ def test_popen_raises_timeout_expired() -> None:
         ((), subprocess.DEVNULL),
     ],
 )
-def test_invalid_stream_targets(stdout, stderr) -> None:
+def test_invalid_stream_targets(stdout: StreamTargetSpec, stderr: StreamTargetSpec):
+    """Test that TypeError is raised for invalide stream types"""
     with pytest.raises(TypeError):
         run_subprocess_with_fanout(
             [sys.executable, "-c", "pass"],
