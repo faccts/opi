@@ -113,7 +113,7 @@ def test_subprocess_captures_stdout():
 @pytest.mark.unit
 def test_subprocess_captures_stdout_and_stderr():
     """Test both stdout and stderr are captured when running subprocess."""
-    code = "import sys\n" "print('stdout text')\n" "print('stderr text', file=sys.stderr)\n"
+    code = "import sys\nprint('stdout text')\nprint('stderr text', file=sys.stderr)\n"
 
     result = run_subprocess_with_fanout(
         [sys.executable, "-c", code],
@@ -133,7 +133,7 @@ def test_subprocess_fanout_multi(tmp_path: Path):
     buffer = io.StringIO()
     callback_chunks: list[str] = []
 
-    code = "print('alpha')\n" "print('beta')\n"
+    code = "print('alpha')\nprint('beta')\n"
 
     result = run_subprocess_with_fanout(
         [sys.executable, "-c", code],
@@ -157,7 +157,7 @@ def test_subprocess_fanout_multi(tmp_path: Path):
 @pytest.mark.unit
 def test_subprocess_accepts_stdin():
     """Check subprocess can accept input from stdin"""
-    code = "import sys\n" "data = sys.stdin.read()\n" "print(data.upper(), end='')\n"
+    code = "import sys\ndata = sys.stdin.read()\nprint(data.upper(), end='')\n"
 
     result = run_subprocess_with_fanout(
         [sys.executable, "-c", code],
@@ -216,9 +216,9 @@ def test_subprocess_streams_before_process_exits():
 
     assert saw_started.wait(timeout=0.5), "stdout was not streamed before the process finished"
 
-    assert (
-        not runner_finished.is_set()
-    ), "runner finished too early; test did not prove live streaming"
+    assert not runner_finished.is_set(), (
+        "runner finished too early; test did not prove live streaming"
+    )
 
     thread.join(timeout=5.0)
 
@@ -275,7 +275,7 @@ def test_subprocess_streams_stderr_before_process_exits():
 @pytest.mark.unit
 def test_subprocess_raises_timeout_expired():
     """Test subprocess fanout raises subprocess.TimeoutExpired"""
-    code = "import time\n" "time.sleep(10)\n"
+    code = "import time\ntime.sleep(10)\n"
 
     with pytest.raises(subprocess.TimeoutExpired):
         run_subprocess_with_fanout(
