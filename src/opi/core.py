@@ -108,13 +108,13 @@ class Calculator:
     # PROPERTIES
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     @property
-    def basename(self) -> str:  # type: ignore[reportRedeclaration]
+    def basename(self) -> str:
         if not self._basename:
             raise ValueError("The basename cannot be empty!")
         return self._basename
 
     @basename.setter
-    def basename(self, value: str) -> None:  # type: ignore[reportRedeclaration]
+    def basename(self, value: str) -> None:
         if not isinstance(value, str):
             raise TypeError(f"`basename` must be a string, not {type(value)}.")
         # > Check if basename contains whitespaces
@@ -155,11 +155,11 @@ class Calculator:
         raise AttributeError(f"{self.__class__.__name__}.inpfile: is a read-only property.")
 
     @property
-    def working_dir(self) -> Path:  # type: ignore[reportRedeclaration]
+    def working_dir(self) -> Path:
         return self._working_dir
 
     @working_dir.setter
-    def working_dir(self, value: Path | str | PathLike[str] | None) -> None:  # type: ignore[reportRedeclaration]
+    def working_dir(self, value: Path | str | PathLike[str] | None) -> None:
         """
         Parameters
         ----------

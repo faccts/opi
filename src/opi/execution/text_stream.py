@@ -28,7 +28,7 @@ StreamTargetSpec: TypeAlias = StreamDestination | Sequence[StreamDestination]
 StreamTargets: TypeAlias = tuple[StreamDestination, ...]
 
 
-class TextStreamFanout(IO[str]):
+class TextStreamFanout:
     """
     The TextStreamFannout class is a Python-side fanout dispatch helper
     for writing to multiple StreamTargets when running commands using
@@ -61,15 +61,15 @@ class TextStreamFanout(IO[str]):
         """Detemine whether the fanout has any targets that need to be captured."""
         return self._capture_enabled or bool(self._streams) or bool(self._callbacks)
 
-    def add_capture(self):
+    def add_capture(self) -> None:
         """Capture output text which can be accessed through `get_captured()`."""
         self._capture_enabled = True
 
-    def add_stream(self, stream: IO[str]):
+    def add_stream(self, stream: IO[str]) -> None:
         """Append IO stream to the list of streams."""
         self._streams.append(stream)
 
-    def add_callback(self, callback: Callable[[str], None]):
+    def add_callback(self, callback: Callable[[str], None]) -> None:
         """Append line callback to the list of callbacks."""
         self._callbacks.append(callback)
 
@@ -99,7 +99,7 @@ class TextStreamFanout(IO[str]):
 
         return len(text)
 
-    def flush(self):
+    def flush(self) -> None:
         """Flush all streams."""
         with self._lock:
             for stream in self._streams:
@@ -180,7 +180,7 @@ def target_spec_to_stream_targets(targets: StreamTargetSpec) -> StreamTargets:
         normalized: list[StreamDestination] = []
         for index, target in enumerate(targets):
             try:
-                normalized.extend(target_spec_to_stream_targets(target))  # type: ignore[arg-type]
+                normalized.extend(target_spec_to_stream_targets(target))
             except TypeError as exc:
                 raise TypeError(f"Unsupported stream target at index {index}: {target!r}") from exc
         return tuple(normalized)

@@ -143,11 +143,11 @@ class BaseRunner:
         self.set_open_mpi_path()
 
     @property
-    def working_dir(self) -> Path:  # type: ignore[reportRedeclaration]
+    def working_dir(self) -> Path:
         return self._working_dir
 
     @working_dir.setter
-    def working_dir(self, value: Path | str | os.PathLike[str] | None) -> None:  # type: ignore[reportRedeclaration]
+    def working_dir(self, value: Path | str | os.PathLike[str] | None) -> None:
         """
         Parameters
         ----------
@@ -185,7 +185,7 @@ class BaseRunner:
         silent: _Unset | bool = UNSET,
     ) -> RunResult:
         """
-        _summary_
+        Function that executes ORCA binary.
 
         The `stdout` and `stderr` arguments can be one or more `StreamTarget`.
         A stream target can be a file object, a path to a file to write to, a callable
