@@ -29,7 +29,7 @@ class TextStreamFanout:
     The TextStreamFannout class is a Python-side fanout dispatch helper
     for writing to multiple StreamTargets when running commands using
     subprocess.POpen. TextStreamFannout is not passed into subprocess.POpen
-    directly, instead TextStreamFannout recieves data from subprocess.PIPE
+    directly, instead TextStreamFannout receives data from subprocess.PIPE
     then redirects to the stream targets.
 
     Attributes
@@ -54,7 +54,7 @@ class TextStreamFanout:
 
     @property
     def active(self) -> bool:
-        """Detemine whether the fanout has any targets that need to be captured."""
+        """Determine whether the fanout has any targets that need to be captured."""
         return self._capture_enabled or bool(self._streams) or bool(self._callbacks)
 
     def add_capture(self) -> None:
@@ -108,7 +108,7 @@ class TextStreamFanout:
 
 def _is_writable_stream(value: object) -> TypeGuard[IO[str]]:
     """
-    Detemines whether `value` is a writable stream.
+    Determines whether `value` is a writable stream.
 
     To be considered a writable stream, the object must have a
     callable write method.

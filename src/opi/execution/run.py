@@ -143,7 +143,7 @@ def run_subprocess_with_fanout(
             # Wait for the process to exit
             returncode = proc.wait(timeout=timeout)
         except subprocess.TimeoutExpired as exc:
-            # Make sure the process has exitted
+            # Make sure the process has exited
             proc.kill()
             proc.wait()
 
