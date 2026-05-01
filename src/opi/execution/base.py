@@ -11,24 +11,24 @@ R:
     Helper variable for type annotation.
 """
 
+import itertools
 import os
 import shutil
-from enum import Enum
 import subprocess
 import warnings
 from collections.abc import Callable, Sequence
-import itertools
-from pathlib import Path
-from typing import Any, Concatenate, ParamSpec, TypeVar, cast, Final
 from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+from typing import Any, Concatenate, Final, ParamSpec, TypeVar, cast
 
 from opi import ORCA_MINIMAL_VERSION
+from opi.execution.run import run_subprocess_with_fanout
+from opi.execution.text_stream import StreamTargetSpec
 from opi.lib.orca_binary import OrcaBinary
 from opi.utils.config import get_config
 from opi.utils.misc import add_to_env, check_minimal_version, resolve_binary_name
 from opi.utils.orca_version import OrcaVersion
-from opi.execution.text_stream import StreamTargetSpec
-from opi.execution.run import run_subprocess_with_fanout
 
 RunnerType = TypeVar("RunnerType", bound="BaseRunner")
 P = ParamSpec("P")

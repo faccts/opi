@@ -1,19 +1,19 @@
 from __future__ import annotations
-from collections.abc import Sequence as AbstractSequence
-import subprocess
 
+import subprocess
+import threading
+from collections.abc import Sequence as AbstractSequence
+from contextlib import ExitStack, contextmanager
+from pathlib import Path
 from typing import (
     IO,
     Callable,
+    Final,
+    Iterator,
     Sequence,
     TypeAlias,
-    Final,
     TypeGuard,
-    Iterator,
 )
-import threading
-from contextlib import ExitStack, contextmanager
-from pathlib import Path
 
 CaptureType = int  # -1 is the sentinel value used by subprocess
 CAPTURE: Final[CaptureType] = subprocess.PIPE

@@ -1,9 +1,10 @@
-from typing import Sequence
-from pathlib import Path
 import subprocess
-from opi.execution.text_stream import open_text_stream_fanout, StreamTargetSpec, pump_text_stream
-from dataclasses import dataclass
 import threading
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Sequence
+
+from opi.execution.text_stream import StreamTargetSpec, open_text_stream_fanout, pump_text_stream
 
 
 @dataclass(frozen=True)

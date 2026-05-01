@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from opi.execution.run import run_subprocess_with_fanout, SubprocessRunResult
-from opi.execution.text_stream import TextStreamFanout, open_text_stream_fanout, StreamTargetSpec
+from opi.execution.run import SubprocessRunResult, run_subprocess_with_fanout
+from opi.execution.text_stream import StreamTargetSpec, TextStreamFanout, open_text_stream_fanout
 
 
 @pytest.mark.unit
