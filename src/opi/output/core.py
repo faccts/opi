@@ -1779,26 +1779,47 @@ class Output:
 
     def get_s2(self, *, index: int = -1) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | None:
         """
-        Get the S² expectation value and the ideal S² value by grepping them from the output file.
+        Get the S² expectation value and the ideal S² value by grepping them from the output file for UHF and returning
+        the ideal values for RHF and ROHF.
 
         Parameters
         ----------
         index : int, default: -1
             Index of the geometry for which S² should be returned. The default -1 refers to the final geometry.
             Silently ignores if the requested index is not available and returns None.
+            For RHF/ROHF the index is not relevant since the ideal values are returned.
 
         Returns
         ----------
         tuple[StrictFiniteFloat, StrictFiniteFloat] | None
             Return the expectation value and the ideal value or None if nothing is found.
         """
-        outfile = self.get_outfile()
-        # // String for searching the S² expectation value.
-        expec_string = "Expectation value of <S**2>"
-        # // String for searching the ideal S² value.
-        ideal_string = "Ideal value S*(S+1)"
-        expec_s2 = get_float_from_line(outfile, expec_string, index, strict=False)
-        ideal_s2 = get_float_from_line(outfile, ideal_string, index, strict=False)
+        expec_s2: StrictFiniteFloat | None = None
+        ideal_s2: StrictFiniteFloat | None = None
+        # > Get HFType
+        hftype = self.get_hftype()
+        match hftype:
+            # > RHF/RKS just returns the ideal value zero
+            case Hftyp.RHF:
+                return 0.0, 0.0
+            # > ROHF/ROKS - ideal S2 value by construction
+            case Hftyp.ROHF:
+                mult = self.get_mult()
+                # > Cannot determine S2 without multiplicity
+                if mult:
+                    ideal_s2 = (mult**2 - 1) / 4
+                    expec_s2 = ideal_s2
+            # > For UHF or None we just try to get S2 from the output
+            case Hftyp.UHF | _:
+                # > Grep from output file
+                outfile = self.get_outfile()
+                # // String for searching the S² expectation value.
+                expec_string = "Expectation value of <S**2>"
+                # // String for searching the ideal S² value.
+                ideal_string = "Ideal value S*(S+1)"
+                expec_s2 = get_float_from_line(outfile, expec_string, index, strict=False)
+                ideal_s2 = get_float_from_line(outfile, ideal_string, index, strict=False)
+
         if expec_s2 is not None and ideal_s2 is not None:
             return expec_s2, ideal_s2
         else:
