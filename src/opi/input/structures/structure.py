@@ -19,9 +19,15 @@ from opi.input.structures.atom import (
     PointCharge,
 )
 from opi.input.structures.coordinates import Coordinates
-from opi.utils import constants, units
 from opi.utils.element import ATOMIC_MASSES_FROM_ELEMENT, Element
-from opi.utils.rotconst import RotationalConstants, RotorType
+from opi.utils.rotconst import (
+    PrincipalMoments,
+    RotationalConstants,
+    RotorType,
+    classify_rotor_type,
+    moment_to_mhz,
+    mhz_to_wavenumber,
+)
 from opi.utils.tracking_text_io import TrackingTextIO
 
 __all__ = ("Structure",)
@@ -1249,17 +1255,20 @@ class Structure:
 
         return self._rmsd_coords(coords1, coords2_rotated)
 
-    def rotational_constants(
+    # ------------------------------------------------------------------ #
+    #  Moment of inertia                                                   #
+    # ------------------------------------------------------------------ #
+    def calc_moment_of_inertia(
         self,
         masses: npt.NDArray[np.float64] | None = None,
         weights: dict[str, float] | None = None,
         atom_weights: dict[int, float] | None = None,
-    ) -> RotationalConstants | None:
+    ) -> PrincipalMoments | None:
         """
-        Compute rotational constants for this structure.
+        Compute the principal axes and moments of inertia for this structure.
 
-        Only Atom instances contribute; GhostAtom, PointCharge, and
-        EmbeddingPotential atoms are silently ignored.
+        Only ``Atom`` instances contribute; ``GhostAtom``, ``PointCharge``,
+        and ``EmbeddingPotential`` atoms are silently ignored.
 
         Mass priority
         -------------
@@ -1270,41 +1279,44 @@ class Structure:
         masses : npt.NDArray[np.float64] | None, default None
             Per-atom masses (amu) for all Atom instances, overriding every
             other mass source.
-        weights : dict[str, float] | None, default None
-            Per-element mass overrides keyed by element symbol string
-            (e.g. ``{"C": 13.003}``)
         atom_weights : dict[int, float] | None, default None
             Per-atom mass overrides keyed by index within the Atom list.
+        weights : dict[str, float] | None, default None
+            Per-element mass overrides keyed by element symbol string
+            (e.g. ``{"C": 13.003}``).
 
         Returns
         -------
-        RotationalConstants | None
-            None if no Atom instances are present or all masses are zero.
+        tuple[ndarray shape (3, 3), ndarray shape (3,)] | None
+            ``(principal_axes, moments)`` where *moments* are in amu·Å²
+            sorted in ascending order, and each column of *principal_axes*
+            is the corresponding eigenvector.
+            Returns ``None`` if no ``Atom`` instances are present or all
+            masses are zero.
 
         Raises
         ------
         ValueError
-            If the length of *masses* does not match the number of Atom
+            If the length of *masses* does not match the number of ``Atom``
             instances in the structure.
         """
-        # --- Collect Atom instances only ---
         atom_list = [a for a in self.atoms if isinstance(a, Atom)]
-
         if not atom_list:
             return None
 
-        coords = np.array([a.coordinates.coordinates for a in atom_list], dtype=np.float64)
+        coords = np.array(
+            [a.coordinates.coordinates for a in atom_list], dtype=np.float64
+        )
 
-        # --- Prepare weight overrides ---
         weights = {k: v for k, v in (weights or {}).items()}
         atom_weights = atom_weights or {}
 
-        # --- Assign masses ---
         if masses is not None:
             masses = np.asarray(masses, dtype=np.float64)
             if len(masses) != len(atom_list):
                 raise ValueError(
-                    f"masses length ({len(masses)}) does not match number of atoms ({len(atom_list)})"
+                    f"masses length ({len(masses)}) does not match "
+                    f"number of atoms ({len(atom_list)})"
                 )
         else:
             masses_list: list[float] = []
@@ -1321,68 +1333,103 @@ class Structure:
                 masses_list.append(m)
             masses = np.array(masses_list, dtype=np.float64)
 
-        # --- Filter zero-mass atoms ---
         mask = masses > 0.0
         if not np.any(mask):
             return None
-
         masses = masses[mask]
         coords = coords[mask]
-        total_mass = float(masses.sum())
 
-        # --- Center of mass ---
+        total_mass = float(masses.sum())
         com = (masses[:, None] * coords).sum(axis=0) / total_mass
         coords -= com
 
-        # --- Inertia tensor ---
         inertia = np.zeros((3, 3), dtype=np.float64)
         for m, r in zip(masses, coords):
             inertia += m * (np.dot(r, r) * np.eye(3) - np.outer(r, r))
 
-        # --- Diagonalize: eigenvalues are the principal moments ---
-        moments_raw, _ = np.linalg.eigh(inertia)
+        moments_raw, axes = np.linalg.eigh(inertia)   # ascending order guaranteed
         moments_raw = np.maximum(moments_raw, 0.0)
-        Ia, Ib, Ic = moments_raw
 
-        # --- Convert moments (amu·Å²) to rotational constants (MHz) ---
-        def _moment_to_mhz(Inertia: float) -> float | None:
-            if Inertia < 1e-6:
+        return PrincipalMoments(Ia=float(moments_raw[0]), Ib=float(moments_raw[1]), Ic=float(moments_raw[2]), axes=axes)
+
+    # ------------------------------------------------------------------ #
+    #  Rotor classification                                                #
+    # ------------------------------------------------------------------ #
+    def calc_rotor_type(
+        self,
+        moments: PrincipalMoments | None = None,
+        **mass_kwargs: Any,
+    ) -> RotorType | None:
+        """
+        Classify the molecular rotor type.
+
+        Parameters
+        ----------
+        moments : ndarray shape (3,) | None, default None
+            Pre-computed principal moments (amu·Å², ascending).  When
+            ``None`` the moments are computed via
+            :meth:`calc_moment_of_inertia` using *mass_kwargs*.
+        **mass_kwargs
+            Forwarded to :meth:`calc_moment_of_inertia` when *moments* is
+            ``None`` (i.e. ``masses``, ``weights``, ``atom_weights``).
+
+        Returns
+        -------
+        RotorType | None
+            ``None`` if the structure has no real atoms or all masses vanish.
+        """
+        if moments is None:
+            result = self.calc_moment_of_inertia(**mass_kwargs)
+            if result is None:
                 return None
-            I_si = Inertia * units.AMU_TO_KG * (units.ANGST_TO_M**2)
-            return constants.H_PLANCK / (8.0 * np.pi**2 * I_si) / 1e6
+            moments = result
 
-        def _mhz_to_cm(mhz: float | None) -> float | None:
-            # MHz → cm⁻¹ : divide by speed of light in cm/s
-            return None if mhz is None else mhz * 1e6 / constants.C
+        return classify_rotor_type(np.array([moments.Ia, moments.Ib, moments.Ic]))
 
-        A = _moment_to_mhz(Ia)
-        B = _moment_to_mhz(Ib)
-        C = _moment_to_mhz(Ic)
 
-        # --- Rotor classification ---
-        tol = 1e-3
-        n_zero = sum(moment < 1e-6 for moment in (Ia, Ib, Ic))
+    # ------------------------------------------------------------------ #
+    #  Rotational constants                                                #
+    # ------------------------------------------------------------------ #
+    def calc_rotational_constants(
+        self,
+        masses: npt.NDArray[np.float64] | None = None,
+        weights: dict[str, float] | None = None,
+        atom_weights: dict[int, float] | None = None,
+    ) -> RotationalConstants | None:
+        """
+        Compute rotational constants for this structure.
 
-        if n_zero == 3:
-            rotor = RotorType.MONOATOMIC
-        elif n_zero == 2:
-            rotor = RotorType.LINEAR
-        elif abs(Ia - Ib) < tol and abs(Ib - Ic) < tol:
-            rotor = RotorType.SPHERICAL_TOP
-        elif abs(Ia - Ib) < tol:
-            rotor = RotorType.OBLATE_TOP
-        elif abs(Ib - Ic) < tol:
-            rotor = RotorType.PROLATE_TOP
-        else:
-            rotor = RotorType.ASYMMETRIC_TOP
+        Only ``Atom`` instances contribute; ``GhostAtom``, ``PointCharge``,
+        and ``EmbeddingPotential`` atoms are silently ignored.
 
+        Mass priority
+        -------------
+        masses > atom_weights > weights > default (ATOMIC_MASSES_FROM_ELEMENT)
+
+        Parameters
+        ----------
+        masses : npt.NDArray[np.float64] | None, default None
+            Per-atom masses (amu) for all Atom instances.
+        atom_weights : dict[int, float] | None, default None
+            Per-atom mass overrides keyed by index within the Atom list.
+        weights : dict[str, float] | None, default None
+            Per-element mass overrides (e.g. ``{"C": 13.003}``).
+
+        Returns
+        -------
+        RotationalConstants | None
+            ``None`` if no ``Atom`` instances are present or all masses are
+            zero.
+        """
+        pm = self.calc_moment_of_inertia(masses=masses, weights=weights, atom_weights=atom_weights)
+        if pm is None:
+            return None
+        A = moment_to_mhz(pm.Ia)
+        B = moment_to_mhz(pm.Ib)
+        C = moment_to_mhz(pm.Ic)
         return RotationalConstants(
-            A=A,
-            B=B,
-            C=C,
-            A_cm=_mhz_to_cm(A),
-            B_cm=_mhz_to_cm(B),
-            C_cm=_mhz_to_cm(C),
-            moments=(float(Ia), float(Ib), float(Ic)),
-            rotor_type=rotor,
+            A=A, B=B, C=C,
+            A_cm=mhz_to_wavenumber(A),
+            B_cm=mhz_to_wavenumber(B),
+            C_cm=mhz_to_wavenumber(C),
         )
