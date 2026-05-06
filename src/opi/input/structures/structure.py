@@ -25,8 +25,8 @@ from opi.utils.rotconst import (
     RotationalConstants,
     RotorType,
     classify_rotor_type,
-    moment_to_mhz,
     mhz_to_wavenumber,
+    moment_to_mhz,
 )
 from opi.utils.tracking_text_io import TrackingTextIO
 
@@ -1304,9 +1304,7 @@ class Structure:
         if not atom_list:
             return None
 
-        coords = np.array(
-            [a.coordinates.coordinates for a in atom_list], dtype=np.float64
-        )
+        coords = np.array([a.coordinates.coordinates for a in atom_list], dtype=np.float64)
 
         weights = {k: v for k, v in (weights or {}).items()}
         atom_weights = atom_weights or {}
@@ -1347,10 +1345,12 @@ class Structure:
         for m, r in zip(masses, coords):
             inertia += m * (np.dot(r, r) * np.eye(3) - np.outer(r, r))
 
-        moments_raw, axes = np.linalg.eigh(inertia)   # ascending order guaranteed
+        moments_raw, axes = np.linalg.eigh(inertia)  # ascending order guaranteed
         moments_raw = np.maximum(moments_raw, 0.0)
 
-        return PrincipalMoments(Ia=float(moments_raw[0]), Ib=float(moments_raw[1]), Ic=float(moments_raw[2]), axes=axes)
+        return PrincipalMoments(
+            Ia=float(moments_raw[0]), Ib=float(moments_raw[1]), Ic=float(moments_raw[2]), axes=axes
+        )
 
     # ------------------------------------------------------------------ #
     #  Rotor classification                                                #
@@ -1385,7 +1385,6 @@ class Structure:
             moments = result
 
         return classify_rotor_type(np.array([moments.Ia, moments.Ib, moments.Ic]))
-
 
     # ------------------------------------------------------------------ #
     #  Rotational constants                                                #
@@ -1428,7 +1427,9 @@ class Structure:
         B = moment_to_mhz(pm.Ib)
         C = moment_to_mhz(pm.Ic)
         return RotationalConstants(
-            A=A, B=B, C=C,
+            A=A,
+            B=B,
+            C=C,
             A_cm=mhz_to_wavenumber(A),
             B_cm=mhz_to_wavenumber(B),
             C_cm=mhz_to_wavenumber(C),

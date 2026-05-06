@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
+
 import numpy as np
 
 from opi.models.string_enum import StringEnum
-from opi.utils import constants, units 
+from opi.utils import constants, units
 
 __all__ = (
     "PrincipalMoments",
@@ -19,21 +21,21 @@ __all__ = (
 # Rotor type classification
 # ============================================================
 class RotorType(StringEnum):
-    MONOATOMIC      = "monoatomic"
-    LINEAR          = "linear"
-    SPHERICAL_TOP   = "spherical top"
-    OBLATE_TOP      = "symmetric top (oblate)"
-    PROLATE_TOP     = "symmetric top (prolate)"
-    ASYMMETRIC_TOP  = "asymmetric top"
-
+    MONOATOMIC = "monoatomic"
+    LINEAR = "linear"
+    SPHERICAL_TOP = "spherical top"
+    OBLATE_TOP = "symmetric top (oblate)"
+    PROLATE_TOP = "symmetric top (prolate)"
+    ASYMMETRIC_TOP = "asymmetric top"
 
     def __str__(self) -> str:
         return f"Rotor type : {self.value}"
 
 
 # ============================================================
-# Principal Moments 
+# Principal Moments
 # ============================================================
+
 
 @dataclass
 class PrincipalMoments:
@@ -47,6 +49,7 @@ class PrincipalMoments:
     axes : np.ndarray, shape (3, 3)
         Corresponding eigenvectors (columns).
     """
+
     Ia: float
     Ib: float
     Ic: float
@@ -59,6 +62,7 @@ class PrincipalMoments:
             f"  Ib = {self.Ib:.6f}\n"
             f"  Ic = {self.Ic:.6f}"
         )
+
 
 # ============================================================
 # Rotational constants result container
@@ -106,9 +110,11 @@ class RotationalConstants:
             f"  C = {fmt(self.C, 'MHz')}   ({fmt(self.C_cm, 'cm⁻¹')})"
         )
 
+
 # ============================================================
 # Helper functions (used by Structure methods)
 # ============================================================
+
 
 def moment_to_mhz(inertia: float) -> float | None:
     """
@@ -118,8 +124,8 @@ def moment_to_mhz(inertia: float) -> float | None:
     """
     if inertia < 1e-6:
         return None
-    I_si = inertia * units.AMU_TO_KG * (units.ANGST_TO_M ** 2)
-    return constants.H_PLANCK / (8.0 * np.pi ** 2 * I_si) / 1e6
+    I_si = inertia * units.AMU_TO_KG * (units.ANGST_TO_M**2)
+    return constants.H_PLANCK / (8.0 * np.pi**2 * I_si) / 1e6
 
 
 def mhz_to_wavenumber(mhz: float | None) -> float | None:
