@@ -1433,16 +1433,16 @@ class Structure:
         ----------
         moments : ndarray shape (3,) | None, default None
             Pre-computed principal moments (amu·Å², ascending).  When
-            ``None`` the moments are computed via
+            `None` the moments are computed via
             :meth:`calc_moment_of_inertia` using *mass_kwargs*.
         **mass_kwargs
             Forwarded to :meth:`calc_moment_of_inertia` when *moments* is
-            ``None`` (i.e. ``masses``, ``weights``, ``atom_weights``).
+            `None` (i.e. `masses`, `weights`, `atom_weights`).
 
         Returns
         -------
         RotorType | None
-            ``None`` if the structure has no real atoms or all masses vanish.
+            `None` if the structure has no real atoms or all masses vanish.
         """
         if moments is None:
             result = self.calc_moments_of_inertia(**mass_kwargs)
@@ -1464,7 +1464,7 @@ class Structure:
         """
         Compute rotational constants for this structure.
 
-        Only `Atom`` instances contribute; `GhostAtom`, `PointCharge`,
+        Only `Atom` instances contribute; `GhostAtom`, `PointCharge`,
         and `EmbeddingPotential` atoms are silently ignored.
 
         Mass priority
