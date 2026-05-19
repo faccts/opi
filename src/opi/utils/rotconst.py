@@ -11,7 +11,6 @@ __all__ = (
     "PrincipalMoments",
     "RotationalConstants",
     "RotorType",
-    "classify_rotor_type",
     "moment_to_mhz",
     "mhz_to_wavenumber",
 )
@@ -55,6 +54,22 @@ class PrincipalMoments:
     Ic: float
     axes: np.ndarray
 
+    def rotor_type(self, tol: float = 1e-3) -> RotorType:
+        Ia, Ib, Ic = self.Ia, self.Ib, self.Ic
+        n_zero = sum(m < tol for m in (Ia, Ib, Ic))
+
+        if n_zero == 3:
+            return RotorType.MONOATOMIC
+        if n_zero == 1 and abs(Ib - Ic) < tol:
+            return RotorType.LINEAR
+        if abs(Ia - Ib) < tol and abs(Ib - Ic) < tol:
+            return RotorType.SPHERICAL_TOP
+        if abs(Ib - Ic) < tol:  # Ia < Ib == Ic → prolate
+            return RotorType.PROLATE_TOP
+        if abs(Ia - Ib) < tol:  # Ia == Ib < Ic → oblate
+            return RotorType.OBLATE_TOP
+        return RotorType.ASYMMETRIC_TOP
+
     def __str__(self) -> str:
         return (
             "Moments of inertia (amu·Å²):\n"
@@ -67,20 +82,16 @@ class PrincipalMoments:
 # ============================================================
 # Rotational constants result container
 # ============================================================
+
+
 class RotationalConstants:
     """
-    Stores rotational constants and molecular moments of inertia.
+    Stores rotational constants in MHz.
 
     Attributes
     ----------
     A, B, C : float | None
-        Rotational constants in MHz (None for a degenerate axis).
-    A_cm, B_cm, C_cm : float | None
-        Rotational constants in cm⁻¹.
-    moments : tuple[float, float, float]
-        Principal moments of inertia (Ia, Ib, Ic) in amu·Å².
-    rotor_type : RotorType
-        Molecular rotor classification.
+        Rotational constants in MHz (`None` for a degenerate axis).
     """
 
     def __init__(
@@ -88,26 +99,36 @@ class RotationalConstants:
         A: float | None,
         B: float | None,
         C: float | None,
-        A_cm: float | None,
-        B_cm: float | None,
-        C_cm: float | None,
     ) -> None:
         self.A = A
         self.B = B
         self.C = C
-        self.A_cm = A_cm
-        self.B_cm = B_cm
-        self.C_cm = C_cm
+
+    def get_in_wavenumbers(self) -> tuple[float | None, float | None, float | None]:
+        """
+        Return rotational constants A, B, C converted to cm⁻¹.
+
+        Returns
+        -------
+        tuple[float | None, float | None, float | None]
+            A, B, C in cm⁻¹. `None` for any degenerate axis.
+        """
+        return (
+            mhz_to_wavenumber(self.A),
+            mhz_to_wavenumber(self.B),
+            mhz_to_wavenumber(self.C),
+        )
 
     def __str__(self) -> str:
         def fmt(x: float | None, unit: str = "") -> str:
             return f"{x:.6f} {unit}" if x is not None else "None"
 
+        A_cm, B_cm, C_cm = self.get_in_wavenumbers()
         return (
-            "Rotational constants:\n"
-            f"  A = {fmt(self.A, 'MHz')}   ({fmt(self.A_cm, 'cm⁻¹')})\n"
-            f"  B = {fmt(self.B, 'MHz')}   ({fmt(self.B_cm, 'cm⁻¹')})\n"
-            f"  C = {fmt(self.C, 'MHz')}   ({fmt(self.C_cm, 'cm⁻¹')})"
+            "Rotational constants (yeih):\n"
+            f"  A = {fmt(self.A, 'MHz')}   ({fmt(A_cm, 'cm⁻¹')})\n"
+            f"  B = {fmt(self.B, 'MHz')}   ({fmt(B_cm, 'cm⁻¹')})\n"
+            f"  C = {fmt(self.C, 'MHz')}   ({fmt(C_cm, 'cm⁻¹')})"
         )
 
 
@@ -116,48 +137,23 @@ class RotationalConstants:
 # ============================================================
 
 
-def moment_to_mhz(inertia: float) -> float | None:
+def moment_to_mhz(inertia: float | None) -> float | None:
     """
     Convert a principal moment of inertia (amu·Å²) to a rotational
-    constant in MHz.  Returns None when the moment is effectively zero
-    (degenerate / linear axis).
+    constant in MHz. Returns `None` when the moment is `None` or
+    effectively zero (degenerate / linear axis).
     """
-    if inertia < 1e-6:
+    if inertia is None or inertia < 1e-6:
         return None
     I_si = inertia * units.AMU_TO_KG * (units.ANGST_TO_M**2)
     return constants.H_PLANCK / (8.0 * np.pi**2 * I_si) / 1e6
 
 
 def mhz_to_wavenumber(mhz: float | None) -> float | None:
-    """Convert a rotational constant from MHz to cm⁻¹."""
+    """
+    Convert a rotational constant from MHz to cm⁻¹.
+    Returns `None` if `mhz` is `None`.
+    """
     if mhz is None:
         return None
     return mhz * 1e6 / constants.C
-
-
-def classify_rotor_type(moments: np.ndarray, tol: float = 1e-3) -> RotorType:
-    """
-    Classify the molecular rotor from three principal moments of inertia
-    (amu·Å², sorted ascending).
-
-    Parameters
-    ----------
-    moments : array-like, shape (3,)
-        Principal moments Ia ≤ Ib ≤ Ic.
-    tol : float
-        Absolute tolerance for treating two moments as equal.
-    """
-    Ia, Ib, Ic = moments
-    n_zero = sum(m < 1e-6 for m in (Ia, Ib, Ic))
-
-    if n_zero == 3:
-        return RotorType.MONOATOMIC
-    if n_zero == 2:
-        return RotorType.LINEAR
-    if abs(Ia - Ib) < tol and abs(Ib - Ic) < tol:
-        return RotorType.SPHERICAL_TOP
-    if abs(Ia - Ib) < tol:
-        return RotorType.OBLATE_TOP
-    if abs(Ib - Ic) < tol:
-        return RotorType.PROLATE_TOP
-    return RotorType.ASYMMETRIC_TOP

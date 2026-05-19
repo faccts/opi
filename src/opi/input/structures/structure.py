@@ -1,3 +1,4 @@
+import copy
 import re
 from collections.abc import Iterable, Iterator, Sequence
 from os import PathLike
@@ -24,8 +25,6 @@ from opi.utils.rotconst import (
     PrincipalMoments,
     RotationalConstants,
     RotorType,
-    classify_rotor_type,
-    mhz_to_wavenumber,
     moment_to_mhz,
 )
 from opi.utils.tracking_text_io import TrackingTextIO
@@ -1075,25 +1074,72 @@ class Structure:
             if n_struc_limit and n_struc >= n_struc_limit:
                 break
 
-    def centered_structure(self) -> "Structure":
+    def get_coordinates(
+        self,
+        atoms: Sequence[Atom | EmbeddingPotential | GhostAtom | PointCharge] | None = None,
+    ) -> npt.NDArray[np.float64]:
         """
-        Return a new Structure centered at its centroid.
+        Return the coordinates of the given atoms as a numpy array.
+
+        Parameters
+        ----------
+        atoms : sequence of atom-like objects | None, default None
+            The atoms to extract coordinates from. If `None`, all entries
+            in `self.atoms` are used.
+
+        Returns
+        -------
+        npt.NDArray[np.float64], shape (N, 3)
+            Coordinates in the same order as the input list.
+        """
+        atom_list = atoms if atoms is not None else self.atoms
+        return np.array([a.coordinates.coordinates for a in atom_list], dtype=np.float64)
+
+    def set_coordinates(self, coords: npt.NDArray[np.float64]) -> "Structure":
+        """
+        Return a new Structure with updated coordinates.
+
+        Parameters
+        ----------
+        coords : npt.NDArray[np.float64], shape (N, 3)
+            New coordinates for all atoms in the same order as `self.atoms`.
 
         Returns
         -------
         Structure
-            New Structure with centered coordinates.
+            New `Structure` instance with replaced coordinates; all other
+            attributes (charge, multiplicity, origin) are preserved.
+
+        Raises
+        ------
+        ValueError
+            If *coords* shape does not match the number of atoms.
         """
-        import copy
 
-        coords = np.array([a.coordinates.coordinates for a in self.atoms], dtype=np.float64)
-        centered_coords = coords - coords.mean(axis=0)
-
+        coords = np.asarray(coords, dtype=np.float64)
+        if coords.shape != (len(self.atoms), 3):
+            raise ValueError(
+                f"coords shape {coords.shape} does not match expected ({len(self.atoms)}, 3)"
+            )
         new_structure = copy.deepcopy(self)
-        for atom, new_coord in zip(new_structure.atoms, centered_coords):
+        for atom, new_coord in zip(new_structure.atoms, coords):
             atom.coordinates = new_coord
-
         return new_structure
+
+    def centered_structure(self) -> "Structure":
+        """
+        Return a new `Structure` centered at its centroid.
+        Only `Atom` instances contribute to the centroid calculation;
+        `GhostAtom`, `PointCharge`, and `EmbeddingPotential` are ignored.
+
+        Returns
+        -------
+        Structure
+            New `Structure` with centered coordinates.
+        """
+        real_atoms = [a for a in self.atoms if type(a) is Atom]
+        centroid = self.get_coordinates(atoms=real_atoms).mean(axis=0)
+        return self.set_coordinates(self.get_coordinates() - centroid)
 
     def _filtered_atoms(
         self,
@@ -1101,16 +1147,21 @@ class Structure:
         ignore_hs: bool,
     ) -> list[Atom]:
         """
-        Return Atom instances after applying only_atoms and ignore_hs filters.
+        Return real `Atom` instances after applying `only_atoms` and `ignore_hs` filters.
+
+        The final `type(a) is Atom` check ensures that explicitly indexed atoms
+        (via `only_atoms`) cannot introduce `GhostAtom`, `PointCharge`, or
+        `EmbeddingPotential` instances into the returned list. Note that `GhostAtom`
+        is a subclass of `Atom`, so `isinstance` is intentionally avoided here.
         """
         atom_list = self.atoms
         if only_atoms:
             candidates = [atom_list[i] for i in only_atoms]
         elif ignore_hs:
-            candidates = [a for a in atom_list if isinstance(a, Atom) and a.element != Element.H]
+            candidates = [a for a in atom_list if type(a) is Atom and a.element != Element.H]
         else:
-            candidates = [a for a in atom_list if isinstance(a, Atom)]
-        return [a for a in candidates if isinstance(a, Atom)]
+            candidates = [a for a in atom_list if type(a) is Atom]
+        return [a for a in candidates if type(a) is Atom]
 
     @staticmethod
     def _validate_rmsd_compatibility(atoms1: list[Atom], atoms2: list[Atom]) -> None:
@@ -1121,9 +1172,9 @@ class Structure:
             raise ValueError(
                 f"Structures have different number of atoms: {len(atoms1)} vs {len(atoms2)}"
             )
-        for i, (a, b) in enumerate(zip(atoms1, atoms2)):
+        for i, (a, b) in enumerate(zip(atoms1, atoms2), start=1):
             if a.element != b.element:
-                raise ValueError(f"Atom mismatch at index {i}: {a.element!r} != {b.element!r}")
+                raise ValueError(f"Atom mismatch at position {i}: {a.element!r} != {b.element!r}")
 
     @staticmethod
     def _rmsd_coords(
@@ -1135,6 +1186,27 @@ class Structure:
         """
         diff = coords1 - coords2
         return float(np.sqrt(np.sum(diff**2) / len(coords1)))
+
+    def get_coordinates_at_centroid(
+        self,
+        atoms: Sequence[Atom | EmbeddingPotential | GhostAtom | PointCharge] | None = None,
+    ) -> npt.NDArray[np.float64]:
+        """
+        Return coordinates translated to the centroid.
+
+        Parameters
+        ----------
+        atoms : sequence of atom-like objects | None, default None
+            The atoms to extract coordinates from. If `None`, all entries
+            in `self.atoms` are used.
+
+        Returns
+        -------
+        npt.NDArray[np.float64], shape (N, 3)
+            Centroid-translated coordinates in the same order as the input list.
+        """
+        coords = self.get_coordinates(atoms=atoms)
+        return coords - np.mean(coords, axis=0, dtype=np.float64)
 
     def rmsd(
         self,
@@ -1153,9 +1225,9 @@ class Structure:
         ----------
         other : Structure
             Structure to compare against.
-        only_atoms : Sequence[int], default ()
-            Atom indices to include. If non-empty, ``ignore_hs`` is ignored.
-        ignore_hs : bool, default False
+        only_atoms : Sequence[int], default: ()
+            Atom indices to include. If non-empty, `ignore_hs` is ignored.
+        ignore_hs : bool, default: False
             Exclude hydrogen atoms from the RMSD computation.
 
         Returns
@@ -1172,11 +1244,8 @@ class Structure:
         atoms2 = other._filtered_atoms(only_atoms, ignore_hs)
         self._validate_rmsd_compatibility(atoms1, atoms2)
 
-        coords1 = np.array([a.coordinates.coordinates for a in atoms1], dtype=np.float64)
-        coords2 = np.array([a.coordinates.coordinates for a in atoms2], dtype=np.float64)
-
-        coords1 -= coords1.mean(axis=0)
-        coords2 -= coords2.mean(axis=0)
+        coords1 = self.get_coordinates_at_centroid(atoms=atoms1)
+        coords2 = other.get_coordinates_at_centroid(atoms=atoms2)
 
         return self._rmsd_coords(coords1, coords2)
 
@@ -1199,7 +1268,7 @@ class Structure:
         other : Structure
             Structure to compare against.
         only_atoms : Sequence[int], default ()
-            Atom indices to include. If non-empty, ``ignore_hs`` is ignored.
+            Atom indices to include. If non-empty, `ignore_hs` is ignored.
         ignore_hs : bool, default False
             Exclude hydrogen atoms from the RMSD computation.
 
@@ -1217,22 +1286,19 @@ class Structure:
         atoms2 = other._filtered_atoms(only_atoms, ignore_hs)
         self._validate_rmsd_compatibility(atoms1, atoms2)
 
-        coords1 = np.array([a.coordinates.coordinates for a in atoms1], dtype=np.float64)
-        coords2 = np.array([a.coordinates.coordinates for a in atoms2], dtype=np.float64)
-
-        # Translate to centroid
-        coords1 -= coords1.mean(axis=0)
-        coords2_centered = coords2 - coords2.mean(axis=0)
+        # Getting centered coordinates
+        coords1 = self.get_coordinates_at_centroid(atoms=atoms1)
+        coords2 = other.get_coordinates_at_centroid(atoms=atoms2)
 
         # Kabsch algorithm: find optimal rotation matrix via SVD
-        # https://doi.org/10.1107/S0567739476001873
+        # <https://doi.org/10.1107/S0567739476001873>
 
         # ------------------------------------------------------------------
         # Build covariance matrix
         # ------------------------------------------------------------------
-        # H = B^T A
-        # This matrix captures how coordinates from B map onto A
-        H = coords2_centered.T @ coords1
+        # H = A^T B
+        # This matrix captures how coordinates from B (coords2) map onto A (coords1)
+        H = coords1.T @ coords2
 
         # ------------------------------------------------------------------
         # Singular Value Decomposition (SVD)
@@ -1251,14 +1317,12 @@ class Structure:
 
         R = Vt.T @ D @ U.T
 
-        coords2_rotated = coords2_centered @ R
-
-        return self._rmsd_coords(coords1, coords2_rotated)
+        return self._rmsd_coords(coords1, coords2 @ R)
 
     # ------------------------------------------------------------------ #
     #  Moment of inertia                                                   #
     # ------------------------------------------------------------------ #
-    def calc_moment_of_inertia(
+    def calc_moments_of_inertia(
         self,
         masses: npt.NDArray[np.float64] | None = None,
         weights: dict[str, float] | None = None,
@@ -1266,9 +1330,6 @@ class Structure:
     ) -> PrincipalMoments | None:
         """
         Compute the principal axes and moments of inertia for this structure.
-
-        Only ``Atom`` instances contribute; ``GhostAtom``, ``PointCharge``,
-        and ``EmbeddingPotential`` atoms are silently ignored.
 
         Mass priority
         -------------
@@ -1283,29 +1344,32 @@ class Structure:
             Per-atom mass overrides keyed by index within the Atom list.
         weights : dict[str, float] | None, default None
             Per-element mass overrides keyed by element symbol string
-            (e.g. ``{"C": 13.003}``).
+            (e.g. `{"C": 13.003}`).
+
+        Only `Atom` instances contribute; `GhostAtom`, `PointCharge`,
+        and `EmbeddingPotential` atoms are silently ignored.
 
         Returns
         -------
-        tuple[ndarray shape (3, 3), ndarray shape (3,)] | None
-            ``(principal_axes, moments)`` where *moments* are in amu·Å²
-            sorted in ascending order, and each column of *principal_axes*
-            is the corresponding eigenvector.
-            Returns ``None`` if no ``Atom`` instances are present or all
-            masses are zero.
+        PrincipalMoments | None
+            Principal axes and moments of inertia in amu·Å², sorted ascending.
+            Returns `None` if no `Atom` instances are present or all masses are zero.
 
         Raises
         ------
         ValueError
-            If the length of *masses* does not match the number of ``Atom``
+            If the length of *masses* does not match the number of `Atom`
             instances in the structure.
         """
-        atom_list = [a for a in self.atoms if isinstance(a, Atom)]
+        atom_list = [a for a in self.atoms if type(a) is Atom]
         if not atom_list:
             return None
 
-        coords = np.array([a.coordinates.coordinates for a in atom_list], dtype=np.float64)
+        # Extract coordinates from real atoms only
+        coords = self.get_coordinates(atoms=atom_list)
 
+        # --- Mass assignment priority: masses > atom_weights > weights > default ---
+        # Normalise the optional dicts to avoid None checks below
         weights = {k: v for k, v in (weights or {}).items()}
         atom_weights = atom_weights or {}
 
@@ -1334,10 +1398,12 @@ class Structure:
         mask = masses > 0.0
         if not np.any(mask):
             return None
+        # --- Filter out zero-mass atoms before computing the inertia tensor ---
+        # This handles dummy atoms or unknown elements that were assigned 0.0
         masses = masses[mask]
         coords = coords[mask]
-
         total_mass = float(masses.sum())
+
         com = (masses[:, None] * coords).sum(axis=0) / total_mass
         coords -= com
 
@@ -1379,12 +1445,12 @@ class Structure:
             ``None`` if the structure has no real atoms or all masses vanish.
         """
         if moments is None:
-            result = self.calc_moment_of_inertia(**mass_kwargs)
+            result = self.calc_moments_of_inertia(**mass_kwargs)
             if result is None:
                 return None
             moments = result
 
-        return classify_rotor_type(np.array([moments.Ia, moments.Ib, moments.Ic]))
+        return moments.rotor_type()
 
     # ------------------------------------------------------------------ #
     #  Rotational constants                                                #
@@ -1398,8 +1464,8 @@ class Structure:
         """
         Compute rotational constants for this structure.
 
-        Only ``Atom`` instances contribute; ``GhostAtom``, ``PointCharge``,
-        and ``EmbeddingPotential`` atoms are silently ignored.
+        Only `Atom`` instances contribute; `GhostAtom`, `PointCharge`,
+        and `EmbeddingPotential` atoms are silently ignored.
 
         Mass priority
         -------------
@@ -1412,25 +1478,18 @@ class Structure:
         atom_weights : dict[int, float] | None, default None
             Per-atom mass overrides keyed by index within the Atom list.
         weights : dict[str, float] | None, default None
-            Per-element mass overrides (e.g. ``{"C": 13.003}``).
+            Per-element mass overrides (e.g. `{"C": 13.003}`).
 
         Returns
         -------
         RotationalConstants | None
-            ``None`` if no ``Atom`` instances are present or all masses are
+            `None` if no `Atom` instances are present or all masses are
             zero.
         """
-        pm = self.calc_moment_of_inertia(masses=masses, weights=weights, atom_weights=atom_weights)
+        pm = self.calc_moments_of_inertia(masses=masses, weights=weights, atom_weights=atom_weights)
         if pm is None:
             return None
         A = moment_to_mhz(pm.Ia)
         B = moment_to_mhz(pm.Ib)
         C = moment_to_mhz(pm.Ic)
-        return RotationalConstants(
-            A=A,
-            B=B,
-            C=C,
-            A_cm=mhz_to_wavenumber(A),
-            B_cm=mhz_to_wavenumber(B),
-            C_cm=mhz_to_wavenumber(C),
-        )
+        return RotationalConstants(A=A, B=B, C=C)
