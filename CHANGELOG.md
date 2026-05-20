@@ -8,6 +8,10 @@
 - Added `scalmp2c` to `BlockMethod` (#212)
 - Add SCF (spin-)density matrix to `Output` (#204)
 - Add version check attribute to Calculator, which is parsed to get_output (#225)
+- Added `output.error_message()` which retrieves the most important error message from the ORCA output file (#222).
+- Added `output.error_messages()` which retrieves all error messages from known strings from the ORCA output file (#222).
+- Added `output.cc_converged` and `output.casscf_converged` to check cc and casscf convergence (#222).
+- Added `z_maxiter` to method block for setting the number of CP-SCF iterations (#222).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
@@ -16,6 +20,7 @@
 ### Removed
 ### Fixed
 - Updated deprecated `typing` types to be compliant with Python >=3.11 guidelines (#216)
+- Fixed a typo in the badge for the OPI paper (#222).
 
 ## [2.0.0] - 2026-02-10
 

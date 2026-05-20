@@ -127,6 +127,9 @@ class BlockMethod(Block):
     d3s8: float | None = None
     d3a2: float | None = None
 
+    # > Number of CPSCF iterations
+    z_maxiter: int | None = None
+
     # > Options for Extopt
     ProgExt: InputFilePath | None = None  # Path to wrapper script
     Ext_Params: str | None = None  # Arbitrary optional command line arguments

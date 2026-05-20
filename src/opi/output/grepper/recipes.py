@@ -1,6 +1,35 @@
 from pathlib import Path
 
 from opi.output.grepper.core import Grepper
+from opi.output.grepper.patterns import (
+    CASSCF_CONVERGED,
+    CC_CONVERGED,
+    ERROR_PATTERNS,
+    GEOMETRY_CONVERGED,
+    HAS_ABORTING,
+    HAS_GEOMETRY_OPT,
+    HAS_SCF,
+    SCF_CONVERGED,
+    TERMINATED_NORMALLY,
+)
+
+
+def get_error_messages(file_name: Path) -> list[str]:
+    """Return all errors from the output files until a critical error is found."""
+    hits: list[str] = []
+    for pattern in ERROR_PATTERNS:
+        msg = pattern.extract(file_name)
+        if msg:
+            hits.append(msg)
+            if pattern.critical:
+                break
+    return hits if hits else []
+
+
+def get_error_message(file_name: Path) -> str:
+    """Return the most important extracted error message."""
+    messages = get_error_messages(file_name)
+    return next(iter(messages or []), "")
 
 
 def has_string_in_file(file_name: Path, search_for: str, /, *, strict: bool = True) -> bool:
@@ -160,7 +189,7 @@ def has_terminated_normally(file_name: Path, /) -> bool:
     bool: True if string is present, else False.
     """
 
-    return has_string_in_file(file_name, "****ORCA TERMINATED NORMALLY****")
+    return has_string_in_file(file_name, TERMINATED_NORMALLY)
 
 
 def has_aborted_run(file_name: Path, /) -> bool:
@@ -176,7 +205,7 @@ def has_aborted_run(file_name: Path, /) -> bool:
     -------
     bool
     """
-    return has_string_in_file(file_name, "aborting")
+    return has_string_in_file(file_name, HAS_ABORTING)
 
 
 def has_geometry_optimization(file_name: Path, /) -> bool:
@@ -193,7 +222,7 @@ def has_geometry_optimization(file_name: Path, /) -> bool:
     bool
         True if expression is found in file else False
     """
-    return has_string_in_file(file_name, "Geometry Optimization Run")
+    return has_string_in_file(file_name, HAS_GEOMETRY_OPT)
 
 
 def has_geometry_optimization_converged(file_name: Path, /) -> bool:
@@ -210,7 +239,7 @@ def has_geometry_optimization_converged(file_name: Path, /) -> bool:
     bool
         True if expression is found in file else False
     """
-    return has_string_in_file(file_name, "HURRAY")
+    return has_string_in_file(file_name, GEOMETRY_CONVERGED)
 
 
 def has_scf(file_name: Path, /) -> bool:
@@ -227,7 +256,7 @@ def has_scf(file_name: Path, /) -> bool:
     bool
         True if expression is found in file else False
     """
-    return has_string_in_file(file_name, "SCF SETTINGS")
+    return has_string_in_file(file_name, HAS_SCF)
 
 
 def has_scf_converged(file_name: Path, /) -> bool:
@@ -244,4 +273,38 @@ def has_scf_converged(file_name: Path, /) -> bool:
     bool
         True if expression is found in file else False
     """
-    return has_string_in_file(file_name, "SUCCESS")
+    return has_string_in_file(file_name, SCF_CONVERGED)
+
+
+def has_casscf_converged(file_name: Path, /) -> bool:
+    """
+    Searches for the message '---- THE CAS-SCF GRADIENT HAS CONVERGED ----' as indicator that the CAS-SCF converged.
+
+    Parameter
+    ---------
+    file_name: Path
+        Name of the output file
+
+    Returns
+    -------
+    bool
+        True if expression is found in file else False
+    """
+    return has_string_in_file(file_name, CASSCF_CONVERGED)
+
+
+def has_cc_converged(file_name: Path, /) -> bool:
+    """
+    Searches for the message 'The Coupled-Cluster iterations have converged' as indicator that the CC converged.
+
+    Parameter
+    ---------
+    file_name: Path
+        Name of the output file
+
+    Returns
+    -------
+    bool
+        True if expression is found in file else False
+    """
+    return has_string_in_file(file_name, CC_CONVERGED)
