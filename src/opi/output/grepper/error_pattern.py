@@ -29,14 +29,11 @@ class ErrorPattern:
         self,
         grep_string: str = "",
         message: str = "",
-        critical: bool = False,
+        critical: bool | None = None,
     ) -> None:
-        if grep_string:
-            self.grep_string = grep_string
-        if message:
-            self.message = message
-        if critical:
-            self.critical = critical
+        self.grep_string = grep_string if grep_string else type(self).grep_string
+        self.message = message if message else type(self).message
+        self.critical = critical if critical is not None else type(self).critical
 
     def extract(self, file_path: Path) -> str:
         """
