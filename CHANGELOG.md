@@ -20,6 +20,7 @@
 ### Removed
 ### Fixed
 - Updated deprecated `typing` types to be compliant with Python >=3.11 guidelines (#216)
+- Fixed a typo in the badge for the OPI paper (#222).
 
 ## [2.0.0] - 2026-02-10
 
