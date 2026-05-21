@@ -1835,10 +1835,13 @@ class Output:
 
         return pol
 
-    def get_s2(self, *, index: int = -1) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | None:
+    def get_s2(
+        self, *, index: int = -1
+    ) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | tuple[None, None]:
         """
         Get the S² expectation value and the ideal S² value by grepping them from the output file for UHF and returning
-        the ideal values for RHF and ROHF.
+        the ideal values for RHF and ROHF. The ideal value for ROHF requires the multiplicity which is obtained via
+        `self.get_mult()`.
 
         Parameters
         ----------
@@ -1849,7 +1852,7 @@ class Output:
 
         Returns
         ----------
-        tuple[StrictFiniteFloat, StrictFiniteFloat] | None
+        tuple[StrictFiniteFloat, StrictFiniteFloat] | tuple[None, None]
             Return the expectation value and the ideal value or None if nothing is found.
         """
         expec_s2: StrictFiniteFloat | None = None
@@ -1881,7 +1884,7 @@ class Output:
         if expec_s2 is not None and ideal_s2 is not None:
             return expec_s2, ideal_s2
         else:
-            return None
+            return None, None
 
     def get_zpe(self, *, index: int = -1) -> StrictPositiveFloat | None:
         """
