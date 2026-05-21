@@ -12,6 +12,7 @@
 - Added `output.error_messages()` which retrieves all error messages from known strings from the ORCA output file (#222).
 - Added `output.cc_converged` and `output.casscf_converged` to check cc and casscf convergence (#222).
 - Added `z_maxiter` to method block for setting the number of CP-SCF iterations (#222).
+- The function output `get_s2` now returns values for RHF/RKS and ROHF/ROKS (#241).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
