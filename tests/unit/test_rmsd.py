@@ -28,6 +28,7 @@ from opi.utils.element import Element
 # Helpers
 # ============================================================
 
+
 def make_atom(element: str, x: float, y: float, z: float) -> Atom:
     return Atom(
         element=Element(element),
@@ -43,13 +44,14 @@ def make_structure(*atoms: Atom) -> Structure:
 # Fixtures
 # ============================================================
 
+
 @pytest.fixture()
 def water() -> Structure:
     """H2O at a known geometry."""
     return make_structure(
-        make_atom("O",  0.000000,  0.000000,  0.119748),
-        make_atom("H",  0.000000,  0.756950, -0.478993),
-        make_atom("H",  0.000000, -0.756950, -0.478993),
+        make_atom("O", 0.000000, 0.000000, 0.119748),
+        make_atom("H", 0.000000, 0.756950, -0.478993),
+        make_atom("H", 0.000000, -0.756950, -0.478993),
     )
 
 
@@ -57,9 +59,9 @@ def water() -> Structure:
 def water_translated() -> Structure:
     """H2O shifted by (1, 2, 3) — RMSD vs water should be 0 after centring."""
     return make_structure(
-        make_atom("O",  1.000000,  2.000000,  3.119748),
-        make_atom("H",  1.000000,  2.756950,  2.521007),
-        make_atom("H",  1.000000,  1.243050,  2.521007),
+        make_atom("O", 1.000000, 2.000000, 3.119748),
+        make_atom("H", 1.000000, 2.756950, 2.521007),
+        make_atom("H", 1.000000, 1.243050, 2.521007),
     )
 
 
@@ -72,11 +74,13 @@ def water_rotated(water) -> Structure:
     centered = water.centered_structure()
     coords = centered.get_coordinates()
     theta = np.pi / 2
-    R = np.array([
-        [np.cos(theta), -np.sin(theta), 0],
-        [np.sin(theta),  np.cos(theta), 0],
-        [0,              0,             1],
-    ])
+    R = np.array(
+        [
+            [np.cos(theta), -np.sin(theta), 0],
+            [np.sin(theta), np.cos(theta), 0],
+            [0, 0, 1],
+        ]
+    )
     return centered.set_coordinates(coords @ R.T)
 
 
@@ -87,30 +91,33 @@ def ethanol() -> Structure:
     Coordinates are approximate — correctness of geometry is not critical here.
     """
     return make_structure(
-        make_atom("C",  0.000,  0.000,  0.000),
-        make_atom("C",  1.540,  0.000,  0.000),
-        make_atom("O",  2.060,  1.190,  0.000),
-        make_atom("H", -0.390,  1.020,  0.000),
-        make_atom("H", -0.390, -0.510,  0.890),
+        make_atom("C", 0.000, 0.000, 0.000),
+        make_atom("C", 1.540, 0.000, 0.000),
+        make_atom("O", 2.060, 1.190, 0.000),
+        make_atom("H", -0.390, 1.020, 0.000),
+        make_atom("H", -0.390, -0.510, 0.890),
         make_atom("H", -0.390, -0.510, -0.890),
-        make_atom("H",  1.930, -0.510,  0.890),
-        make_atom("H",  1.930, -0.510, -0.890),
-        make_atom("H",  2.980,  1.190,  0.000),
+        make_atom("H", 1.930, -0.510, 0.890),
+        make_atom("H", 1.930, -0.510, -0.890),
+        make_atom("H", 2.980, 1.190, 0.000),
     )
 
 
 @pytest.fixture()
 def mixed_structure() -> Structure:
     """Structure with a real Atom and a PointCharge (not an Atom subclass)."""
-    return Structure(atoms=[
-        Atom(element=Element("O"), coordinates=Coordinates(coordinates=(0.0, 0.0, 0.0))),
-        PointCharge(coordinates=Coordinates(coordinates=(1.0, 0.0, 0.0)), charge=1.0),
-    ])
+    return Structure(
+        atoms=[
+            Atom(element=Element("O"), coordinates=Coordinates(coordinates=(0.0, 0.0, 0.0))),
+            PointCharge(coordinates=Coordinates(coordinates=(1.0, 0.0, 0.0)), charge=1.0),
+        ]
+    )
 
 
 # ============================================================
 # real_atoms
 # ============================================================
+
 
 class TestRealAtoms:
     def test_returns_only_real_atoms(self, mixed_structure):
@@ -120,10 +127,14 @@ class TestRealAtoms:
 
     def test_ghost_atom_excluded(self):
         """GhostAtom is a subclass of Atom but should be excluded."""
-        structure = Structure(atoms=[
-            Atom(element=Element("O"), coordinates=Coordinates(coordinates=(0.0, 0.0, 0.0))),
-            GhostAtom(element=Element("H"), coordinates=Coordinates(coordinates=(1.0, 0.0, 0.0))),
-        ])
+        structure = Structure(
+            atoms=[
+                Atom(element=Element("O"), coordinates=Coordinates(coordinates=(0.0, 0.0, 0.0))),
+                GhostAtom(
+                    element=Element("H"), coordinates=Coordinates(coordinates=(1.0, 0.0, 0.0))
+                ),
+            ]
+        )
         assert len(structure.real_atoms) == 1
         assert type(structure.real_atoms[0]) is Atom
 
@@ -136,15 +147,16 @@ class TestRealAtoms:
         assert all(type(a) is Atom for a in water.real_atoms)
 
     def test_empty_structure(self):
-        structure = Structure(atoms=[
-            PointCharge(coordinates=Coordinates(coordinates=(0.0, 0.0, 0.0)), charge=1.0)
-        ])
+        structure = Structure(
+            atoms=[PointCharge(coordinates=Coordinates(coordinates=(0.0, 0.0, 0.0)), charge=1.0)]
+        )
         assert water.real_atoms == [] if False else structure.real_atoms == []
 
 
 # ============================================================
 # get_coordinates
 # ============================================================
+
 
 class TestGetCoordinates:
     def test_shape(self, water):
@@ -184,6 +196,7 @@ class TestGetCoordinates:
 # get_coordinates_at_centroid
 # ============================================================
 
+
 class TestGetCoordinatesAtCentroid:
     def test_centroid_is_zero(self, water):
         coords = water.get_coordinates_at_centroid()
@@ -207,6 +220,7 @@ class TestGetCoordinatesAtCentroid:
 # ============================================================
 # set_coordinates
 # ============================================================
+
 
 class TestSetCoordinates:
     def test_returns_new_structure(self, water):
@@ -243,6 +257,7 @@ class TestSetCoordinates:
 # centered_structure
 # ============================================================
 
+
 class TestCenteredStructure:
     def test_centroid_at_origin(self, water):
         centered = water.centered_structure()
@@ -278,6 +293,7 @@ class TestCenteredStructure:
 # _filtered_atoms
 # ============================================================
 
+
 class TestFilteredAtoms:
     def test_default_returns_only_atom_indices(self, mixed_structure):
         """PointCharge should be excluded — only index 0 (the Atom) returned."""
@@ -301,10 +317,12 @@ class TestFilteredAtoms:
 
     def test_only_atoms_excludes_pointcharge(self):
         """Explicitly indexed PointCharge must be excluded by the final type check."""
-        structure = Structure(atoms=[
-            Atom(element=Element("C"), coordinates=Coordinates(coordinates=(0.0, 0.0, 0.0))),
-            PointCharge(coordinates=Coordinates(coordinates=(1.0, 0.0, 0.0)), charge=1.0),
-        ])
+        structure = Structure(
+            atoms=[
+                Atom(element=Element("C"), coordinates=Coordinates(coordinates=(0.0, 0.0, 0.0))),
+                PointCharge(coordinates=Coordinates(coordinates=(1.0, 0.0, 0.0)), charge=1.0),
+            ]
+        )
         indices = structure._filtered_atoms([0, 1], False)
         assert indices == [0]
         assert all(type(structure.atoms[i]) is Atom for i in indices)
@@ -319,6 +337,7 @@ class TestFilteredAtoms:
 # ============================================================
 # _validate_rmsd_compatibility
 # ============================================================
+
 
 class TestValidateRmsdCompatibility:
     def test_compatible_structures(self, water):
@@ -346,6 +365,7 @@ class TestValidateRmsdCompatibility:
 # ============================================================
 # rmsd
 # ============================================================
+
 
 class TestRmsd:
     def test_identical_structures_zero_rmsd(self, water):
@@ -397,6 +417,7 @@ class TestRmsd:
 # ============================================================
 # rmsd_kabsch
 # ============================================================
+
 
 class TestRmsdKabsch:
     def test_identical_structures_zero_rmsd(self, water):
