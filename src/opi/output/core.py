@@ -18,8 +18,12 @@ from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
 from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
+    get_error_message,
+    get_error_messages,
     get_float_from_line,
     get_lines_from_block,
+    has_casscf_converged,
+    has_cc_converged,
     has_geometry_optimization_converged,
     has_scf_converged,
     has_terminated_normally,
@@ -666,11 +670,47 @@ class Output:
         bool
             True if "ORCA TERMINATED NORMALLY" is found in ".out" file else False
         """
+        return self._has(has_terminated_normally)
+
+    def _has(self, has_func: Callable[[Path], bool]) -> bool:
         outfile = self.get_outfile()
         try:
-            return has_terminated_normally(outfile)
+            return has_func(outfile)
         except FileNotFoundError:
             return False
+
+    def error_messages(self) -> list[str]:
+        """
+        Return all known error messages found in the ORCA output file.
+        Scanning stops early when a critical pattern is matched. Critical patterns are patterns that directly terminate ORCA.
+        If the output file does not exist a corresponding error message is returned.
+
+        Returns
+        -------
+        list[str] | None
+            List of error message strings if any errors were detected, else None.
+        """
+        outfile = self.get_outfile()
+        try:
+            return get_error_messages(outfile)
+        except FileNotFoundError:
+            return [f"Could not find output file: {outfile}"]
+
+    def error_message(self) -> str:
+        """
+        Return the most important error message found in the ORCA output file or an empty string if no known error was detected.
+        If the output file does not exist a corresponding error message is returned.
+
+        Returns
+        -------
+        str | None
+            Error message string if an error was detected, else None.
+        """
+        outfile = self.get_outfile()
+        try:
+            return get_error_message(outfile)
+        except FileNotFoundError:
+            return f"Could not find output file: {outfile}"
 
     def scf_converged(self) -> bool:
         """
@@ -683,11 +723,33 @@ class Output:
         bool
             True if "SUCCESS" is found in ".out" file else False
         """
-        outfile = self.get_outfile()
-        try:
-            return has_scf_converged(outfile)
-        except FileNotFoundError:
-            return False
+        return self._has(has_scf_converged)
+
+    def casscf_converged(self) -> bool:
+        """
+        Determine if ORCA CAS-SCF converged, by looking for "THE CAS-SCF GRADIENT HAS CONVERGED" in the ".out" file.
+        Check only if ORCA CAS-SCF was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if string is found in ".out" file else False
+        """
+        return self._has(has_casscf_converged)
+
+    def cc_converged(self) -> bool:
+        """
+        Determine if ORCA coupled-cluster iterations converged, by looking for "The Coupled-Cluster iterations have converged" in the ".out" file.
+        Check only if CC was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if string is found in ".out" file else False
+        """
+        return self._has(has_cc_converged)
 
     def geometry_optimization_converged(self) -> bool:
         """
@@ -700,11 +762,7 @@ class Output:
         bool
             True if "HURRAY" is found in ".out" file else False
         """
-        outfile = self.get_outfile()
-        try:
-            return has_geometry_optimization_converged(outfile)
-        except FileNotFoundError:
-            return False
+        return self._has(has_geometry_optimization_converged)
 
     def print_graph(self, *, max_length: int = 3, depth: int = -1) -> None:
         """
@@ -1777,32 +1835,56 @@ class Output:
 
         return pol
 
-    def get_s2(self, *, index: int = -1) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | None:
+    def get_s2(
+        self, *, index: int = -1
+    ) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | tuple[None, None]:
         """
-        Get the S² expectation value and the ideal S² value by grepping them from the output file.
+        Get the S² expectation value and the ideal S² value by grepping them from the output file for UHF and returning
+        the ideal values for RHF and ROHF. The ideal value for ROHF requires the multiplicity which is obtained via
+        `self.get_mult()`.
 
         Parameters
         ----------
         index : int, default: -1
             Index of the geometry for which S² should be returned. The default -1 refers to the final geometry.
             Silently ignores if the requested index is not available and returns None.
+            For RHF/ROHF the index is not relevant since the ideal values are returned.
 
         Returns
         ----------
-        tuple[StrictFiniteFloat, StrictFiniteFloat] | None
+        tuple[StrictFiniteFloat, StrictFiniteFloat] | tuple[None, None]
             Return the expectation value and the ideal value or None if nothing is found.
         """
-        outfile = self.get_outfile()
-        # // String for searching the S² expectation value.
-        expec_string = "Expectation value of <S**2>"
-        # // String for searching the ideal S² value.
-        ideal_string = "Ideal value S*(S+1)"
-        expec_s2 = get_float_from_line(outfile, expec_string, index, strict=False)
-        ideal_s2 = get_float_from_line(outfile, ideal_string, index, strict=False)
+        expec_s2: StrictFiniteFloat | None = None
+        ideal_s2: StrictFiniteFloat | None = None
+        # > Get HFType
+        hftype = self.get_hftype()
+        match hftype:
+            # > RHF/RKS just returns the ideal value zero
+            case Hftyp.RHF:
+                return 0.0, 0.0
+            # > ROHF/ROKS - ideal S2 value by construction
+            case Hftyp.ROHF:
+                mult = self.get_mult()
+                # > Cannot determine S2 without multiplicity
+                if mult:
+                    ideal_s2 = (mult**2 - 1) / 4
+                    expec_s2 = ideal_s2
+            # > For UHF or None we just try to get S2 from the output
+            case Hftyp.UHF | _:
+                # > Grep from output file
+                outfile = self.get_outfile()
+                # // String for searching the S² expectation value.
+                expec_string = "Expectation value of <S**2>"
+                # // String for searching the ideal S² value.
+                ideal_string = "Ideal value S*(S+1)"
+                expec_s2 = get_float_from_line(outfile, expec_string, index, strict=False)
+                ideal_s2 = get_float_from_line(outfile, ideal_string, index, strict=False)
+
         if expec_s2 is not None and ideal_s2 is not None:
             return expec_s2, ideal_s2
         else:
-            return None
+            return None, None
 
     def get_zpe(self, *, index: int = -1) -> StrictPositiveFloat | None:
         """
