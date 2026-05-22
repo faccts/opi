@@ -125,7 +125,7 @@ class RotationalConstants:
 
         A_cm, B_cm, C_cm = self.get_in_wavenumbers()
         return (
-            "Rotational constants (yeih):\n"
+            "Rotational constants:\n"
             f"  A = {fmt(self.A, 'MHz')}   ({fmt(A_cm, 'cm⁻¹')})\n"
             f"  B = {fmt(self.B, 'MHz')}   ({fmt(B_cm, 'cm⁻¹')})\n"
             f"  C = {fmt(self.C, 'MHz')}   ({fmt(C_cm, 'cm⁻¹')})"
