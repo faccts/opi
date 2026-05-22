@@ -33,6 +33,12 @@ class Molecule(GetItem):
         Overlap matrix
     h_matrix: list[list[StrictFloat]]
         Hcore matrix (1-el integrals)
+    t_matrix: list[list[StrictFloat]]
+        Kinetic energy matrix (1-el integrals)
+    v_matrix: list[list[StrictFloat]]
+        Nuclear attraction matrix (1-el integrals)
+    hmo: list[list[list[StrictFloat]]]
+        Hcore matrix in MO basis (1-el integrals)
     f_matrix: f_matrix: list[list[list[StrictFloat]]]
         Fock matrix/matrices
     j_matrix: list[list[list[StrictFloat]]]
@@ -57,6 +63,9 @@ class Molecule(GetItem):
     origin: tuple[StrictFloat, StrictFloat, StrictFloat]
     s_matrix: list[list[StrictFloat]] | None = Field(default=None, alias="s-matrix")
     h_matrix: list[list[StrictFloat]] | None = Field(default=None, alias="h-matrix")
+    t_matrix: list[list[StrictFloat]] | None = Field(default=None, alias="t-matrix")
+    v_matrix: list[list[StrictFloat]] | None = Field(default=None, alias="v-matrix")
+    hmo: list[list[list[StrictFloat]]] | None = None
     f_matrix: list[list[list[StrictFloat]]] | None = Field(default=None, alias="f-matrix")
     j_matrix: list[list[list[StrictFloat]]] | None = Field(default=None, alias="j-matrix")
     k_matrix: list[list[list[StrictFloat]]] | None = Field(default=None, alias="k-matrix")
