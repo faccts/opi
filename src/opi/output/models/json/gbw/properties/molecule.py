@@ -7,6 +7,7 @@ from opi.output.models.json.gbw.properties.molecular_orbitals import (
     MolecularOrbitals,
 )
 from opi.output.models.json.gbw.properties.tddft import TdDft
+from opi.output.models.json.gbw.properties.two_electron_integrals import TwoElectronIntegrals
 
 
 class Molecule(GetItem):
@@ -45,6 +46,8 @@ class Molecule(GetItem):
         Coulomb integrals (2-el integrals)
     k_matrix: list[list[list[StrictFloat]]]
         Exchange integrals (2-el integrals)
+    twoelintegrals: TwoElectronIntegrals | None, default = None
+        Contains the available two electron integrals
     pointgroup: StrictStr
         Pointgroup of the molecule
     td_dft: TdDft | None default = None
@@ -69,6 +72,7 @@ class Molecule(GetItem):
     f_matrix: list[list[list[StrictFloat]]] | None = Field(default=None, alias="f-matrix")
     j_matrix: list[list[list[StrictFloat]]] | None = Field(default=None, alias="j-matrix")
     k_matrix: list[list[list[StrictFloat]]] | None = Field(default=None, alias="k-matrix")
+    twoelintegrals: TwoElectronIntegrals | None = Field(default=None, alias="2elintegrals")
     pointgroup: StrictStr | None = None
     td_dft: list[TdDft] | None = Field(None, alias="td-dft")
     densities: Densities | None = None
