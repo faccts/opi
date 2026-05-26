@@ -70,13 +70,13 @@ calculations change.
 
 ## Updating the plain-text `.out` fixture (requires ORCA)
 
-Some unit tests for the grepper fallback rely on a minimal plain-text
+Some unit tests for the `Grepper` fallback rely on a minimal plain-text
 ORCA output file committed at:
 
     tests/fixtures/job_fallback.out
 
 This file is generated from `test_exmp003_opt` by extracting only the
-blocks relevant to the grepper (charge, multiplicity, Cartesian
+blocks relevant to the `Grepper` (charge, multiplicity, Cartesian
 coordinates, final single-point energy, Cartesian gradient). All
 system-specific information (file paths, hostnames, timings) is
 discarded automatically.

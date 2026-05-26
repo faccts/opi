@@ -687,8 +687,8 @@ class Output:
 
         Returns
         -------
-        list[str] | None
-            List of error message strings if any errors were detected, else None.
+        list[str]
+            List of error message strings if any errors were detected, else an empty list.
         """
         outfile = self.get_outfile()
         try:
@@ -703,8 +703,8 @@ class Output:
 
         Returns
         -------
-        str | None
-            Error message string if an error was detected, else None.
+        str
+            Error message string if an error was detected, else an empty string.
         """
         outfile = self.get_outfile()
         try:
@@ -1463,14 +1463,19 @@ class Output:
 
     def _grep_structure(self, index: int, /) -> Structure | None:
         """Parse structure from "CARTESIAN COORDINATES (ANGSTROEM)" block in the .out file."""
+        # > Get geometry block in the output file
         lines = get_lines_from_block(
             self.get_outfile(),
             "CARTESIAN COORDINATES (ANGSTROEM)",
             index=index,
             offset=2,
         )
+
+        # > If we found nothing we return None
         if not lines:
             return None
+
+        # > Collect the atoms from the block
         atoms: list[Atom] = []
         for line in lines:
             parts = line.split()
@@ -1482,27 +1487,41 @@ class Output:
             except ValueError:
                 continue
             atoms.append(Atom(element=elem, coordinates=Coordinates((x, y, z))))
+
+        # > If no atoms were collected return None
         if not atoms:
             return None
+
+        # > Assemble the structure
         structure = Structure(atoms)
+
+        # > Add molecular charge if present
         charge = self.get_charge()
         if charge is not None:
             structure.charge = charge
+
+        # > Add molecular multiplicity if present
         mult = self.get_mult()
         if mult is not None:
             structure.multiplicity = mult
+
         return structure
 
     def _grep_gradient(self, index: int, /) -> list[StrictFiniteFloat] | None:
         """Parse gradient from "CARTESIAN GRADIENT" block in the .out file (Eh/Bohr)."""
+        # > Get gradient block from the output file
         lines = get_lines_from_block(
             self.get_outfile(),
             "CARTESIAN GRADIENT",
             index=index,
             offset=3,
         )
+
+        # > Return None if no block was found
         if not lines:
             return None
+
+        # > Collect gradient line by line
         gradient: list[StrictFiniteFloat] = []
         for line in lines:
             parts = line.split()
@@ -1514,6 +1533,8 @@ class Output:
             except ValueError:
                 continue
             gradient.extend(cast(list[StrictFiniteFloat], [x, y, z]))
+
+        # > Return gradient or None
         return gradient if gradient else None
 
     def get_mos(self, gbw_index: int = 0) -> dict[str, list[MO]] | None:

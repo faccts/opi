@@ -2,7 +2,7 @@ import pytest
 
 from examples.exmp003_opt.job import run_exmp003
 from opi.input.structures import Structure
-from tests.conftest import OutFileExporter
+from tests.helpers import OutFileExporter
 
 
 @pytest.mark.examples

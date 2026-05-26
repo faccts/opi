@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Example: GFN-FF geometry optimisation with grepper fallback.
+Example: GFN-FF geometry optimisation with `Grepper` fallback.
 
 GFN-FF is an external force field method in ORCA (calls xtb internally).
 It writes a property JSON file, but the file contains no geometry entries,
 so the normal JSON-based output parsing returns None for energies, gradients,
-and structures. The grepper fallback (enabled by default) recovers these
+and structures. The `Grepper` fallback (enabled by default) recovers these
 quantities directly from the plain-text .out file.
 """
 
@@ -41,6 +41,7 @@ def run_exmp054(
     output = calc.get_output()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
+        print(output.error_message())
         sys.exit(1)
 
     # > parse() loads a property JSON with no geometry entries for GFN-FF
