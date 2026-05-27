@@ -1104,36 +1104,27 @@ class Structure:
         atom_list = [self.atoms[i] for i in only_atoms] if only_atoms else self.atoms
         return np.array([a.coordinates.coordinates for a in atom_list])
 
-    def set_coordinates(self, coords: npt.NDArray[np.float64]) -> "Structure":
+    def set_coordinates(self, coords: npt.NDArray[np.float64]) -> None:
         """
-        Return a new Structure with updated coordinates.
+        Update the coordinates of all atoms in place.
 
         Parameters
         ----------
         coords : npt.NDArray[np.float64], shape (N, 3)
             New coordinates for all atoms in the same order as `self.atoms`.
 
-        Returns
-        -------
-        Structure
-            New `Structure` instance with replaced coordinates; all other
-            attributes (charge, multiplicity, origin) are preserved.
-
         Raises
         ------
         ValueError
             If *coords* shape does not match the number of atoms.
         """
-
         coords = np.asarray(coords, dtype=np.float64)
         if coords.shape != (len(self.atoms), 3):
             raise ValueError(
                 f"coords shape {coords.shape} does not match expected ({len(self.atoms)}, 3)"
             )
-        new_structure = copy.deepcopy(self)
-        for atom, new_coord in zip(new_structure.atoms, coords):
+        for atom, new_coord in zip(self.atoms, coords):
             atom.coordinates = new_coord
-        return new_structure
 
     def centered_structure(self) -> "Structure":
         """
@@ -1146,9 +1137,11 @@ class Structure:
         Structure
             New `Structure` with centered coordinates.
         """
-        real_indices = [i for i, a in enumerate(self.atoms) if type(a) is Atom]
-        centroid = self.get_coordinates(only_atoms=real_indices).mean(axis=0)
-        return self.set_coordinates(self.get_coordinates() - centroid)
+        new_structure = copy.deepcopy(self)
+        real_indices = [i for i, a in enumerate(new_structure.atoms) if type(a) is Atom]
+        centroid = new_structure.get_coordinates(only_atoms=real_indices).mean(axis=0)
+        new_structure.set_coordinates(new_structure.get_coordinates() - centroid)
+        return new_structure
 
     def _filtered_atoms(
         self,

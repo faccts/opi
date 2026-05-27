@@ -14,8 +14,6 @@ Covers:
 - Edge cases: empty structure, all-zero masses, mass overrides, unknown elements
 """
 
-import math
-
 import numpy as np
 import pytest
 
@@ -49,10 +47,6 @@ def make_no_real_atoms_structure() -> Structure:
     )
 
 
-def make_structure(*atoms: Atom) -> Structure:
-    return Structure(atoms=list(atoms))
-
-
 # ============================================================
 # Fixtures
 # ============================================================
@@ -61,10 +55,11 @@ def make_structure(*atoms: Atom) -> Structure:
 @pytest.fixture()
 def water() -> Structure:
     """H2O — asymmetric top."""
-    return make_structure(
-        make_atom("O", 0.000000, 0.000000, 0.119748),
-        make_atom("H", 0.000000, 0.756950, -0.478993),
-        make_atom("H", 0.000000, -0.756950, -0.478993),
+    return Structure.from_xyz_block(
+        "3\n\n"
+        "O   0.000000   0.000000   0.119748\n"
+        "H   0.000000   0.756950  -0.478993\n"
+        "H   0.000000  -0.756950  -0.478993"
     )
 
 
@@ -73,75 +68,85 @@ def co2() -> Structure:
     """
     CO2 — linear molecule aligned exactly on Z.
     After COM shift, both O atoms lie on the Z axis so Ia = 0 exactly.
-    Using exact masses (C=12, O=15.999) the COM is at z=0 by symmetry.
     """
-    return make_structure(
-        make_atom("C", 0.000000, 0.000000, 0.000000),
-        make_atom("O", 0.000000, 0.000000, 1.160000),
-        make_atom("O", 0.000000, 0.000000, -1.160000),
+    return Structure.from_xyz_block(
+        "3\n\n"
+        "C   0.000000   0.000000   0.000000\n"
+        "O   0.000000   0.000000   1.160000\n"
+        "O   0.000000   0.000000  -1.160000"
     )
 
 
 @pytest.fixture()
 def hcl() -> Structure:
     """HCl — guaranteed linear (diatomic), Ia = 0 exactly on Z axis."""
-    return make_structure(
-        make_atom("H", 0.000000, 0.000000, 0.000000),
-        make_atom("Cl", 0.000000, 0.000000, 1.274500),
+    return Structure.from_xyz_block(
+        "2\n\nH    0.000000   0.000000   0.000000\nCl   0.000000   0.000000   1.274500"
     )
 
 
 @pytest.fixture()
 def methane() -> Structure:
     """CH4 — spherical top."""
-    d = 0.6276  # C-H bond / sqrt(3)
-    return make_structure(
-        make_atom("C", 0.000, 0.000, 0.000),
-        make_atom("H", d, d, d),
-        make_atom("H", -d, -d, d),
-        make_atom("H", -d, d, -d),
-        make_atom("H", d, -d, -d),
+    d = 0.6276
+    return Structure.from_xyz_block(
+        f"5\n\n"
+        f"C   0.000   0.000   0.000\n"
+        f"H   {d}     {d}     {d}\n"
+        f"H  -{d}    -{d}     {d}\n"
+        f"H  -{d}     {d}    -{d}\n"
+        f"H   {d}    -{d}    -{d}"
     )
 
 
 @pytest.fixture()
 def benzene() -> Structure:
-    """C6H6 — oblate symmetric top."""
-    r_c, r_h = 1.3970, 2.4832
-    atoms = []
-    for i in range(6):
-        angle = math.radians(i * 60)
-        atoms.append(make_atom("C", r_c * math.cos(angle), r_c * math.sin(angle), 0.0))
-        atoms.append(make_atom("H", r_h * math.cos(angle), r_h * math.sin(angle), 0.0))
-    return make_structure(*atoms)
+    """C6H6 — oblate symmetric top. Avogadro optimized geometry."""
+    return Structure.from_xyz_block(
+        "12\n\n"
+        "C    -4.0132333739   3.1874756422   0.0000029092\n"
+        "C    -3.7419050401   1.8193724296   0.0000182442\n"
+        "H    -0.3432332788   1.9395893312   0.0002037711\n"
+        "C    -2.9641082474   4.1065582543   0.0000491840\n"
+        "C    -2.4213601440   1.3702446325   0.0000859970\n"
+        "H    -5.0421713998   3.5372885217  -0.0000468671\n"
+        "C    -1.6435439604   3.6575023283   0.0001222947\n"
+        "H    -3.1755373879   5.1725212691   0.0000321721\n"
+        "C    -1.3721905089   2.2894069399   0.0001431310\n"
+        "H    -4.5593921780   1.1033282205  -0.0000191331\n"
+        "H    -0.8260945740   4.3735825219   0.0001644962\n"
+        "H    -2.2100493877   0.3043042675   0.0000939114"
+    )
 
 
 @pytest.fixture()
 def single_atom() -> Structure:
     """Single atom — monoatomic."""
-    return make_structure(make_atom("C", 0.0, 0.0, 0.0))
+    return Structure.from_xyz_block("1\n\nC   0.000000   0.000000   0.000000")
 
 
 @pytest.fixture()
 def ammonia() -> Structure:
     """NH3 — oblate symmetric top (C3v). XTB2 optimized geometry."""
-    return make_structure(
-        make_atom("N", -0.000000, -0.000066, 0.100407),
-        make_atom("H", 0.000000, 0.943825, -0.266468),
-        make_atom("H", 0.817493, -0.471879, -0.266439),
-        make_atom("H", -0.817493, -0.471879, -0.266439),
+    return Structure.from_xyz_block(
+        "4\n\n"
+        "N  -0.000000  -0.000066   0.100407\n"
+        "H   0.000000   0.943825  -0.266468\n"
+        "H   0.817493  -0.471879  -0.266439\n"
+        "H  -0.817493  -0.471879  -0.266439"
     )
 
 
 @pytest.fixture()
 def ch3cl() -> Structure:
     """CH3Cl — prolate symmetric top (C3v). XTB2 optimized geometry."""
-    return make_structure(
-        make_atom("Cl", 0.9754830000, 0.0921220000, -0.0239260000),
-        make_atom("C", 2.7424550000, 0.0921300000, -0.0239350000),
-        make_atom("H", 3.0994960000, 0.3238830000, 0.9818970000),
-        make_atom("H", 3.0994920000, -0.8948230000, -0.3261570000),
-        make_atom("H", 3.0994750000, 0.8473380000, -0.7275610000),
+    return Structure.from_xyz_block(
+        "5\n\n"
+        "Cl   0.975483   0.092122  -0.023926\n"
+        "C    2.742455   0.092130  -0.023935\n"
+        "H    3.099496   0.323883   0.981897\n"
+        "H    3.099492  -0.894823  -0.326157\n"
+        "H    3.099475   0.847338  -0.727561"
     )
 
 
@@ -272,10 +277,11 @@ class TestCalcMomentsOfInertia:
 
     def test_ghost_atoms_ignored(self):
         """PointCharge should not contribute to moments."""
-        real = make_structure(
-            make_atom("O", 0.0, 0.0, 0.119748),
-            make_atom("H", 0.0, 0.756950, -0.478993),
-            make_atom("H", 0.0, -0.756950, -0.478993),
+        real = Structure.from_xyz_block(
+            "3\n\n"
+            "O   0.000000   0.000000   0.119748\n"
+            "H   0.000000   0.756950  -0.478993\n"
+            "H   0.000000  -0.756950  -0.478993"
         )
         with_pc = Structure(
             atoms=[
@@ -336,14 +342,11 @@ class TestCalcMomentsOfInertia:
                 Atom(element=Element("H"), coordinates=Coordinates(coordinates=(1.0, 0.0, 0.0))),
             ]
         )
-        # Patch via weights to simulate unknown: pass mass 0 explicitly for C
         pm = structure.calc_moments_of_inertia(atom_weights={0: 0.0})
-        # Only H contributes → single non-zero mass → linear or monoatomic
         assert pm is not None
 
     def test_zero_mass_atoms_filtered(self, water):
         """Atoms with zero mass are excluded; remaining atoms determine the rotor type."""
-        # Zero out the two H atoms → only O remains → monoatomic
         masses = np.array([15.999, 0.0, 0.0])
         pm = water.calc_moments_of_inertia(masses=masses)
         assert pm is not None
@@ -352,15 +355,13 @@ class TestCalcMomentsOfInertia:
     def test_water_moments_known_values(self, water):
         """
         Check moments are self-consistent: Ia <= Ib <= Ic and all positive.
-        The geometry used here gives Ia ≈ 0.6418 amu·Å² (not the experimental
-        equilibrium value of 0.5791) because the O-H distance and angle differ
-        slightly. We verify internal consistency rather than an absolute value.
+        We verify internal consistency and a physically reasonable range
+        rather than absolute values.
         """
         pm = water.calc_moments_of_inertia()
         assert pm is not None
         assert pm.Ia > 0.0
         assert pm.Ia <= pm.Ib <= pm.Ic
-        # Rough sanity check: moments should be in a physically reasonable range
         assert 0.1 < pm.Ia < 5.0
         assert 0.1 < pm.Ib < 5.0
         assert 0.1 < pm.Ic < 5.0
@@ -471,4 +472,4 @@ class TestCalcRotationalConstants:
         wn_before = rc.get_in_wavenumbers()[0]
         rc.A = rc.A * 5 if rc.A is not None else None  # type: ignore[operator]
         wn_after = rc.get_in_wavenumbers()[0]
-        assert wn_before != wn_after  # confirms on-the-fly computation
+        assert wn_before != wn_after

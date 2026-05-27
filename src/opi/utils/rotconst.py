@@ -54,7 +54,42 @@ class PrincipalMoments:
     Ic: float
     axes: np.ndarray
 
-    def rotor_type(self, tol: float = 1e-3) -> RotorType:
+    # def rotor_type(self, tol: float = 1e-3) -> RotorType:
+    #     Ia, Ib, Ic = self.Ia, self.Ib, self.Ic
+    #     n_zero = sum(m < tol for m in (Ia, Ib, Ic))
+
+    #     if n_zero == 3:
+    #         return RotorType.MONOATOMIC
+    #     if n_zero == 1 and abs(Ib - Ic) < tol:
+    #         return RotorType.LINEAR
+    #     if abs(Ia - Ib) < tol and abs(Ib - Ic) < tol:
+    #         return RotorType.SPHERICAL_TOP
+    #     if abs(Ib - Ic) < tol:  # Ia < Ib == Ic → prolate
+    #         return RotorType.PROLATE_TOP
+    #     if abs(Ia - Ib) < tol:  # Ia == Ib < Ic → oblate
+    #         return RotorType.OBLATE_TOP
+    #     return RotorType.ASYMMETRIC_TOP
+
+    def rotor_type(self, tol: float = 1e-3, kappa_tol: float = 0.01) -> RotorType:
+        """
+        Classify the molecular rotor from the principal moments of inertia.
+
+        Parameters
+        ----------
+        tol : float, default 1e-3
+            Absolute tolerance (amu·Å²) for treating a moment as zero,
+            used for `MONOATOMIC`, `LINEAR`, and `SPHERICAL_TOP` detection.
+        kappa_tol : float, default 0.01
+            Tolerance for the asymmetry parameter κ (Ray's asymmetry parameter).
+            κ = -1 → perfect prolate top, κ = +1 → perfect oblate top.
+            Values within `kappa_tol` of ±1 are classified as symmetric tops.
+            Reference: Gordy & Cook, *Microwave Molecular Spectra* (1984).
+
+        Returns
+        -------
+        RotorType
+            Molecular rotor classification.
+        """
         Ia, Ib, Ic = self.Ia, self.Ib, self.Ic
         n_zero = sum(m < tol for m in (Ia, Ib, Ic))
 
@@ -64,9 +99,17 @@ class PrincipalMoments:
             return RotorType.LINEAR
         if abs(Ia - Ib) < tol and abs(Ib - Ic) < tol:
             return RotorType.SPHERICAL_TOP
-        if abs(Ib - Ic) < tol:  # Ia < Ib == Ic → prolate
+
+        # --- Ray's asymmetry parameter κ ---
+        # κ = (2B - A - C) / (A - C), where A ≥ B ≥ C (A = 1/Ia, etc.)
+        # κ = -1 → prolate symmetric top
+        # κ = +1 → oblate symmetric top
+        A, B, C = 1.0 / Ia, 1.0 / Ib, 1.0 / Ic
+        kappa = (2.0 * B - A - C) / (A - C)
+
+        if abs(kappa - (-1.0)) < kappa_tol:
             return RotorType.PROLATE_TOP
-        if abs(Ia - Ib) < tol:  # Ia == Ib < Ic → oblate
+        if abs(kappa - 1.0) < kappa_tol:
             return RotorType.OBLATE_TOP
         return RotorType.ASYMMETRIC_TOP
 

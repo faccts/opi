@@ -16,6 +16,8 @@ Edge cases: ignore_hs, only_atoms, mismatched structures,
 mixed atom types, wrong shapes, identical structures.
 """
 
+import copy
+
 import numpy as np
 import pytest
 
@@ -48,20 +50,22 @@ def make_structure(*atoms: Atom) -> Structure:
 @pytest.fixture()
 def water() -> Structure:
     """H2O at a known geometry."""
-    return make_structure(
-        make_atom("O", 0.000000, 0.000000, 0.119748),
-        make_atom("H", 0.000000, 0.756950, -0.478993),
-        make_atom("H", 0.000000, -0.756950, -0.478993),
+    return Structure.from_xyz_block(
+        "3\n\n"
+        "O   0.000000   0.000000   0.119748\n"
+        "H   0.000000   0.756950  -0.478993\n"
+        "H   0.000000  -0.756950  -0.478993"
     )
 
 
 @pytest.fixture()
 def water_translated() -> Structure:
     """H2O shifted by (1, 2, 3) — RMSD vs water should be 0 after centring."""
-    return make_structure(
-        make_atom("O", 1.000000, 2.000000, 3.119748),
-        make_atom("H", 1.000000, 2.756950, 2.521007),
-        make_atom("H", 1.000000, 1.243050, 2.521007),
+    return Structure.from_xyz_block(
+        "3\n\n"
+        "O   1.000000   2.000000   3.119748\n"
+        "H   1.000000   2.756950   2.521007\n"
+        "H   1.000000   1.243050   2.521007"
     )
 
 
@@ -81,25 +85,28 @@ def water_rotated(water) -> Structure:
             [0, 0, 1],
         ]
     )
-    return centered.set_coordinates(coords @ R.T)
+    rotated = copy.deepcopy(centered)
+    rotated.set_coordinates(coords @ R.T)
+    return rotated
 
 
 @pytest.fixture()
 def ethanol() -> Structure:
     """
-    Simple ethanol-like structure (C2H5OH) for ignore_hs tests.
+    Ethanol (C2H5OH) for ignore_hs tests.
     Coordinates are approximate — correctness of geometry is not critical here.
     """
-    return make_structure(
-        make_atom("C", 0.000, 0.000, 0.000),
-        make_atom("C", 1.540, 0.000, 0.000),
-        make_atom("O", 2.060, 1.190, 0.000),
-        make_atom("H", -0.390, 1.020, 0.000),
-        make_atom("H", -0.390, -0.510, 0.890),
-        make_atom("H", -0.390, -0.510, -0.890),
-        make_atom("H", 1.930, -0.510, 0.890),
-        make_atom("H", 1.930, -0.510, -0.890),
-        make_atom("H", 2.980, 1.190, 0.000),
+    return Structure.from_xyz_block(
+        "9\n\n"
+        "C   0.000   0.000   0.000\n"
+        "C   1.540   0.000   0.000\n"
+        "O   2.060   1.190   0.000\n"
+        "H  -0.390   1.020   0.000\n"
+        "H  -0.390  -0.510   0.890\n"
+        "H  -0.390  -0.510  -0.890\n"
+        "H   1.930  -0.510   0.890\n"
+        "H   1.930  -0.510  -0.890\n"
+        "H   2.980   1.190   0.000"
     )
 
 
@@ -150,7 +157,7 @@ class TestRealAtoms:
         structure = Structure(
             atoms=[PointCharge(coordinates=Coordinates(coordinates=(0.0, 0.0, 0.0)), charge=1.0)]
         )
-        assert water.real_atoms == [] if False else structure.real_atoms == []
+        assert structure.real_atoms == []
 
 
 # ============================================================
@@ -187,7 +194,7 @@ class TestGetCoordinates:
         assert coords.shape == (2, 3)
 
     def test_single_atom(self):
-        s = make_structure(make_atom("C", 1.0, 2.0, 3.0))
+        s = Structure.from_xyz_block("1\n\nC   1.0   2.0   3.0")
         coords = s.get_coordinates()
         np.testing.assert_allclose(coords[0], [1.0, 2.0, 3.0])
 
@@ -223,34 +230,27 @@ class TestGetCoordinatesAtCentroid:
 
 
 class TestSetCoordinates:
-    def test_returns_new_structure(self, water):
-        new_coords = water.get_coordinates() + 1.0
-        new_s = water.set_coordinates(new_coords)
-        assert new_s is not water
-
-    def test_original_unchanged(self, water):
-        original_coords = water.get_coordinates().copy()
-        water.set_coordinates(water.get_coordinates() + 5.0)
-        np.testing.assert_allclose(water.get_coordinates(), original_coords)
-
-    def test_new_coords_applied(self, water):
+    def test_mutates_in_place(self, water):
+        """set_coordinates should modify the structure in place."""
         new_coords = np.zeros((3, 3))
-        new_s = water.set_coordinates(new_coords)
-        np.testing.assert_allclose(new_s.get_coordinates(), new_coords)
+        water.set_coordinates(new_coords)
+        np.testing.assert_allclose(water.get_coordinates(), new_coords)
+
+    def test_returns_none(self, water):
+        """set_coordinates should return None."""
+        result = water.set_coordinates(water.get_coordinates())
+        assert result is None
 
     def test_raises_on_wrong_shape(self, water):
         with pytest.raises(ValueError, match="coords shape"):
             water.set_coordinates(np.zeros((2, 3)))
 
-    def test_charge_preserved(self, water):
-        water_charged = Structure(atoms=water.atoms, charge=1)
-        new_s = water_charged.set_coordinates(water.get_coordinates())
-        assert new_s.charge == 1
-
-    def test_multiplicity_preserved(self, water):
-        water_mult = Structure(atoms=water.atoms, multiplicity=3)
-        new_s = water_mult.set_coordinates(water.get_coordinates())
-        assert new_s.multiplicity == 3
+    def test_deepcopy_is_independent(self, water):
+        """Changes to a deepcopy should not affect the original."""
+        original_coords = water.get_coordinates().copy()
+        new_structure = copy.deepcopy(water)
+        new_structure.set_coordinates(np.zeros((3, 3)))
+        np.testing.assert_allclose(water.get_coordinates(), original_coords)
 
 
 # ============================================================
@@ -384,29 +384,31 @@ class TestRmsd:
 
     def test_ignore_hs(self, ethanol):
         """
-        Displace only heavy atoms — RMSD with and without H should differ
-        since the centroid shift differs between the two filtered sets.
+        Displace only one heavy atom — RMSD with and without H should differ.
         """
-        coords = ethanol.get_coordinates()
-        new_coords = coords.copy()
-        new_coords[0] += np.array([0.5, 0.0, 0.0])  # shift only C0
-        shifted = ethanol.set_coordinates(new_coords)
+        shifted = copy.deepcopy(ethanol)
+        coords = shifted.get_coordinates()
+        coords[0] += np.array([0.5, 0.0, 0.0])
+        shifted.set_coordinates(coords)
         rmsd_all = ethanol.rmsd(shifted)
         rmsd_no_h = ethanol.rmsd(shifted, ignore_hs=True)
         assert rmsd_all != pytest.approx(rmsd_no_h, abs=1e-6)
 
     def test_only_atoms_subset(self, ethanol):
         """RMSD over a subset of atoms should differ from the full-molecule RMSD."""
-        coords = ethanol.get_coordinates()
-        new_coords = coords.copy()
-        new_coords[0] += np.array([0.5, 0.0, 0.0])  # shift only C0
-        shifted = ethanol.set_coordinates(new_coords)
+        shifted = copy.deepcopy(ethanol)
+        coords = shifted.get_coordinates()
+        coords[0] += np.array([0.5, 0.0, 0.0])
+        shifted.set_coordinates(coords)
         rmsd_all = ethanol.rmsd(shifted)
         rmsd_subset = ethanol.rmsd(shifted, only_atoms=[0, 1, 2])
         assert rmsd_all != pytest.approx(rmsd_subset, abs=1e-6)
 
     def test_nonzero_rmsd_for_different_structures(self, water):
-        other = water.set_coordinates(water.get_coordinates() + np.array([0, 0, 1.0]))
+        other = copy.deepcopy(water)
+        coords = other.get_coordinates()
+        coords += np.array([0, 0, 1.0])
+        other.set_coordinates(coords)
         result = water.rmsd(other)
         assert result >= 0.0
 
@@ -436,7 +438,8 @@ class TestRmsdKabsch:
         centered = water.centered_structure()
         coords = centered.get_coordinates()
         R = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]], dtype=float)
-        other = centered.set_coordinates(coords @ R.T)
+        other = copy.deepcopy(centered)
+        other.set_coordinates(coords @ R.T)
         assert centered.rmsd_kabsch(other) <= centered.rmsd(other) + 1e-10
 
     def test_symmetry(self, water, water_rotated):
@@ -449,19 +452,19 @@ class TestRmsdKabsch:
             water.rmsd_kabsch(ethanol)
 
     def test_ignore_hs(self, ethanol):
-        coords = ethanol.get_coordinates()
-        new_coords = coords.copy()
-        new_coords[0] += np.array([0.5, 0.0, 0.0])
-        shifted = ethanol.set_coordinates(new_coords)
+        shifted = copy.deepcopy(ethanol)
+        coords = shifted.get_coordinates()
+        coords[0] += np.array([0.5, 0.0, 0.0])
+        shifted.set_coordinates(coords)
         rmsd_all = ethanol.rmsd_kabsch(shifted)
         rmsd_no_h = ethanol.rmsd_kabsch(shifted, ignore_hs=True)
         assert rmsd_all != pytest.approx(rmsd_no_h, abs=1e-6)
 
     def test_only_atoms_subset(self, ethanol):
-        coords = ethanol.get_coordinates()
-        new_coords = coords.copy()
-        new_coords[0] += np.array([0.5, 0.0, 0.0])
-        shifted = ethanol.set_coordinates(new_coords)
+        shifted = copy.deepcopy(ethanol)
+        coords = shifted.get_coordinates()
+        coords[0] += np.array([0.5, 0.0, 0.0])
+        shifted.set_coordinates(coords)
         rmsd_all = ethanol.rmsd_kabsch(shifted)
         rmsd_subset = ethanol.rmsd_kabsch(shifted, only_atoms=[0, 1, 2])
         assert rmsd_all != pytest.approx(rmsd_subset, abs=1e-6)
