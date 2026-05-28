@@ -74,4 +74,5 @@ python3 job.py
 - exmp051_libxc: Shows modification of DFT LibXC parameters via the method block
 - exmp052_densities: Perform UHF calculation and obtain density and spin-density in AO-basis
 - exmp053_opencosmors: Run OpenCOSMO-RS task 
+- exmp054_fcidump: Run a CASSCF calculation and export the active integrals in an FCIDUMP file
 
