@@ -2194,7 +2194,7 @@ class Output:
         else:
             return None
 
-    def get_int_nuclear(
+    def get_int_nuc_attr(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
         """

@@ -38,7 +38,7 @@ def test_exmp038_integrals(example_input_file, tmp_path, json_files_exporter) ->
     assert hcore.ndim == 2
 
     # nuclear
-    nuclear = output.get_int_nuclear(recreate_json=True)
+    nuclear = output.get_int_nuc_attr(recreate_json=True)
     assert isinstance(nuclear, np.ndarray)
     assert hcore.dtype == np.float64
     assert hcore.ndim == 2
