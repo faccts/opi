@@ -2163,7 +2163,7 @@ class Output:
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
         """
-        Returns the kenetic energy integral matrix as numpy array.
+        Returns the kinetic energy integral matrix as numpy array.
 
         Parameters
         ----------
