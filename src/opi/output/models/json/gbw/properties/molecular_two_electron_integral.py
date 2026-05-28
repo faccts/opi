@@ -6,7 +6,7 @@ from opi.output.models.json.gbw.properties.two_electron_integral_element import 
 )
 
 
-class MolecularTwoElectronIntegral(GetItem):
+class MOTwoElectronIntegral(GetItem):
     """
     This class contains the information about two electron integrals in MO basis
 
