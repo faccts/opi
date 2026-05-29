@@ -2159,6 +2159,111 @@ class Output:
         else:
             return None
 
+    def get_int_kinetic(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the kinetic energy integral matrix as numpy array.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request the kinetic energy integrals to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
+        """
+
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            # // 1elIntegrals
+            if "1elIntegrals" not in self.config_dict:
+                self.config_dict["1elIntegrals"] = []
+            # // T Integrals
+            if "T" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("T")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        # > get kinetic integrals from gbw json files
+        kinetic_list = self._safe_get("results_gbw", gbw_index, "molecule", "t_matrix")
+
+        if kinetic_list is not None:
+            return np.array(kinetic_list)
+        else:
+            return None
+
+    def get_int_nuc_attr(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the nuclear attraction integral matrix as numpy array.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request the nuclear attraction integrals to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
+        """
+
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            # // 1elIntegrals
+            if "1elIntegrals" not in self.config_dict:
+                self.config_dict["1elIntegrals"] = []
+            # // V Integrals
+            if "V" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("V")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        # > get nuclear attraction integrals from gbw json files
+        nuclear_list = self._safe_get("results_gbw", gbw_index, "molecule", "v_matrix")
+
+        if nuclear_list is not None:
+            return np.array(nuclear_list)
+        else:
+            return None
+
+    def get_int_hmo(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the core hamiltonian integral matrix in MO basis as numpy array.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request the hmo integrals to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
+        """
+
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            # // 1elIntegrals
+            if "1elIntegrals" not in self.config_dict:
+                self.config_dict["1elIntegrals"] = []
+            # // HMO Integrals
+            if "HMO" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("HMO")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        # > get hmo from gbw json files
+        hmo_list = self._safe_get("results_gbw", gbw_index, "molecule", "hmo")
+
+        if hmo_list is not None:
+            return np.array(hmo_list)
+        else:
+            return None
+
     def get_int_f(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:

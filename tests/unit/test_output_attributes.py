@@ -56,6 +56,7 @@ class TestOutputAttributes:
             "PropertyResults.geometries.energy.root.corrds",
             "GbwResults.molecule.td_dft.xy",
             "PropertyResults.geometries.energy.root.corrss",
+            "GbwResults.molecule.twoelintegrals",
         }
         # collect all attributes from GbwResults and PropertyResults
         gbw_attr = self.get_all_attributes(GbwResults, prefix="GbwResults")
