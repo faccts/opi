@@ -4,9 +4,9 @@ It's mostly based on the ORCA's two JSONs files.
 """
 
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, Callable, cast
+from typing import Any, cast
 from warnings import warn
 
 import numpy as np
@@ -18,8 +18,12 @@ from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
 from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
+    get_error_message,
+    get_error_messages,
     get_float_from_line,
     get_lines_from_block,
+    has_casscf_converged,
+    has_cc_converged,
     has_geometry_optimization_converged,
     has_scf_converged,
     has_terminated_normally,
@@ -242,9 +246,9 @@ class Output:
             self.collect_gbw_json_files()
         # // Create missing GBW JSON files
         if do_create_gbw_json is None:
-            self.create_missing_gbw_json()
+            self.create_missing_gbw_json(config=self.config_dict)
         elif do_create_gbw_json:
-            self.create_gbw_json(force=True)
+            self.create_gbw_json(force=True, config=self.config_dict)
 
         # // read the GBW files
         self.gbw_json_data = self._process_json_files(self.gbw_json_files, continue_on_error=True)
@@ -666,11 +670,47 @@ class Output:
         bool
             True if "ORCA TERMINATED NORMALLY" is found in ".out" file else False
         """
+        return self._has(has_terminated_normally)
+
+    def _has(self, has_func: Callable[[Path], bool]) -> bool:
         outfile = self.get_outfile()
         try:
-            return has_terminated_normally(outfile)
+            return has_func(outfile)
         except FileNotFoundError:
             return False
+
+    def error_messages(self) -> list[str]:
+        """
+        Return all known error messages found in the ORCA output file.
+        Scanning stops early when a critical pattern is matched. Critical patterns are patterns that directly terminate ORCA.
+        If the output file does not exist a corresponding error message is returned.
+
+        Returns
+        -------
+        list[str] | None
+            List of error message strings if any errors were detected, else None.
+        """
+        outfile = self.get_outfile()
+        try:
+            return get_error_messages(outfile)
+        except FileNotFoundError:
+            return [f"Could not find output file: {outfile}"]
+
+    def error_message(self) -> str:
+        """
+        Return the most important error message found in the ORCA output file or an empty string if no known error was detected.
+        If the output file does not exist a corresponding error message is returned.
+
+        Returns
+        -------
+        str | None
+            Error message string if an error was detected, else None.
+        """
+        outfile = self.get_outfile()
+        try:
+            return get_error_message(outfile)
+        except FileNotFoundError:
+            return f"Could not find output file: {outfile}"
 
     def scf_converged(self) -> bool:
         """
@@ -683,11 +723,33 @@ class Output:
         bool
             True if "SUCCESS" is found in ".out" file else False
         """
-        outfile = self.get_outfile()
-        try:
-            return has_scf_converged(outfile)
-        except FileNotFoundError:
-            return False
+        return self._has(has_scf_converged)
+
+    def casscf_converged(self) -> bool:
+        """
+        Determine if ORCA CAS-SCF converged, by looking for "THE CAS-SCF GRADIENT HAS CONVERGED" in the ".out" file.
+        Check only if ORCA CAS-SCF was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if string is found in ".out" file else False
+        """
+        return self._has(has_casscf_converged)
+
+    def cc_converged(self) -> bool:
+        """
+        Determine if ORCA coupled-cluster iterations converged, by looking for "The Coupled-Cluster iterations have converged" in the ".out" file.
+        Check only if CC was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if string is found in ".out" file else False
+        """
+        return self._has(has_cc_converged)
 
     def geometry_optimization_converged(self) -> bool:
         """
@@ -700,11 +762,7 @@ class Output:
         bool
             True if "HURRAY" is found in ".out" file else False
         """
-        outfile = self.get_outfile()
-        try:
-            return has_geometry_optimization_converged(outfile)
-        except FileNotFoundError:
-            return False
+        return self._has(has_geometry_optimization_converged)
 
     def print_graph(self, *, max_length: int = 3, depth: int = -1) -> None:
         """
@@ -1777,32 +1835,56 @@ class Output:
 
         return pol
 
-    def get_s2(self, *, index: int = -1) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | None:
+    def get_s2(
+        self, *, index: int = -1
+    ) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | tuple[None, None]:
         """
-        Get the S² expectation value and the ideal S² value by grepping them from the output file.
+        Get the S² expectation value and the ideal S² value by grepping them from the output file for UHF and returning
+        the ideal values for RHF and ROHF. The ideal value for ROHF requires the multiplicity which is obtained via
+        `self.get_mult()`.
 
         Parameters
         ----------
         index : int, default: -1
             Index of the geometry for which S² should be returned. The default -1 refers to the final geometry.
             Silently ignores if the requested index is not available and returns None.
+            For RHF/ROHF the index is not relevant since the ideal values are returned.
 
         Returns
         ----------
-        tuple[StrictFiniteFloat, StrictFiniteFloat] | None
+        tuple[StrictFiniteFloat, StrictFiniteFloat] | tuple[None, None]
             Return the expectation value and the ideal value or None if nothing is found.
         """
-        outfile = self.get_outfile()
-        # // String for searching the S² expectation value.
-        expec_string = "Expectation value of <S**2>"
-        # // String for searching the ideal S² value.
-        ideal_string = "Ideal value S*(S+1)"
-        expec_s2 = get_float_from_line(outfile, expec_string, index, strict=False)
-        ideal_s2 = get_float_from_line(outfile, ideal_string, index, strict=False)
+        expec_s2: StrictFiniteFloat | None = None
+        ideal_s2: StrictFiniteFloat | None = None
+        # > Get HFType
+        hftype = self.get_hftype()
+        match hftype:
+            # > RHF/RKS just returns the ideal value zero
+            case Hftyp.RHF:
+                return 0.0, 0.0
+            # > ROHF/ROKS - ideal S2 value by construction
+            case Hftyp.ROHF:
+                mult = self.get_mult()
+                # > Cannot determine S2 without multiplicity
+                if mult:
+                    ideal_s2 = (mult**2 - 1) / 4
+                    expec_s2 = ideal_s2
+            # > For UHF or None we just try to get S2 from the output
+            case Hftyp.UHF | _:
+                # > Grep from output file
+                outfile = self.get_outfile()
+                # // String for searching the S² expectation value.
+                expec_string = "Expectation value of <S**2>"
+                # // String for searching the ideal S² value.
+                ideal_string = "Ideal value S*(S+1)"
+                expec_s2 = get_float_from_line(outfile, expec_string, index, strict=False)
+                ideal_s2 = get_float_from_line(outfile, ideal_string, index, strict=False)
+
         if expec_s2 is not None and ideal_s2 is not None:
             return expec_s2, ideal_s2
         else:
-            return None
+            return None, None
 
     def get_zpe(self, *, index: int = -1) -> StrictPositiveFloat | None:
         """
@@ -1993,7 +2075,8 @@ class Output:
         Parameters
         ----------
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which the json file should be created. Default 0 refers to the main gbw file.
+            Index (>= 0) of the gbw file in `self.gbw_json_files` for which the json file should be created.
+            Negative indices are not allowed. Default 0 refers to the main gbw file.
 
         """
         self.create_gbw_json(force=True, config=config_dict, gbw_index=gbw_index)
@@ -2017,15 +2100,19 @@ class Output:
             If True, recreate the gbw json file and request the overlap integrals to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
             if self.config_dict is None:
                 self.config_dict = {}
+            # // 1elIntegrals
             if "1elIntegrals" not in self.config_dict:
                 self.config_dict["1elIntegrals"] = []
-            self.config_dict["1elIntegrals"].append("S")
+            # // S Integrals
+            if "S" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("S")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get overlap from gbw json files
@@ -2049,15 +2136,19 @@ class Output:
             If True, recreate the gbw json file and request the hcore integrals to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
             if self.config_dict is None:
                 self.config_dict = {}
+            # // 1elIntegrals
             if "1elIntegrals" not in self.config_dict:
                 self.config_dict["1elIntegrals"] = []
-            self.config_dict["1elIntegrals"].append("H")
+            # // H Integrals
+            if "H" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("H")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get hcore from gbw json files
@@ -2065,6 +2156,111 @@ class Output:
 
         if hcore_list is not None:
             return np.array(hcore_list)
+        else:
+            return None
+
+    def get_int_kinetic(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the kinetic energy integral matrix as numpy array.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request the kinetic energy integrals to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
+        """
+
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            # // 1elIntegrals
+            if "1elIntegrals" not in self.config_dict:
+                self.config_dict["1elIntegrals"] = []
+            # // T Integrals
+            if "T" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("T")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        # > get kinetic integrals from gbw json files
+        kinetic_list = self._safe_get("results_gbw", gbw_index, "molecule", "t_matrix")
+
+        if kinetic_list is not None:
+            return np.array(kinetic_list)
+        else:
+            return None
+
+    def get_int_nuc_attr(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the nuclear attraction integral matrix as numpy array.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request the nuclear attraction integrals to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
+        """
+
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            # // 1elIntegrals
+            if "1elIntegrals" not in self.config_dict:
+                self.config_dict["1elIntegrals"] = []
+            # // V Integrals
+            if "V" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("V")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        # > get nuclear attraction integrals from gbw json files
+        nuclear_list = self._safe_get("results_gbw", gbw_index, "molecule", "v_matrix")
+
+        if nuclear_list is not None:
+            return np.array(nuclear_list)
+        else:
+            return None
+
+    def get_int_hmo(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the core hamiltonian integral matrix in MO basis as numpy array.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request the hmo integrals to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
+        """
+
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            # // 1elIntegrals
+            if "1elIntegrals" not in self.config_dict:
+                self.config_dict["1elIntegrals"] = []
+            # // HMO Integrals
+            if "HMO" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("HMO")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        # > get hmo from gbw json files
+        hmo_list = self._safe_get("results_gbw", gbw_index, "molecule", "hmo")
+
+        if hmo_list is not None:
+            return np.array(hmo_list)
         else:
             return None
 
@@ -2080,18 +2276,21 @@ class Output:
             If True, recreate the gbw json file and request the fock correction integrals to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
             if self.config_dict is None:
                 self.config_dict = {}
+            # // FockMatrix
             if "FockMatrix" not in self.config_dict:
                 self.config_dict["FockMatrix"] = []
-            self.config_dict["FockMatrix"].append("F")
+            # // F (full Fock matrix)
+            if "F" not in self.config_dict["FockMatrix"]:
+                self.config_dict["FockMatrix"].append("F")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        # > get hcore from gbw json files
         fock_list = self._safe_get("results_gbw", gbw_index, "molecule", "f_matrix")
 
         if fock_list is not None:
@@ -2111,18 +2310,21 @@ class Output:
             If True, recreate the gbw json file and request J to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
             if self.config_dict is None:
                 self.config_dict = {}
+            # // FockMatrix
             if "FockMatrix" not in self.config_dict:
                 self.config_dict["FockMatrix"] = []
-            self.config_dict["FockMatrix"].append("J")
+            # // J contribution to Fock matrix
+            if "J" not in self.config_dict["FockMatrix"]:
+                self.config_dict["FockMatrix"].append("J")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        # > get hcore from gbw json files
         j_list = self._safe_get("results_gbw", gbw_index, "molecule", "j_matrix")
 
         if j_list is not None:
@@ -2142,22 +2344,91 @@ class Output:
             If True, recreate the gbw json file and request K to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which integrals are requested. Default 0 refers to the main gbw file.
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
             if self.config_dict is None:
                 self.config_dict = {}
+            # // FockMatrix
             if "FockMatrix" not in self.config_dict:
                 self.config_dict["FockMatrix"] = []
-            self.config_dict["FockMatrix"].append("K")
+            # // K contribution to Fock matrix
+            if "K" not in self.config_dict["FockMatrix"]:
+                self.config_dict["FockMatrix"].append("K")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        # > get hcore from gbw json files
         k_list = self._safe_get("results_gbw", gbw_index, "molecule", "k_matrix")
 
         if k_list is not None:
             return np.array(k_list[0])
+        else:
+            return None
+
+    def get_scf_density(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the SCF density matrix.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request scfp to be included.
+            The request for the density will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which densities are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
+        """
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            # // Densities
+            if "Densities" not in self.config_dict:
+                self.config_dict["Densities"] = []
+            # // scfp - SCF density matrix P
+            if "scfp" not in self.config_dict["Densities"]:
+                self.config_dict["Densities"].append("scfp")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        scfp_list = self._safe_get("results_gbw", gbw_index, "molecule", "densities", "scfp")
+
+        if scfp_list is not None:
+            return np.array(scfp_list, dtype=np.float64)
+        else:
+            return None
+
+    def get_scf_spin_density(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the SCF spin-density matrix.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request scfr to be included.
+            The request for the density will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which densities are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
+        """
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            # // Densities
+            if "Densities" not in self.config_dict:
+                self.config_dict["Densities"] = []
+            # // scfr - SCF spin-density matrix
+            if "scfr" not in self.config_dict["Densities"]:
+                self.config_dict["Densities"].append("scfr")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        scfr_list = self._safe_get("results_gbw", gbw_index, "molecule", "densities", "scfr")
+
+        if scfr_list is not None:
+            return np.array(scfr_list, dtype=np.float64)
         else:
             return None
 
@@ -2186,3 +2457,25 @@ class Output:
                 break
 
         return ir_dict or None
+
+    def get_free_solvation_energy_opencosmors(self) -> float | None:
+        """
+        Returns the free solvation energy
+
+        Returns
+        -------
+        free_solvation_energy: float | None
+            Free solvation energy, or None if it is not found.
+        """
+        out_jsonfile = self.get_file("_out.json")
+        if not out_jsonfile:
+            raise FileNotFoundError("No out json file found")
+
+        with open(out_jsonfile, "r") as f:
+            out_dict = json.load(f)
+
+        try:
+            free_solv_energy = out_dict["dGsolv"][0][0][0]
+        except (KeyError, IndexError):
+            return None
+        return float(free_solv_energy)

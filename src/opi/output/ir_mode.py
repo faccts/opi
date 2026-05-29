@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Tuple
 
 
 @dataclass
@@ -17,7 +16,7 @@ class IrMode:
         Partial molar absorptivity (epsilon) of the mode in L/(mol*cm).
     intensity: float
         IR intensity of the mode in km/mol.
-    dipole: Tuple[float, float, float]
+    dipole: tuple[float, float, float]
         Dipole derivatives TX TY TZ in atomic units.
     """
 
@@ -25,7 +24,7 @@ class IrMode:
     wavenumber: float
     eps: float
     intensity: float
-    dipole: Tuple[float, float, float]
+    dipole: tuple[float, float, float]
 
     @classmethod
     def from_string(cls, line: str) -> "IrMode":

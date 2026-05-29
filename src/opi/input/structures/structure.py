@@ -1,8 +1,8 @@
 import re
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
+from typing import TYPE_CHECKING, Any, cast
 from warnings import warn
 
 import numpy as np

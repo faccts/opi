@@ -1,8 +1,8 @@
 import re
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from os import PathLike
 from pathlib import Path
-from typing import Literal, Sequence
+from typing import Literal
 
 from opi.utils.tracking_text_io import TrackingTextIO
 

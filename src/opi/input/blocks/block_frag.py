@@ -1,4 +1,4 @@
-from typing import List, Literal
+from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
@@ -23,7 +23,7 @@ class FragProc(BaseModel):
     Class to model `fragproc` attribute in `BlockFrag`
     """
 
-    flags: List[
+    flags: list[
         Literal[
             "extlib",
             "connectivity",

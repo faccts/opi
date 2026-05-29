@@ -1,7 +1,8 @@
 import re
 import typing
 from abc import ABC
-from typing import Any, Union, get_args, get_origin
+from types import UnionType
+from typing import Any, get_args, get_origin
 
 from pydantic import BaseModel
 
@@ -12,7 +13,7 @@ def get_clean_type_name(t: Any) -> str:
     origin = get_origin(t)
     # > If the type is a Union we have to dissect it
     # > typically it will be Union[Something | None] so we do not want the None part
-    if origin is Union:
+    if origin is UnionType:
         # > Generate a list of the types in the Union
         args = [a for a in get_args(t) if a is not type(None)]
         # > recursively call the function on the first argument

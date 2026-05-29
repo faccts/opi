@@ -1,4 +1,5 @@
-from typing import Any, Callable, Literal, Union
+from collections.abc import Callable
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -128,7 +129,7 @@ class BlockCpcm(Block):
     smdsolvent: Solvent | None = None
 
     def format_orca(self) -> str:
-        special_handlers: dict[str, Callable[[Any], Union[str, None]]] = {
+        special_handlers: dict[str, Callable[[Any], str | None]] = {
             "aftercoord": lambda v: None,  # Skip this field
             "radii": lambda v: f"    radii{str(v)}",
             "radius": lambda v: f"    radius{str(v)}",

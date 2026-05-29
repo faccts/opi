@@ -5,7 +5,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from opi.input.blocks.util import InputFilePath, NoCaseDict
-from opi.input.simple_keywords import SimpleKeyword
+from opi.input.simple_keywords import SimpleKeyword, Solvent
 
 __all__ = ["Block"]
 
@@ -161,7 +161,7 @@ class Block(BaseModel, ABC):
             if value is not None:
                 if key == "aftercoord":  # skip aftercoord
                     continue
-                elif isinstance(value, SimpleKeyword):
+                elif isinstance(value, SimpleKeyword | Solvent):
                     s += f'    {key} "{str(value).lower()}"\n'  # add quotations if value is of type SimpleKeyword
                 else:
                     s += f"    {key} {value}\n"  # print key value pairs as they are

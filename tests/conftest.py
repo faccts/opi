@@ -9,7 +9,7 @@ import shutil
 from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import pytest
 from _pytest._code.code import ExceptionRepr
@@ -82,6 +82,8 @@ def json_file_list(json_dir: Path) -> list[Path]:
         "property/test_exmp028_nevp2_job.property.json",
         "gbw/test_exmp038_integrals_job.json",
         "property/test_exmp038_integrals_job.property.json",
+        "gbw/test_exmp052_densities_job.json",
+        "property/test_exmp052_densities_job.property.json",
     ]
 
     return [json_dir / f for f in filenames]
@@ -117,7 +119,7 @@ def pytest_runtest_makereport(
         funcargs = cast(dict[str, Any], getattr(item, "funcargs", {}))
 
         # > if `tmp_path` is in the functions signature
-        tmp = cast(Optional[Path], funcargs.get("tmp_path"))
+        tmp = cast(Path | None, funcargs.get("tmp_path"))
         if tmp is not None:
             # > make mypy happy by making sure `when` is not None
             when = rep.when or "call"

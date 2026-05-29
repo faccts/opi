@@ -39,6 +39,8 @@ class Calculator:
         Can only be disabled after initialization of a `Calculator` (not recommended!).
     _input | input: Input
         Contains all ORCA input parameters except for the primary structural information.
+    version_check: bool, default: True
+        Enable/disable ORCA binary version check as well as version check on the JSON output.
     """
 
     def __init__(
@@ -94,7 +96,10 @@ class Calculator:
         # ----------------------------
         # > BINARY VERSION CHECK
         # ----------------------------
-        if version_check:
+
+        self.version_check: bool = version_check
+
+        if self.version_check:
             # > Raises RuntimeError if version is not compatible or cannot be determined.
             self.check_version()
 
@@ -304,14 +309,23 @@ class Calculator:
         runner = self._create_runner()
         runner.create_jsons(self.basename, force=force)
 
-    def get_output(self) -> "Output":
+    def get_output(self, *, version_check: bool | None = None) -> "Output":
         """
         Get an instance of `Output` setup for the current job.
         Can be called before execution of job.
+
+        Parameters
+        ----------
+        version_check : bool | None, default=None
+            Whether to perform a version check on the output.
+            If `None`, the value of `self.version_check` is used.
         """
+        vc = self.version_check if version_check is None else version_check
+
         return Output(
             basename=self.basename,
             working_dir=self.working_dir,
+            version_check=vc,
         )
 
     def check_version(self) -> None:

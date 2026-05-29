@@ -251,10 +251,10 @@ Each word or phrase must end with a newline.
 This project uses [AutoAPI](https://sphinx-autoapi.readthedocs.io/en/latest/#) to automatically generate API documentation from docstrings.
 Docstrings follow the [numpydoc style convention](https://numpydoc.readthedocs.io/en/latest/format.html) and are processed using Sphinx’s Napoleon extension for proper formatting and integration.
 
-### Unit Testing: Pytest
+### Testing: Pytest
 
 [Pytest](https://docs.pytest.org/en/stable/) is the de-facto industry standard for unit testing in Python.
-All unit tests and related files are stored in `tests/`.
+All tests and related files are stored in `tests/`.
 
 `tests/conftest.py` is the configuration file for Pytest.
 

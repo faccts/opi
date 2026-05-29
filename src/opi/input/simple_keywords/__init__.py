@@ -20,6 +20,7 @@ from opi.input.simple_keywords.force_field import ForceField
 from opi.input.simple_keywords.gcp import Gcp
 from opi.input.simple_keywords.goat import Goat
 from opi.input.simple_keywords.grid import Grid
+from opi.input.simple_keywords.libxc_keyword import LibXC
 from opi.input.simple_keywords.method import Method
 from opi.input.simple_keywords.miscellaneous import Miscellaneous
 from opi.input.simple_keywords.neb import Neb
@@ -73,4 +74,5 @@ __all__ = [
     "Sqm",
     "Task",
     "Wft",
+    "LibXC",
 ]

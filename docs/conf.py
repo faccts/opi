@@ -119,8 +119,8 @@ else:
                 version_short = "nightly"
             # on a release branch
             elif branch.startswith("release/"):
-                # e.g. "release/1.0" -> "1.0-dev"
-                version_short = f"{branch.removeprefix('release/')}-dev"
+                # e.g. "release/1.0" -> "1.0"
+                version_short = f"{branch.removeprefix('release/')}"
             # on a feature branch
             else:
                 version_short = "dev"
