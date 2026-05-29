@@ -13,6 +13,9 @@
 - Added `output.cc_converged` and `output.casscf_converged` to check cc and casscf convergence (#222).
 - Added `z_maxiter` to method block for setting the number of CP-SCF iterations (#222).
 - The function output `get_s2` now returns values for RHF/RKS and ROHF/ROKS (#241).
+- Added `t_matrix`, `v_matrix`, `hmo`, `twoelintegrals` parameters to `Molecule` class (#243)
+- Added `get_int_kinetic`, `get_int_nuc_attr`, `get_int_hmo` getters for one electron integrals (#243)
+- Added `TwoElectronIntegralElement`, `MOTwoElectronIntegral` and `TwoElectronIntegrals` for structuring two electron integral information (#243)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
