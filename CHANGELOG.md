@@ -16,6 +16,7 @@
 - Added `t_matrix`, `v_matrix`, `hmo`, `twoelintegrals` parameters to `Molecule` class (#243)
 - Added `get_int_kinetic`, `get_int_nuc_attr`, `get_int_hmo` getters for one electron integrals (#243)
 - Added `TwoElectronIntegralElement`, `MOTwoElectronIntegral` and `TwoElectronIntegrals` for structuring two electron integral information (#243)
+- Add the keyword `dumpactints` to `BlockOutput` (#245).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
