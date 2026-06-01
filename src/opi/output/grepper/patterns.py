@@ -23,6 +23,7 @@ CASSCF_CONVERGED = "---- THE CAS-SCF GRADIENT HAS CONVERGED ----"
 # > Has strings - Strings that indicate something was requested
 HAS_GEOMETRY_OPT = "Geometry Optimization Run"
 HAS_SCF = "SCF SETTINGS"
+HAS_FREQ = "VIBRATIONAL FREQUENCIES"
 HAS_ABORTING = "aborting"
 
 # > Named error pattern instances

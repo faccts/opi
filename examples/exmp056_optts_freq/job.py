@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+Example: GFN2-xTB transition-state optimisation followed by a frequency calculation.
+
+Starting from a near-TS geometry, OPTTS locates the first-order saddle point and FREQ
+then computes the Hessian. A true transition state has exactly one imaginary (negative)
+frequency, which is retrieved via ``get_imaginary_frequencies()``.
+"""
 
 import shutil
 import sys
@@ -6,17 +13,16 @@ from pathlib import Path
 
 from opi.core import Calculator
 from opi.input.simple_keywords import (
-    BasisSet,
-    Dft,
+    Opt,
     Scf,
+    Sqm,
     Task,
 )
 from opi.input.structures import Structure
 from opi.output.core import Output
-from opi.output.ir_mode import IrMode
 
 
-def run_exmp004(
+def run_exmp056(
     structure: Structure | None = None, working_dir: Path | None = Path("RUN")
 ) -> Output:
     # > recreate the working dir
@@ -29,8 +35,7 @@ def run_exmp004(
 
     calc = Calculator(basename="job", working_dir=working_dir)
     calc.structure = structure
-    calc.input.add_simple_keywords(Scf.NOAUTOSTART, BasisSet.DEF2_SVP, Dft.TPSS, Task.FREQ)
-    calc.input.ncores = 4
+    calc.input.add_simple_keywords(Scf.NOAUTOSTART, Sqm.NATIVE_GFN2_XTB, Opt.OPTTS, Task.NUMFREQ)
 
     calc.write_input()
     calc.run()
@@ -45,34 +50,27 @@ def run_exmp004(
     # > Parse JSON files
     output.parse()
 
-    ir_dict = output.get_ir()
+    print("ALL VIBRATIONAL FREQUENCIES [cm-1]")
+    frequencies = output.get_frequencies()
+    for mode, freq in frequencies.items():
+        print(f"  Mode {mode:3d}: {freq:12.4f}")
 
-    # > Print IR Data
-    print(IrMode.header())
-    for ir_mode in ir_dict.values():
-        print(ir_mode)
+    print("IMAGINARY FREQUENCIES [cm-1]")
+    imaginary = output.get_imaginary_frequencies()
+    if imaginary:
+        for mode, freq in imaginary.items():
+            print(f"  Mode {mode:3d}: {freq:12.4f}")
+    else:
+        print("  None")
 
-    ngeoms = len(output.results_properties.geometries)
-    print("N GEOMETRIES")
-    print(ngeoms)
+    print(f"Number of imaginary frequencies: {len(imaginary)}")
+    print("Is PES transition state")
+    print(output.is_pes_transition_state())
     print("FINAL SINGLE POINT ENERGY")
     print(output.get_final_energy())
-    print("Temperature [K]")
-    print(output.results_properties.geometries[0].thermochemistry_energies[0].temperature)
-    print("Final Gibbs free energy")
-    print(output.get_free_energy())
-    print("Zero-point energy")
-    print(output.get_zpe())
-    print("Final enthalpy H")
-    print(output.get_enthalpy())
-    print("Final entropy S")
-    print(output.get_entropy())
-    print("G-E(el)")
-    print(output.get_free_energy_delta())
-    print("Is PES minimum")
-    print(output.is_pes_minimum())
+
     return output
 
 
 if __name__ == "__main__":
-    run_exmp004()
+    run_exmp056()

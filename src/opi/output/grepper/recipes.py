@@ -7,6 +7,7 @@ from opi.output.grepper.patterns import (
     ERROR_PATTERNS,
     GEOMETRY_CONVERGED,
     HAS_ABORTING,
+    HAS_FREQ,
     HAS_GEOMETRY_OPT,
     HAS_SCF,
     SCF_CONVERGED,
@@ -206,6 +207,24 @@ def has_aborted_run(file_name: Path, /) -> bool:
     bool
     """
     return has_string_in_file(file_name, HAS_ABORTING)
+
+
+def has_frequency_calculation(file_name: Path, /) -> bool:
+    """
+    Searches for the message 'VIBRATIONAL FREQUENCIES' to indicate that a frequency calculation
+    (FREQ or NUMFREQ) was performed.
+
+    Parameter
+    ---------
+    file_name: Path
+        Name of the output file
+
+    Returns
+    -------
+    bool
+        True if expression is found in file else False
+    """
+    return has_string_in_file(file_name, HAS_FREQ)
 
 
 def has_geometry_optimization(file_name: Path, /) -> bool:
