@@ -19,7 +19,7 @@ from opi.input.structures import Structure
 from opi.output.core import Output
 
 
-def run_exmp054(
+def run_exmp055(
     structure: Structure | None = None, working_dir: Path | None = Path("RUN")
 ) -> Output:
     # > recreate the working dir
@@ -38,7 +38,8 @@ def run_exmp054(
     calc.write_input()
     calc.run()
 
-    output = calc.get_output()
+    # > Get output without version check since it is not possible with external methods
+    output = calc.get_output(version_check=False)
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
         print(output.error_message())
@@ -79,4 +80,4 @@ def run_exmp054(
 
 
 if __name__ == "__main__":
-    run_exmp054()
+    run_exmp055()

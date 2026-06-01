@@ -75,4 +75,5 @@ python3 job.py
 - exmp052_densities: Perform UHF calculation and obtain density and spin-density in AO-basis
 - exmp053_opencosmors: Run OpenCOSMO-RS task 
 - exmp054_fcidump: Run a CASSCF calculation and export the active integrals in an FCIDUMP file
+- exmp055_gfnff_fallback: Perform a GFN-FF optimization and retrieve the energy, gradient, and structure.
 
