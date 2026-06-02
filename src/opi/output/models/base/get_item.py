@@ -1,10 +1,12 @@
 import re
 import typing
+import warnings
 from abc import ABC
 from types import UnionType
 from typing import Any, get_args, get_origin
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError, ValidationInfo, model_validator
+from pydantic.functional_validators import ModelWrapValidatorHandler
 
 
 def get_clean_type_name(t: Any) -> str:
@@ -31,6 +33,32 @@ def get_clean_type_name(t: Any) -> str:
 
 class GetItem(BaseModel, ABC):
     """This class contains the get_item function for nearly all other classes"""
+
+    @model_validator(mode="wrap")
+    @classmethod
+    def _drop_invalid_fields(
+        cls,
+        data: Any,
+        handler: ModelWrapValidatorHandler["GetItem"],
+        info: ValidationInfo,
+    ) -> "GetItem":
+        try:
+            return handler(data)
+        except ValidationError as e:
+            if (info.context or {}).get("strict", True):
+                raise
+            if not isinstance(data, dict):
+                raise
+            bad_keys = {str(error["loc"][0]) for error in e.errors() if error["loc"]}
+            if not bad_keys:
+                raise
+            cleaned = {k: v for k, v in data.items() if str(k) not in bad_keys}
+            result = handler(cleaned)  # re-raises if required fields are missing
+            warnings.warn(
+                f"{cls.__name__}: dropped fields due to validation errors: {bad_keys}",
+                stacklevel=2,
+            )
+            return result
 
     def __getitem__(self, name: str) -> Any:
         return getattr(self, name.lower())
