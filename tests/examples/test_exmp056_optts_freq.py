@@ -13,6 +13,7 @@ def test_exmp056_optts_freq(example_input_file, tmp_path) -> None:
 
     output = run_exmp056(structure=structure, working_dir=tmp_path)
 
+    # Assert negative final energy
     assert output.get_final_energy() < 0
 
     # Assert all frequencies are present
