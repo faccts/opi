@@ -42,9 +42,11 @@ class GetItem(BaseModel, ABC):
         handler: ModelWrapValidatorHandler["GetItem"],
         info: ValidationInfo,
     ) -> "GetItem":
+        # > First try to run core Pydantic validation
         try:
             return handler(data)
         except ValidationError as e:
+            # > Default is strict is set to True and the error is just raised
             if (info.context or {}).get("strict", True):
                 raise
             if not isinstance(data, dict):
