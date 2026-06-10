@@ -321,14 +321,13 @@ class TestCalcMomentsOfInertia:
         assert pm_default is not None and pm_elem is not None
         assert pm_default.Ic != pytest.approx(pm_elem.Ic, rel=1e-3)
 
-    def test_atom_mass_priority_over_elem_masses(self, water):
-        """`atom.mass` should take priority over `elem_masses` for the same atom."""
-        water.real_atoms[0].mass = 17.999  # set O mass directly
-        pm_atom = water.calc_moments_of_inertia()
-        pm_both = water.calc_moments_of_inertia(elem_masses={"O": 16.0})
-        assert pm_atom is not None and pm_both is not None
-        # elem_masses={"O": 16.0} should be ignored since atom.mass is set
-        assert pytest.approx(pm_atom.Ic, rel=1e-9) == pm_both.Ic
+    def test_elem_masses_priority_over_atom_mass(self, water):
+        """`elem_masses` should take priority over `atom.mass` for the same atom."""
+        water.real_atoms[0].mass = 17.999
+        pm_atom_mass = water.calc_moments_of_inertia()
+        pm_elem = water.calc_moments_of_inertia(elem_masses={"O": 16.0})
+        assert pm_atom_mass is not None and pm_elem is not None
+        assert pm_atom_mass.Ic != pytest.approx(pm_elem.Ic, rel=1e-3)
 
     def test_unknown_element_warns_and_excludes(self):
         """Atoms with unknown elements should warn and be assigned mass 0."""

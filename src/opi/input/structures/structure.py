@@ -1340,7 +1340,7 @@ class Structure:
 
         Mass priority
         -------------
-        atom.mass > elem_masses > default (ATOMIC_MASSES_FROM_ELEMENT)
+        elem_masses > atom.mass > default (ATOMIC_MASSES_FROM_ELEMENT)
 
         Parameters
         ----------
@@ -1356,12 +1356,12 @@ class Structure:
         elem_masses = elem_masses or {}
         masses_list: list[float] = []
         for atom in self.real_atoms:
-            if atom.mass is not None:
-                # Per-atom mass set directly on the atom takes highest priority
-                m = atom.mass
-            elif atom.element.value in elem_masses:
-                # Per-element override takes second priority
+            if atom.element.value in elem_masses:
+                # Per-element override takes highest priority
                 m = elem_masses[atom.element.value]
+            elif atom.mass is not None:
+                # Mass set directly on the atom takes second priority
+                m = atom.mass
             elif atom.element in ATOMIC_MASSES_FROM_ELEMENT:
                 # Fall back to default atomic masses
                 m = ATOMIC_MASSES_FROM_ELEMENT[atom.element]
@@ -1386,7 +1386,7 @@ class Structure:
 
         Mass priority
         -------------
-        atom.mass > elem_masses > default (ATOMIC_MASSES_FROM_ELEMENT)
+        elem_masses > atom.mass > default (ATOMIC_MASSES_FROM_ELEMENT)
 
         Parameters
         ----------
