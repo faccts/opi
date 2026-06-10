@@ -54,22 +54,6 @@ class PrincipalMoments:
     Ic: float
     axes: np.ndarray
 
-    # def rotor_type(self, tol: float = 1e-3) -> RotorType:
-    #     Ia, Ib, Ic = self.Ia, self.Ib, self.Ic
-    #     n_zero = sum(m < tol for m in (Ia, Ib, Ic))
-
-    #     if n_zero == 3:
-    #         return RotorType.MONOATOMIC
-    #     if n_zero == 1 and abs(Ib - Ic) < tol:
-    #         return RotorType.LINEAR
-    #     if abs(Ia - Ib) < tol and abs(Ib - Ic) < tol:
-    #         return RotorType.SPHERICAL_TOP
-    #     if abs(Ib - Ic) < tol:  # Ia < Ib == Ic → prolate
-    #         return RotorType.PROLATE_TOP
-    #     if abs(Ia - Ib) < tol:  # Ia == Ib < Ic → oblate
-    #         return RotorType.OBLATE_TOP
-    #     return RotorType.ASYMMETRIC_TOP
-
     def rotor_type(self, tol: float = 1e-3, kappa_tol: float = 0.01) -> RotorType:
         """
         Classify the molecular rotor from the principal moments of inertia.

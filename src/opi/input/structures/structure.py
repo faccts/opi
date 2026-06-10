@@ -1331,86 +1331,91 @@ class Structure:
     # ------------------------------------------------------------------ #
     #  Moment of inertia                                                   #
     # ------------------------------------------------------------------ #
+    def _resolve_masses(
+        self,
+        elem_masses: dict[str, float] | None = None,
+    ) -> npt.NDArray[np.float64]:
+        """
+        Resolve masses for all real `Atom` instances without mutating any atom.
+
+        Mass priority
+        -------------
+        atom.mass > elem_masses > default (ATOMIC_MASSES_FROM_ELEMENT)
+
+        Parameters
+        ----------
+        elem_masses : dict[str, float] | None, default None
+            Per-element mass overrides keyed by element symbol string
+            (e.g. `{"C": 13.003}`). If `None`, default atomic masses are used.
+
+        Returns
+        -------
+        npt.NDArray[np.float64], shape (N,)
+            Masses in amu in the same order as `self.real_atoms`.
+        """
+        elem_masses = elem_masses or {}
+        masses_list: list[float] = []
+        for atom in self.real_atoms:
+            if atom.mass is not None:
+                # Per-atom mass set directly on the atom takes highest priority
+                m = atom.mass
+            elif atom.element.value in elem_masses:
+                # Per-element override takes second priority
+                m = elem_masses[atom.element.value]
+            elif atom.element in ATOMIC_MASSES_FROM_ELEMENT:
+                # Fall back to default atomic masses
+                m = ATOMIC_MASSES_FROM_ELEMENT[atom.element]
+            else:
+                # Unknown element — warn and exclude from computation
+                warn(f"Unknown element '{atom.element.value}' → mass set to 0.0")
+                m = 0.0
+            masses_list.append(m)
+        return np.array(masses_list, dtype=np.float64)
+
     def calc_moments_of_inertia(
         self,
-        masses: npt.NDArray[np.float64] | None = None,
-        weights: dict[str, float] | None = None,
-        atom_weights: dict[int, float] | None = None,
+        elem_masses: dict[str, float] | None = None,
     ) -> PrincipalMoments | None:
         """
         Compute the principal axes and moments of inertia for this structure.
 
-        Parameters
-        ----------
-        masses : npt.NDArray[np.float64] | None, default: None
-            Per-atom masses (amu) for all Atom instances, overriding every
-            other mass source.
-        atom_weights : dict[int, float] | None, default: None
-            Per-atom mass overrides keyed by index within the Atom list.
-        weights : dict[str, float] | None, default: None
-            Per-element mass overrides keyed by element symbol string
-            (e.g. `{"C": 13.003}`).
-
         Only `Atom` instances contribute; `GhostAtom`, `PointCharge`,
-        and `EmbeddingPotential` atoms are silently ignored.
+        and `EmbeddingPotential` atoms are silently ignored. Note that
+        `GhostAtom` is a subclass of `Atom`, so an exact type check
+        (`type(a) is Atom`) is used rather than `isinstance`.
 
         Mass priority
         -------------
-        masses > atom_weights > weights > default: (ATOMIC_MASSES_FROM_ELEMENT)
+        atom.mass > elem_masses > default (ATOMIC_MASSES_FROM_ELEMENT)
+
+        Parameters
+        ----------
+        elem_masses : dict[str, float] | None, default None
+            Per-element mass overrides keyed by element symbol string
+            (e.g. `{"C": 13.003}`). If `None`, default atomic masses are used.
 
         Returns
         -------
         PrincipalMoments | None
             Principal axes and moments of inertia in amu·Å², sorted ascending.
             Returns `None` if no `Atom` instances are present or all masses are zero.
-
-        Raises
-        ------
-        ValueError
-            If the length of *masses* does not match the number of `Atom`
-            instances in the structure.
         """
         atom_indices = [i for i, a in enumerate(self.atoms) if type(a) is Atom]
         if not atom_indices:
             return None
         coords = self.get_coordinates(only_atoms=atom_indices)
 
-        # --- Mass assignment priority: masses > atom_weights > weights > default ---
-        # Normalise the optional dicts to avoid None checks below
-        weights = {k: v for k, v in (weights or {}).items()}
-        atom_weights = atom_weights or {}
+        masses = self._resolve_masses(elem_masses)
 
-        if masses is not None:
-            masses = np.asarray(masses, dtype=np.float64)
-            if len(masses) != len(self.real_atoms):
-                raise ValueError(
-                    f"masses length ({len(masses)}) does not match "
-                    f"number of atoms ({len(self.real_atoms)})"
-                )
-        else:
-            masses_list: list[float] = []
-            for i, atom in enumerate(self.real_atoms):
-                if i in atom_weights:
-                    m = atom_weights[i]
-                elif atom.element.value in weights:
-                    m = weights[atom.element.value]
-                elif atom.element in ATOMIC_MASSES_FROM_ELEMENT:
-                    m = ATOMIC_MASSES_FROM_ELEMENT[atom.element]
-                else:
-                    warn(f"Unknown element '{atom.element.value}' → mass set to 0.0")
-                    m = 0.0
-                masses_list.append(m)
-            masses = np.array(masses_list, dtype=np.float64)
-
+        # --- Filter out zero-mass atoms before computing the inertia tensor ---
+        # This handles unknown elements that were assigned 0.0
         mask = masses > 0.0
         if not np.any(mask):
             return None
-        # --- Filter out zero-mass atoms before computing the inertia tensor ---
-        # This handles dummy atoms or unknown elements that were assigned 0.0
         masses = masses[mask]
         coords = coords[mask]
-        total_mass = float(masses.sum())
 
+        total_mass = float(masses.sum())
         com = (masses[:, None] * coords).sum(axis=0) / total_mass
         coords -= com
 
@@ -1422,12 +1427,12 @@ class Structure:
         moments_raw = np.maximum(moments_raw, 0.0)
 
         return PrincipalMoments(
-            Ia=float(moments_raw[0]), Ib=float(moments_raw[1]), Ic=float(moments_raw[2]), axes=axes
+            Ia=float(moments_raw[0]),
+            Ib=float(moments_raw[1]),
+            Ic=float(moments_raw[2]),
+            axes=axes,
         )
 
-    # ------------------------------------------------------------------ #
-    #  Rotor classification                                                #
-    # ------------------------------------------------------------------ #
     def calc_rotor_type(
         self,
         moments: PrincipalMoments | None = None,
@@ -1438,13 +1443,13 @@ class Structure:
 
         Parameters
         ----------
-        moments : ndarray shape (3,) | None, default None
-            Pre-computed principal moments (amu·Å², ascending).  When
+        moments : PrincipalMoments | None, default None
+            Pre-computed principal moments (amu·Å², ascending). When
             `None` the moments are computed via
-            :meth:`calc_moment_of_inertia` using *mass_kwargs*.
+            :meth:`calc_moments_of_inertia` using *mass_kwargs*.
         **mass_kwargs
-            Forwarded to :meth:`calc_moment_of_inertia` when *moments* is
-            `None` (i.e. `masses`, `weights`, `atom_weights`).
+            Forwarded to :meth:`calc_moments_of_inertia` when *moments* is
+            `None` (i.e. `elem_masses`).
 
         Returns
         -------
@@ -1456,17 +1461,11 @@ class Structure:
             if result is None:
                 return None
             moments = result
-
         return moments.rotor_type()
 
-    # ------------------------------------------------------------------ #
-    #  Rotational constants                                                #
-    # ------------------------------------------------------------------ #
     def calc_rotational_constants(
         self,
-        masses: npt.NDArray[np.float64] | None = None,
-        weights: dict[str, float] | None = None,
-        atom_weights: dict[int, float] | None = None,
+        elem_masses: dict[str, float] | None = None,
     ) -> RotationalConstants | None:
         """
         Compute rotational constants for this structure.
@@ -1476,24 +1475,20 @@ class Structure:
 
         Mass priority
         -------------
-        masses > atom_weights > weights > default (ATOMIC_MASSES_FROM_ELEMENT)
+        elem_masses > default (ATOMIC_MASSES_FROM_ELEMENT)
 
         Parameters
         ----------
-        masses : npt.NDArray[np.float64] | None, default None
-            Per-atom masses (amu) for all Atom instances.
-        atom_weights : dict[int, float] | None, default None
-            Per-atom mass overrides keyed by index within the Atom list.
-        weights : dict[str, float] | None, default None
-            Per-element mass overrides (e.g. `{"C": 13.003}`).
+        elem_masses : dict[str, float] | None, default None
+            Per-element mass overrides keyed by element symbol string
+            (e.g. `{"C": 13.003}`). If `None`, default atomic masses are used.
 
         Returns
         -------
         RotationalConstants | None
-            `None` if no `Atom` instances are present or all masses are
-            zero.
+            `None` if no `Atom` instances are present or all masses are zero.
         """
-        pm = self.calc_moments_of_inertia(masses=masses, weights=weights, atom_weights=atom_weights)
+        pm = self.calc_moments_of_inertia(elem_masses=elem_masses)
         if pm is None:
             return None
         A = moment_to_mhz(pm.Ia)
