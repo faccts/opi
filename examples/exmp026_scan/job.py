@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 from opi.core import Calculator
-from opi.input.blocks import BlockGeom
+from opi.input.blocks import BlockGeom, Hybrid, NumList
 from opi.input.simple_keywords import BasisSet, Method, Scf, Task
 from opi.input.structures import Structure
 from opi.output.core import Output
