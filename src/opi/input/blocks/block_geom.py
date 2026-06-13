@@ -41,6 +41,13 @@ class Hybrid(GeomWrapper):
 
     list: NumList
 
+    @field_validator('list', mode='before')
+    @classmethod
+    def validate_list(cls, v):
+        if isinstance(v, list):
+            return NumList(v)
+        return v
+
 
 class Potential(GeomWrapper):
     """
