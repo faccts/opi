@@ -1074,11 +1074,15 @@ class Structure:
             if n_struc_limit and n_struc >= n_struc_limit:
                 break
 
+    # ------------------------------------------------------------------ #
+    #  RMSD                                                              #
+    # ------------------------------------------------------------------ #
+
     @property
     def real_atoms(self) -> list[Atom]:
         """
         Return only real `Atom` instances, excluding `GhostAtom`, `PointCharge`,
-        and `EmbeddingPotential`. Note that these are subclasses of `Atom`,
+        and `EmbeddingPotential`. Note that `GhostAtom` is a subclass of `Atom`,
         so `type(a) is Atom` is used rather than `isinstance`.
         """
         return [a for a in self.atoms if type(a) is Atom]
@@ -1102,7 +1106,7 @@ class Structure:
             Coordinates in the same order as the selected atoms.
         """
         atom_list = [self.atoms[i] for i in only_atoms] if only_atoms else self.atoms
-        return np.array([a.coordinates.coordinates for a in atom_list])
+        return np.array([a.coordinates.coordinates for a in atom_list], dtype=np.float64)
 
     def set_coordinates(self, coords: npt.NDArray[np.float64]) -> None:
         """
@@ -1170,7 +1174,7 @@ class Structure:
     @staticmethod
     def _validate_rmsd_compatibility(atoms1: list[Atom], atoms2: list[Atom]) -> None:
         """
-        Raise ValueError if atoms1 and atoms2 differ in count or element order.
+        Raise `ValueError` if `atoms1` and `atoms2` differ in count or element order.
         """
         if len(atoms1) != len(atoms2):
             raise ValueError(
@@ -1224,6 +1228,8 @@ class Structure:
         Compute RMSD between this structure and *other* (no rotational alignment).
 
         Both structures are translated to their centroid before comparison.
+        Neither `self` nor *other* is modified; all coordinate operations are
+        performed on temporary arrays.
 
         Parameters
         ----------
@@ -1268,6 +1274,8 @@ class Structure:
 
         Translates both structures to their centroid, then finds the optimal
         rotation matrix via SVD before computing RMSD.
+        Neither `self` nor *other* is modified; all coordinate operations are
+        performed on temporary arrays.
 
         Parameters
         ----------
@@ -1331,9 +1339,10 @@ class Structure:
     # ------------------------------------------------------------------ #
     #  Moment of inertia                                                   #
     # ------------------------------------------------------------------ #
+
     def _resolve_masses(
         self,
-        elem_masses: dict[str, float] | None = None,
+        elem_masses: dict[str | Element, float] | None = None,
     ) -> npt.NDArray[np.float64]:
         """
         Resolve masses for all real `Atom` instances without mutating any atom.
@@ -1344,9 +1353,10 @@ class Structure:
 
         Parameters
         ----------
-        elem_masses : dict[str, float] | None, default None
-            Per-element mass overrides keyed by element symbol string
-            (e.g. `{"C": 13.003}`). If `None`, default atomic masses are used.
+        elem_masses : dict[str | Element, float] | None, default None
+            Per-element mass overrides keyed by element symbol string or
+            `Element` instance (e.g. `{"C": 13.003}`). If `None`, default
+            atomic masses are used.
 
         Returns
         -------
@@ -1354,11 +1364,16 @@ class Structure:
             Masses in amu in the same order as `self.real_atoms`.
         """
         elem_masses = elem_masses or {}
+        # Normalise keys to Element for consistent lookup
+        normalised: dict[Element, float] = {}
+        for k, v in elem_masses.items():
+            normalised[Element(k) if isinstance(k, str) else k] = v
+
         masses_list: list[float] = []
         for atom in self.real_atoms:
-            if atom.element.value in elem_masses:
+            if atom.element in normalised:
                 # Per-element override takes highest priority
-                m = elem_masses[atom.element.value]
+                m = normalised[atom.element]
             elif atom.mass is not None:
                 # Mass set directly on the atom takes second priority
                 m = atom.mass
@@ -1366,15 +1381,16 @@ class Structure:
                 # Fall back to default atomic masses
                 m = ATOMIC_MASSES_FROM_ELEMENT[atom.element]
             else:
-                # Unknown element — warn and exclude from computation
-                warn(f"Unknown element '{atom.element.value}' → mass set to 0.0")
-                m = 0.0
+                raise ValueError(
+                    f"Unknown element '{atom.element.value}': no mass available. "
+                    "Provide a mass via `elem_masses` or set `atom.mass` directly."
+                )
             masses_list.append(m)
         return np.array(masses_list, dtype=np.float64)
 
     def calc_moments_of_inertia(
         self,
-        elem_masses: dict[str, float] | None = None,
+        elem_masses: dict[str | Element, float] | None = None,
     ) -> PrincipalMoments | None:
         """
         Compute the principal axes and moments of inertia for this structure.
@@ -1390,9 +1406,10 @@ class Structure:
 
         Parameters
         ----------
-        elem_masses : dict[str, float] | None, default None
-            Per-element mass overrides keyed by element symbol string
-            (e.g. `{"C": 13.003}`). If `None`, default atomic masses are used.
+        elem_masses : dict[str | Element, float] | None, default None
+            Per-element mass overrides keyed by element symbol string or
+            `Element` instance (e.g. `{"C": 13.003}`). If `None`, default
+            atomic masses are used.
 
         Returns
         -------
@@ -1408,7 +1425,7 @@ class Structure:
         masses = self._resolve_masses(elem_masses)
 
         # --- Filter out zero-mass atoms before computing the inertia tensor ---
-        # This handles unknown elements that were assigned 0.0
+        # This handles atoms explicitly assigned a mass of 0.0 via elem_masses
         mask = masses > 0.0
         if not np.any(mask):
             return None
@@ -1424,6 +1441,9 @@ class Structure:
             inertia += m * (np.dot(r, r) * np.eye(3) - np.outer(r, r))
 
         moments_raw, axes = np.linalg.eigh(inertia)  # ascending order guaranteed
+        # Clamp to zero: floating point arithmetic can produce very small
+        # negative eigenvalues (e.g. -1e-15) for moments that are physically
+        # zero, due to numerical noise in the inertia tensor.
         moments_raw = np.maximum(moments_raw, 0.0)
 
         return PrincipalMoments(
@@ -1446,9 +1466,9 @@ class Structure:
         moments : PrincipalMoments | None, default None
             Pre-computed principal moments (amu·Å², ascending). When
             `None` the moments are computed via
-            :meth:`calc_moments_of_inertia` using *mass_kwargs*.
+            :meth:`calc_moments_of_inertia()` using *mass_kwargs*.
         **mass_kwargs
-            Forwarded to :meth:`calc_moments_of_inertia` when *moments* is
+            Forwarded to :meth:`calc_moments_of_inertia()` when `moments` is
             `None` (i.e. `elem_masses`).
 
         Returns
@@ -1457,15 +1477,14 @@ class Structure:
             `None` if the structure has no real atoms or all masses vanish.
         """
         if moments is None:
-            result = self.calc_moments_of_inertia(**mass_kwargs)
-            if result is None:
+            moments = self.calc_moments_of_inertia(**mass_kwargs)
+            if moments is None:
                 return None
-            moments = result
         return moments.rotor_type()
 
     def calc_rotational_constants(
         self,
-        elem_masses: dict[str, float] | None = None,
+        elem_masses: dict[str | Element, float] | None = None,
     ) -> RotationalConstants | None:
         """
         Compute rotational constants for this structure.
@@ -1475,13 +1494,14 @@ class Structure:
 
         Mass priority
         -------------
-        elem_masses > default (ATOMIC_MASSES_FROM_ELEMENT)
+        elem_masses > atom.mass > default (ATOMIC_MASSES_FROM_ELEMENT)
 
         Parameters
         ----------
-        elem_masses : dict[str, float] | None, default None
-            Per-element mass overrides keyed by element symbol string
-            (e.g. `{"C": 13.003}`). If `None`, default atomic masses are used.
+        elem_masses : dict[str | Element, float] | None, default None
+            Per-element mass overrides keyed by element symbol string or
+            `Element` instance (e.g. `{"C": 13.003}`). If `None`, default
+            atomic masses are used.
 
         Returns
         -------

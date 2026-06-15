@@ -170,7 +170,7 @@ def moment_to_mhz(inertia: float | None) -> float | None:
     constant in MHz. Returns `None` when the moment is `None` or
     effectively zero (degenerate / linear axis).
     """
-    if inertia is None or inertia < 1e-6:
+    if inertia is None or inertia < 1e-3:
         return None
     I_si = inertia * units.AMU_TO_KG * (units.ANGST_TO_M**2)
     return constants.H_PLANCK / (8.0 * np.pi**2 * I_si) / 1e6

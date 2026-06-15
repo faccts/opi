@@ -251,13 +251,12 @@ class TestPrincipalMoments:
         np.testing.assert_allclose(product, np.eye(3), atol=1e-10)
 
     def test_str_output(self, water):
+        """str(PrincipalMoments) should match the expected formatted output exactly."""
         pm = water.calc_moments_of_inertia()
         assert pm is not None
-        s = str(pm)
-        assert "Moments of inertia (amu·Å²):" in s
-        assert "Ia" in s
-        assert "Ib" in s
-        assert "Ic" in s
+        assert str(pm) == (
+            "Moments of inertia (amu·Å²):\n  Ia = 0.641840\n  Ib = 1.155114\n  Ic = 1.796955"
+        )
 
 
 # ============================================================
@@ -454,12 +453,15 @@ class TestCalcRotationalConstants:
         assert pytest.approx(wn[0], rel=1e-9) == mhz_to_wavenumber(rc.A)
 
     def test_str_output(self, water):
+        """str(RotationalConstants) should match the expected formatted output exactly."""
         rc = water.calc_rotational_constants()
         assert rc is not None
-        s = str(rc)
-        assert "Rotational constants" in s
-        assert "MHz" in s
-        assert "cm⁻¹" in s
+        assert str(rc) == (
+            "Rotational constants:\n"
+            "  A = 787390.377635 MHz   (26.264516 cm⁻¹)\n"
+            "  B = 437514.333074 MHz   (14.593907 cm⁻¹)\n"
+            "  C = 281241.939008 MHz   (9.381221 cm⁻¹)"
+        )
 
     def test_a_not_in_sync_problem(self, water):
         """
