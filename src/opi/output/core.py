@@ -257,8 +257,9 @@ class Output:
             Whether to create the gbw JSON files. If None, the files are only created if they are missing. If True,
             the existing files will be overwritten. If False, the files will not be created. Default is None.
         strict: bool, default: True
-            If True, a ValidationError is raised when any field cannot be validated.
-            If False, fields that fail validation are set to None and a UserWarning is emitted.
+
+            If `True`, a `ValidationError` is raised when any field cannot be validated.
+            If `False`, fields that fail validation are set to `None` and a `UserWarning` is emitted.
         """
         # // Use default names if None was supplied
         if not self.gbw_json_files:
