@@ -167,14 +167,17 @@ class TestRealAtoms:
 
 class TestGetCoordinates:
     def test_shape(self, water):
+        """get_coordinates() should return an array of shape (N, 3)."""
         coords = water.get_coordinates()
         assert coords.shape == (3, 3)
 
     def test_dtype(self, water):
+        """get_coordinates() should always return a float64 array."""
         coords = water.get_coordinates()
         assert coords.dtype == np.float64
 
     def test_values(self, water):
+        """get_coordinates() should return the correct coordinate values."""
         coords = water.get_coordinates()
         np.testing.assert_allclose(coords[0], [0.0, 0.0, 0.119748])
 
@@ -194,6 +197,7 @@ class TestGetCoordinates:
         assert coords.shape == (2, 3)
 
     def test_single_atom(self):
+        """get_coordinates() on a single-atom structure should return shape (1, 3)."""
         s = Structure.from_xyz_block("1\n\nC   1.0   2.0   3.0")
         coords = s.get_coordinates()
         np.testing.assert_allclose(coords[0], [1.0, 2.0, 3.0])

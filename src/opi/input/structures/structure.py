@@ -1110,7 +1110,7 @@ class Structure:
 
     def set_coordinates(self, coords: npt.NDArray[np.float64]) -> None:
         """
-        Update the coordinates of all atoms in place.
+        Update the coordinates of all atoms in-place.
 
         Parameters
         ----------
@@ -1353,7 +1353,7 @@ class Structure:
 
         Parameters
         ----------
-        elem_masses : dict[str | Element, float] | None, default None
+        elem_masses : dict[str | Element, float] | None, default: None
             Per-element mass overrides keyed by element symbol string or
             `Element` instance (e.g. `{"C": 13.003}`). If `None`, default
             atomic masses are used.
@@ -1406,7 +1406,7 @@ class Structure:
 
         Parameters
         ----------
-        elem_masses : dict[str | Element, float] | None, default None
+        elem_masses : dict[str | Element, float] | None, default: None
             Per-element mass overrides keyed by element symbol string or
             `Element` instance (e.g. `{"C": 13.003}`). If `None`, default
             atomic masses are used.
@@ -1463,7 +1463,7 @@ class Structure:
 
         Parameters
         ----------
-        moments : PrincipalMoments | None, default None
+        moments : PrincipalMoments | None, default: None
             Pre-computed principal moments (amu·Å², ascending). When
             `None` the moments are computed via
             :meth:`calc_moments_of_inertia()` using *mass_kwargs*.
@@ -1498,7 +1498,7 @@ class Structure:
 
         Parameters
         ----------
-        elem_masses : dict[str | Element, float] | None, default None
+        elem_masses : dict[str | Element, float] | None, default: None
             Per-element mass overrides keyed by element symbol string or
             `Element` instance (e.g. `{"C": 13.003}`). If `None`, default
             atomic masses are used.
