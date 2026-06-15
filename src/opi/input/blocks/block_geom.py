@@ -1,5 +1,5 @@
 import re
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Sequence
 
 from pydantic import (
     Field,
@@ -12,6 +12,7 @@ from opi.input.blocks import Block
 from opi.input.blocks.fragment import FragList, Fragment, Frags
 from opi.input.blocks.geom_wrapper import GeomWrapper, GeomWrapperBox
 from opi.input.blocks.util import InputFilePath, NumList
+from opi.models import IntGroupEnd
 from opi.utils.element import Element
 from opi.utils.misc import FLOAT_REGEX
 
@@ -609,8 +610,8 @@ class BlockGeom(Block):
     optelement: Element | None = None
     hybridhess: Hybrid | None = None
     hybridhess_core: Hybrid | None = None
-    ts_active_atoms: Hybrid | None = None
-    ts_active_atoms2: Hybrid | None = None
+    ts_active_atoms: IntGroupEnd | None = None
+    ts_active_atoms2: IntGroupEnd | None = None
     constraints: Constraints | None = None
     potentials: Potential | None = None
     scan: Scan | None = None
@@ -722,6 +723,27 @@ class BlockGeom(Block):
                 raise ValueError(f"Failed to parse constraints: {e}")
 
             return ConnectFragments(constraints=fragconstraints)
+
+    @field_validator("ts_active_atoms", "ts_active_atoms2", mode="before")
+    @classmethod
+    def ts_active_atoms_init(cls, inp: Sequence[int] | IntGroupEnd) -> IntGroupEnd:
+        """
+        Creates IntGroupEnd object by parsing given list of integers
+
+        Parameters
+        ----------
+        inp : Sequence[int] | IntGroupEnd
+
+        Returns
+        -------
+        IntGroupEnd
+            IntGroupEnd object
+
+        """
+        if isinstance(inp, IntGroupEnd):
+            return inp
+        else:
+            return IntGroupEnd(values=inp)
 
     @field_validator(
         "rigidfrags",
