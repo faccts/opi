@@ -192,8 +192,8 @@ class Output:
             runs (e.g., scan or neb) will be read. If False, none of these files will be read.
             If any of the JSON files that should be read are not present, a FileNotFoundError is raised.
         strict: bool, default: True
-            If True, a ValidationError is raised when any field in the parsed output cannot be validated.
-            If False, fields that fail validation are silently set to None and a UserWarning is emitted.
+            If `True`, a `ValidationError` is raised when any field in the parsed output cannot be validated.
+            If `False`, fields that fail validation are silently set to `None` and a `UserWarning` is emitted.
 
         Raises
         ----------
