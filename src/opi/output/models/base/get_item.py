@@ -33,14 +33,14 @@ def get_clean_type_name(t: Any) -> str:
 
 class GetItem(BaseModel, ABC):
     """
-    This class contains the get_item function and is the ABC of the output model classes.
+    This class contains the `get_item` function and is the ABC of the output model classes.
 
     Attributes
     -----------
     strict: bool, default = True
-        Default boolean if no explicit context is given. If True, pydantic validation will raise a `ValidataionError`,
+        Default boolean if no explicit context is given. If True, pydantic validation will raise a `ValidationError`,
         if False, the field which caused the validation to fail will be dropped and return to the default Value, which
-        is `None`.
+        is typically `None`.
     """
 
     strict: ClassVar[bool] = (
