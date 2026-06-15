@@ -126,8 +126,8 @@ class Output:
             False: Only return an Output object. In order to use the object to access the JSON data,
                    `Output.parse()` has to be called first.
         strict: bool, default: True
-            If True, a ValidationError is raised when any field in the parsed output cannot be validated.
-            If False, fields that fail validation are silently set to None and a UserWarning is emitted.
+            If `True`, a `ValidationError` is raised when any field in the parsed output cannot be validated.
+            If `False`, fields that fail validation are silently set to `None` and a `UserWarning` is emitted.
             Only takes effect when `parse=True`; otherwise pass `strict` directly to `Output.parse()`.
 
         Raises
