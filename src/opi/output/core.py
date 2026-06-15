@@ -226,8 +226,8 @@ class Output:
             Whether to create the property JSON file. If None, the file is only created if it is missing. If True,
             the existing file will be overwritten. If False, the file will not be created. Default is None.
         strict: bool, default: True
-            If True, a ValidationError is raised when any field cannot be validated.
-            If False, fields that fail validation are set to None and a UserWarning is emitted.
+            If `True`, a `ValidationError` is raised when any field cannot be validated.
+            If `False`, fields that fail validation are set to `None` and a `UserWarning` is emitted.
         """
         # // Use default name if None was supplied
         if not self.property_json_file:
