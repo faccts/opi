@@ -1,9 +1,9 @@
+import copy
 import re
 from collections.abc import Iterable, Iterator, Sequence
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
-from functools import wraps
 from warnings import warn
 
 import numpy as np
@@ -24,7 +24,6 @@ from opi.utils.element import Element
 from opi.utils.tracking_text_io import TrackingTextIO
 
 from opi.utils.molbar import MolBarMode, call_molbar, requires_molbar
-
 
 __all__ = ("Structure",)
 
@@ -864,6 +863,10 @@ class Structure:
 
         xyz_block = structure.to_xyz_block()
         return MolFromXYZBlock(xyz_block)
+
+    # ------------------------------------------------------------------ #
+    #  MOLBAR                                                            #
+    # ------------------------------------------------------------------ #
 
     def _get_molbar_from_coordinates(
         self,

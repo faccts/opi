@@ -9,7 +9,7 @@ MolBar is not a dependency of OPI. Install it separately::
 from __future__ import annotations
 
 from functools import wraps
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, TypeVar, cast
 
 from opi.models.string_enum import StringEnum
 
@@ -29,7 +29,7 @@ try:
 except ImportError:
     # Ensure the name exists in the global namespace so the decorator can
     # check it unconditionally without a NameError.
-    get_molbar_from_coordinates = None  # type: ignore[assignment]
+    get_molbar_from_coordinates = None 
 
 # ============================================================
 # Mode classification
@@ -113,10 +113,14 @@ def call_molbar(
         Either the barcode string or the barcode string together with the
         full MolBar data dictionary, depending on *return_data*.
     """
-    return get_molbar_from_coordinates(  # type: ignore[misc]
-        coordinates,
-        elements,
-        total_charge=total_charge,
-        return_data=return_data,
-        mode=mode,
+
+    return cast(
+        "str | tuple[str, dict[str, Any]]",
+        get_molbar_from_coordinates(
+            coordinates,
+            elements,
+            total_charge=total_charge,
+            return_data=return_data,
+            mode=mode,
+        ),
     )
