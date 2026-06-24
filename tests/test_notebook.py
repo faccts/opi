@@ -9,8 +9,7 @@ from pathlib import Path
 
 import pytest
 
-# NOTEBOOKS_DIR = Path(__file__).parent.parent / "docs/contents/notebooks"
-NOTEBOOKS_DIR = Path(__file__).parent / "notebooks"
+NOTEBOOKS_DIR = Path(__file__).parent.parent / "docs/contents/notebooks"
 
 
 def run_notebook(nb: Path) -> tuple[bool, float, str]:
@@ -27,6 +26,8 @@ def run_notebook(nb: Path) -> tuple[bool, float, str]:
                 f"--ExecutePreprocessor.kernel_cwd={tmp}",
                 "--output",
                 nb.name,
+                "--output-dir",
+                tmp,
                 str(nb),
             ],
             capture_output=True,
