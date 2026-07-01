@@ -11,11 +11,7 @@ from pathlib import Path
 import pytest
 
 NOTEBOOKS_DIR = Path(__file__).parent.parent / "docs/contents/notebooks"
-BLACKLIST = [
-    "extopt",
-    "ir_spectrum",
-    "ml_properties"
-]
+BLACKLIST = ["extopt", "ir_spectrum", "ml_properties"]
 
 
 def run_notebook(nb: Path) -> tuple[bool, float, str]:
