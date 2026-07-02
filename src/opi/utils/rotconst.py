@@ -169,6 +169,10 @@ def moment_to_mhz(inertia: float | None) -> float | None:
     Convert a principal moment of inertia (amu·Å²) to a rotational
     constant in MHz. Returns `None` when the moment is `None` or
     effectively zero (degenerate / linear axis).
+
+    The tolerance value (1e-3) aligns with the default in `rotor_type()`, so a moment
+    that's considered "zero" by the classifier also returns `None` from the conversion
+    rather than producing a large MHz value.
     """
     if inertia is None or inertia < 1e-3:
         return None

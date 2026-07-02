@@ -1104,6 +1104,9 @@ class Structure:
         -------
         npt.NDArray[np.float64], shape (N, 3)
             Coordinates in the same order as the selected atoms.
+
+            The `dtype` is explicitly set to `float64` to guarantee the return type
+            regardless of how coordinates are stored internally.
         """
         atom_list = [self.atoms[i] for i in only_atoms] if only_atoms else self.atoms
         return np.array([a.coordinates.coordinates for a in atom_list], dtype=np.float64)
@@ -1347,16 +1350,16 @@ class Structure:
         """
         Resolve masses for all real `Atom` instances without mutating any atom.
 
-        Mass priority
-        -------------
-        elem_masses > atom.mass > default (ATOMIC_MASSES_FROM_ELEMENT)
-
         Parameters
         ----------
         elem_masses : dict[str | Element, float] | None, default: None
             Per-element mass overrides keyed by element symbol string or
             `Element` instance (e.g. `{"C": 13.003}`). If `None`, default
             atomic masses are used.
+
+        Mass priority
+        -------------
+        elem_masses > atom.mass > default (ATOMIC_MASSES_FROM_ELEMENT)
 
         Returns
         -------
@@ -1400,16 +1403,16 @@ class Structure:
         `GhostAtom` is a subclass of `Atom`, so an exact type check
         (`type(a) is Atom`) is used rather than `isinstance`.
 
-        Mass priority
-        -------------
-        elem_masses > atom.mass > default (ATOMIC_MASSES_FROM_ELEMENT)
-
         Parameters
         ----------
         elem_masses : dict[str | Element, float] | None, default: None
             Per-element mass overrides keyed by element symbol string or
             `Element` instance (e.g. `{"C": 13.003}`). If `None`, default
             atomic masses are used.
+
+        Mass priority
+        -------------
+        elem_masses > atom.mass > default (ATOMIC_MASSES_FROM_ELEMENT)
 
         Returns
         -------

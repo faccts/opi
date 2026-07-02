@@ -435,7 +435,6 @@ class TestRmsdKabsch:
     def test_rotated_zero_rmsd(self, water, water_rotated):
         """Kabsch should align the rotation and give ~0 RMSD."""
         centered = water.centered_structure()
-        print(centered.get_coordinates())
         assert pytest.approx(centered.rmsd_kabsch(water_rotated), abs=1e-6) == 0.0
 
     def test_kabsch_le_rmsd(self, water):
