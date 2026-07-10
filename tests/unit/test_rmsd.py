@@ -126,6 +126,7 @@ def mixed_structure() -> Structure:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestRealAtoms:
     def test_returns_only_real_atoms(self, mixed_structure):
         """PointCharge should be excluded."""
@@ -165,6 +166,7 @@ class TestRealAtoms:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestGetCoordinates:
     def test_shape(self, water):
         """get_coordinates() should return an array of shape (N, 3)."""
@@ -208,6 +210,7 @@ class TestGetCoordinates:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestGetCoordinatesAtCentroid:
     def test_centroid_is_zero(self, water):
         coords = water.get_coordinates_at_centroid()
@@ -233,6 +236,7 @@ class TestGetCoordinatesAtCentroid:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestSetCoordinates:
     def test_mutates_in_place(self, water):
         """set_coordinates should modify the structure in place."""
@@ -262,6 +266,7 @@ class TestSetCoordinates:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestCenteredStructure:
     def test_centroid_at_origin(self, water):
         centered = water.centered_structure()
@@ -298,6 +303,7 @@ class TestCenteredStructure:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestFilteredAtoms:
     def test_default_returns_only_atom_indices(self, mixed_structure):
         """PointCharge should be excluded — only index 0 (the Atom) returned."""
@@ -343,6 +349,7 @@ class TestFilteredAtoms:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestValidateRmsdCompatibility:
     def test_compatible_structures(self, water):
         atoms = water.real_atoms
@@ -371,6 +378,7 @@ class TestValidateRmsdCompatibility:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestRmsd:
     def test_identical_structures_zero_rmsd(self, water):
         assert pytest.approx(water.rmsd(water), abs=1e-10) == 0.0
@@ -425,6 +433,7 @@ class TestRmsd:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestRmsdKabsch:
     def test_identical_structures_zero_rmsd(self, water):
         assert pytest.approx(water.rmsd_kabsch(water), abs=1e-10) == 0.0

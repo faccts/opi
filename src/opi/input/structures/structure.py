@@ -1359,7 +1359,7 @@ class Structure:
 
         Mass priority
         -------------
-        elem_masses > atom.mass > default (ATOMIC_MASSES_FROM_ELEMENT)
+        atom.mass > elem_masses > default (ATOMIC_MASSES_FROM_ELEMENT)
 
         Returns
         -------
@@ -1374,12 +1374,12 @@ class Structure:
 
         masses_list: list[float] = []
         for atom in self.real_atoms:
-            if atom.element in normalised:
-                # Per-element override takes highest priority
-                m = normalised[atom.element]
-            elif atom.mass is not None:
-                # Mass set directly on the atom takes second priority
+            if atom.mass is not None:
+                # Mass set directly on the atom is the most specific → highest priority
                 m = atom.mass
+            elif atom.element in normalised:
+                # Per-element override is next
+                m = normalised[atom.element]
             elif atom.element in ATOMIC_MASSES_FROM_ELEMENT:
                 # Fall back to default atomic masses
                 m = ATOMIC_MASSES_FROM_ELEMENT[atom.element]
@@ -1412,7 +1412,7 @@ class Structure:
 
         Mass priority
         -------------
-        elem_masses > atom.mass > default (ATOMIC_MASSES_FROM_ELEMENT)
+        atom.mass > elem_masses > default (ATOMIC_MASSES_FROM_ELEMENT)
 
         Returns
         -------
@@ -1497,14 +1497,15 @@ class Structure:
 
         Mass priority
         -------------
-        elem_masses > atom.mass > default (ATOMIC_MASSES_FROM_ELEMENT)
+        atom.mass > elem_masses > default (ATOMIC_MASSES_FROM_ELEMENT)
 
         Parameters
         ----------
         elem_masses : dict[str | Element, float] | None, default: None
             Per-element mass overrides keyed by element symbol string or
-            `Element` instance (e.g. `{"C": 13.003}`). If `None`, default
-            atomic masses are used.
+            `Element` instance (e.g. `{"C": 13.003}`). Only applied to atoms
+            that do not have a mass set directly via `atom.mass`. If `None`,
+            masses fall back to `atom.mass` or the default atomic masses.
 
         Returns
         -------

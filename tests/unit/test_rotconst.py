@@ -157,6 +157,7 @@ def ch3cl() -> Structure:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestHelperFunctions:
     def test_moment_to_mhz_none_input(self):
         assert moment_to_mhz(None) is None
@@ -198,6 +199,7 @@ class TestHelperFunctions:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestPrincipalMoments:
     def test_rotor_type_monoatomic(self, single_atom):
         pm = single_atom.calc_moments_of_inertia()
@@ -264,6 +266,7 @@ class TestPrincipalMoments:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestCalcMomentsOfInertia:
     def test_returns_none_for_empty_structure(self):
         assert make_no_real_atoms_structure().calc_moments_of_inertia() is None
@@ -320,26 +323,14 @@ class TestCalcMomentsOfInertia:
         assert pm_default is not None and pm_elem is not None
         assert pm_default.Ic != pytest.approx(pm_elem.Ic, rel=1e-3)
 
-    def test_elem_masses_priority_over_atom_mass(self, water):
-        """`elem_masses` should take priority over `atom.mass` for the same atom."""
+    def test_atom_mass_priority_over_elem_masses(self, water):
+        """`atom.mass` should take priority over `elem_masses` for the same atom."""
         water.real_atoms[0].mass = 17.999
         pm_atom_mass = water.calc_moments_of_inertia()
         pm_elem = water.calc_moments_of_inertia(elem_masses={"O": 16.0})
         assert pm_atom_mass is not None and pm_elem is not None
-        assert pm_atom_mass.Ic != pytest.approx(pm_elem.Ic, rel=1e-3)
-
-    def test_unknown_element_warns_and_excludes(self):
-        """Atoms with unknown elements should warn and be assigned mass 0."""
-        structure = Structure(
-            atoms=[
-                Atom(element=Element("C"), coordinates=Coordinates(coordinates=(0.0, 0.0, 0.0))),
-                Atom(element=Element("H"), coordinates=Coordinates(coordinates=(1.0, 0.0, 0.0))),
-            ]
-        )
-        # Force C mass to 0 via atom.mass
-        structure.real_atoms[0].mass = 0.0
-        pm = structure.calc_moments_of_inertia()
-        assert pm is not None
+        # atom.mass wins, so specifying elem_masses for O should NOT change the result
+        assert pytest.approx(pm_atom_mass.Ic, rel=1e-9) == pm_elem.Ic
 
     def test_zero_mass_atoms_filtered(self, water):
         """Atoms with zero mass are excluded; remaining atoms determine the rotor type."""
@@ -370,6 +361,7 @@ class TestCalcMomentsOfInertia:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestCalcRotorType:
     def test_with_precomputed_moments(self, water):
         pm = water.calc_moments_of_inertia()
@@ -396,6 +388,7 @@ class TestCalcRotorType:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestCalcRotationalConstants:
     def test_returns_none_for_empty_structure(self):
         assert make_no_real_atoms_structure().calc_rotational_constants() is None
