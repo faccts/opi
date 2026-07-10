@@ -19,6 +19,9 @@
 - Add the keyword `dumpactints` to `BlockOutput` (#245).
 - Added fallback keyword argument for `get_final_energy`, `get_gradient`, and `get_structure` that allows to parse these properties from the `.out` file if no JSON output is available (#237).
 - Added `get_frequencies`, `get_imaginary_frequencies`, `is_pes_minimum`, and `is_pes_transition_state` to the `Output` class (#247).
+- Added `rmsd` and `rmsd_kabsch` to calculate RMSD without and with rotational alignment, respectively (#230). 
+- Added `calc_rotational_constants` to calculate molecular rotational constants (#230).
+- Added `calc_rotor_type` to classify a molecule's rotor type (#230).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
