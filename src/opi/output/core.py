@@ -104,6 +104,7 @@ class Output:
         working_dir: Path | None = None,
         version_check: bool = True,
         parse: bool = False,
+        strict: bool = True,
     ):
         """
         ORCA output parser that is mainly based on the JSON-property and JSON-GBW file.
@@ -124,6 +125,10 @@ class Output:
             True: Create (if turned on by `create_gbw_json/create_property_json`) and parse JSONs files at the end of the initialization.
             False: Only return an Output object. In order to use the object to access the JSON data,
                    `Output.parse()` has to be called first.
+        strict: bool, default: True
+            If `True`, a `ValidationError` is raised when any field in the parsed output cannot be validated.
+            If `False`, fields that fail validation are silently set to `None` and a `UserWarning` is emitted.
+            Only takes effect when `parse=True`; otherwise pass `strict` directly to `Output.parse()`.
 
         Raises
         ----------
@@ -157,7 +162,7 @@ class Output:
 
         # // CREATE AND PARSE JSONS FILES
         if parse:
-            self.parse()
+            self.parse(strict=strict)
 
     def parse(
         self,
@@ -165,6 +170,7 @@ class Output:
         do_create_gbw_json: bool | None = None,
         read_prop_json: bool = True,
         read_gbw_json: bool = True,
+        strict: bool = True,
     ) -> None:
         """
         Create and read property- and gbw-JSON file(s) (according to `do_create_property_json` and `do_create_gbw_json`).
@@ -185,6 +191,9 @@ class Output:
             Whether to read the gbw JSON files. If True, the base gbw JSON file and any gbw JSON files from multi gbw
             runs (e.g., scan or neb) will be read. If False, none of these files will be read.
             If any of the JSON files that should be read are not present, a FileNotFoundError is raised.
+        strict: bool, default: True
+            If `True`, a `ValidationError` is raised when any field in the parsed output cannot be validated.
+            If `False`, fields that fail validation are silently set to `None` and a `UserWarning` is emitted.
 
         Raises
         ----------
@@ -192,20 +201,22 @@ class Output:
             If any JSON file should be read that is not present.
         """
         if read_prop_json:
-            self.parse_property(do_create_property_json=do_create_property_json)
+            self.parse_property(do_create_property_json=do_create_property_json, strict=strict)
         else:
             # // version check is performed with property JSON
             if self.do_version_check:
                 warn("No version check possible.")
 
         if read_gbw_json:
-            self.parse_gbw(do_create_gbw_json=do_create_gbw_json)
+            self.parse_gbw(do_create_gbw_json=do_create_gbw_json, strict=strict)
 
         # > Redump JSON files
         if self.do_redump_jsons:
             self._redump_jsons()
 
-    def parse_property(self, do_create_property_json: bool | None = None) -> None:
+    def parse_property(
+        self, do_create_property_json: bool | None = None, strict: bool = True
+    ) -> None:
         """
         Create and read property-JSON file.
 
@@ -214,6 +225,9 @@ class Output:
         do_create_property_json: bool | None, default: None
             Whether to create the property JSON file. If None, the file is only created if it is missing. If True,
             the existing file will be overwritten. If False, the file will not be created. Default is None.
+        strict: bool, default: True
+            If `True`, a `ValidationError` is raised when any field cannot be validated.
+            If `False`, fields that fail validation are set to `None` and a `UserWarning` is emitted.
         """
         # // Use default name if None was supplied
         if not self.property_json_file:
@@ -229,9 +243,11 @@ class Output:
         # > Check in property JSON whether version fits:
         if self.do_version_check:
             self.check_version()
-        self.results_properties = PropertyResults(**self.property_json_data)
+        self.results_properties = PropertyResults.model_validate(
+            self.property_json_data, context={"strict": strict}
+        )
 
-    def parse_gbw(self, do_create_gbw_json: bool | None = None) -> None:
+    def parse_gbw(self, do_create_gbw_json: bool | None = None, strict: bool = True) -> None:
         """
         Create and read gbw-JSON file(s).
 
@@ -240,6 +256,10 @@ class Output:
         do_create_gbw_json: bool | None, default: None
             Whether to create the gbw JSON files. If None, the files are only created if they are missing. If True,
             the existing files will be overwritten. If False, the files will not be created. Default is None.
+        strict: bool, default: True
+
+            If `True`, a `ValidationError` is raised when any field cannot be validated.
+            If `False`, fields that fail validation are set to `None` and a `UserWarning` is emitted.
         """
         # // Use default names if None was supplied
         if not self.gbw_json_files:
@@ -252,7 +272,10 @@ class Output:
 
         # // read the GBW files
         self.gbw_json_data = self._process_json_files(self.gbw_json_files, continue_on_error=True)
-        self.results_gbw = [GbwResults(**data) for data in self.gbw_json_data]
+        self.results_gbw = [
+            GbwResults.model_validate(data, context={"strict": strict})
+            for data in self.gbw_json_data
+        ]
 
     @property
     def gbw_json_files(self) -> tuple[Path, ...]:
