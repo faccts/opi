@@ -187,4 +187,4 @@ def mhz_to_wavenumber(mhz: float | None) -> float | None:
     """
     if mhz is None:
         return None
-    return mhz * 1e6 / constants.C / 100.0
+    return mhz * 1e4 / constants.C
