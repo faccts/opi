@@ -1505,7 +1505,7 @@ class Structure:
             Per-element mass overrides keyed by element symbol string or
             `Element` instance (e.g. `{"C": 13.003}`). Only applied to atoms
             that do not have a mass set directly via `atom.mass`. If `None`,
-            masses fall back to `atom.mass` or the default atomic masses.
+            masses fall back to default atomic masses.
 
         Returns
         -------
