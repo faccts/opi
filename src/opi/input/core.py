@@ -114,12 +114,25 @@ class Input:
     @ncores.setter
     def ncores(self, value: int | None) -> None:
         """
+        Setter for the ncores property. Value given must be a non-negative integer.
+
         Parameters
         ----------
         value : int | None
+
+        Raises
+        ------
+        TypeError
+            If the given value is not an integer.
+
+        ValueError
+            If the given value is negative.
         """
-        if value is not None and value < 0:
-            raise ValueError(f"{self.__class__.__name__}.ncores must be a positive integer.")
+        if value is not None:
+            if not isinstance(value, int):
+                raise TypeError(f"{self.__class__.__name__}.ncores must be an integer.")
+            elif value < 0:
+                raise ValueError(f"{self.__class__.__name__}.ncores must be a positive integer.")
         # << END OF IF
         self._ncores = value
 
@@ -130,12 +143,25 @@ class Input:
     @memory.setter
     def memory(self, value: int | None) -> None:
         """
+        Setter for the memory property. Value given must be a non-negative integer.
+
         Parameters
         ----------
         value : int | None
+
+        Raises
+        ------
+        TypeError
+            If the given value is not an integer.
+
+        ValueError
+            If the given value is negative.
         """
-        if value is not None and value < 0:
-            raise ValueError(f"{self.__class__.__name__}.memory must be a positive integer.")
+        if value is not None:
+            if not isinstance(value, int):
+                raise TypeError(f"{self.__class__.__name__}.memory must be an integer.")
+            elif value < 0:
+                raise ValueError(f"{self.__class__.__name__}.memory must be a positive integer.")
         # << END OF IF
         self._memory = value
 

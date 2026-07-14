@@ -52,6 +52,34 @@ def test_get_mult_nonexistent(empty_output_object: Output):
 
 @pytest.mark.unit
 @pytest.mark.output
+def test_get_charge_fallback(output_no_json):
+    """Test that `get_charge()` falls back to grepping the .out file when no JSON is present."""
+    assert output_no_json.get_charge() == 0
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_charge_no_fallback(output_no_json):
+    """Test that `get_charge(fallback=False)` returns None when no JSON is present."""
+    assert output_no_json.get_charge(fallback=False) is None
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_mult_fallback(output_no_json):
+    """Test that `get_mult()` falls back to grepping the .out file when no JSON is present."""
+    assert output_no_json.get_mult() == 1
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_mult_no_fallback(output_no_json):
+    """Test that `get_mult(fallback=False)` returns None when no JSON is present."""
+    assert output_no_json.get_mult(fallback=False) is None
+
+
+@pytest.mark.unit
+@pytest.mark.output
 @pytest.mark.parametrize(
     "task, expected_values",
     [("opt", 8), ("roci", 11)],
