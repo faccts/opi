@@ -99,7 +99,7 @@ class RunResult:
         if not self.returncode_ok():
             raise RuntimeError(
                 f"Running '{self.binary}' with arguments {self.args} failed with exit code: {self.returncode}"
-            )  # change to OpiExecutionError when PR #224 merged
+            )  # > TODO: change to OpiExecutionError when PR #224 merged
 
     def get_signal(self) -> int | None:
         """Check and return IPC signals."""
@@ -310,7 +310,6 @@ class BaseRunner:
             )
 
             # > Pleasing type checker
-            # assert isinstance(orca_proc, CompletedProcess)
             return OrcaVersion.from_output(orca_proc.stdout)
 
         except (subprocess.TimeoutExpired, ValueError, AssertionError):
