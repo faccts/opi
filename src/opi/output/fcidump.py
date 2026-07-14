@@ -1,6 +1,7 @@
-"""Parse a potential FCIDUMP file"""
+"""Read, create, and write FCIDUMP files"""
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
@@ -14,6 +15,10 @@ class Fcidump:
     """
     Reads and stores data from a FCIDUMP file. One and two-electrons integrals are stored as dicts and can be
     accessed as numpy arrays via `hcore_matrix` and `eri_tensor`.
+
+    Besides parsing a file with `from_file`, objects can be created directly from the integral
+    dicts (default constructor) or from numpy arrays via `from_arrays`, and written to a
+    FCIDUMP file with `to_file`.
 
     Attributes
     --------
@@ -52,11 +57,29 @@ class Fcidump:
 
     @cached_property
     def hcore_matrix(self) -> np.ndarray[tuple[int, int], np.dtype[np.float64]]:
-        """Return the one-electron integrals as a symmetric (norb, norb) numpy array."""
+        """Return the one-electron integrals as a symmetric (norb, norb) numpy array.
+
+        Raises
+        -------
+        ValueError
+            If a stored key contains an orbital index smaller than 1.
+        """
         mat = np.zeros((self.norb, self.norb))
-        for (i, j), val in self.one_electron.items():
-            mat[i - 1, j - 1] = val
-            mat[j - 1, i - 1] = val
+        if not self.one_electron:
+            return mat
+
+        # > Pull all stored indices/values into arrays once
+        idx = np.array(list(self.one_electron.keys()), dtype=np.int64) - 1  # (n_integrals, 2)
+        vals = np.array(list(self.one_electron.values()), dtype=np.float64)  # (n_integrals,)
+        if idx.min() < 0:
+            raise ValueError(f"{type(self).__name__}: orbital indices in one_electron must be >= 1")
+
+        # > Canonicalize to the lower triangle so duplicate (i, j)/(j, i) keys resolve
+        # > consistently, then mirror the resolved values to keep the matrix symmetric
+        row = np.maximum(idx[:, 0], idx[:, 1])
+        col = np.minimum(idx[:, 0], idx[:, 1])
+        mat[row, col] = vals
+        mat[col, row] = mat[row, col]
         return mat
 
     @cached_property
@@ -64,6 +87,11 @@ class Fcidump:
         """Return the two-electron integrals as a (norb, norb, norb, norb) numpy array.
 
         Uses chemist's notation (ij|kl) with 8-fold permutation symmetry applied.
+
+        Raises
+        -------
+        ValueError
+            If a stored key contains an orbital index smaller than 1.
         """
         tensor = np.zeros((self.norb,) * 4)
         if not self.two_electron:
@@ -72,6 +100,8 @@ class Fcidump:
         # > Pull all stored indices/values into arrays once
         idx = np.array(list(self.two_electron.keys()), dtype=np.int64) - 1  # (n_integrals, 4)
         vals = np.array(list(self.two_electron.values()), dtype=np.float64)  # (n_integrals,)
+        if idx.min() < 0:
+            raise ValueError(f"{type(self).__name__}: orbital indices in two_electron must be >= 1")
         a, b, c, d = idx[:, 0], idx[:, 1], idx[:, 2], idx[:, 3]
 
         # > Vectorized assignment for each of the 8 symmetry-equivalent index permutations
@@ -87,6 +117,160 @@ class Fcidump:
         ):
             tensor[p, q, r, s] = vals
         return tensor
+
+    @classmethod
+    def from_arrays(
+        cls,
+        hcore: np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        eri: np.ndarray[tuple[int, int, int, int], np.dtype[np.float64]],
+        nelec: int,
+        ms2: int = 0,
+        *,
+        e_nuc: float = 0.0,
+        orbsym: Sequence[int] | None = None,
+        isym: int = 1,
+        orbital_energies: Sequence[float] | None = None,
+        tol: float = 0.0,
+    ) -> Self:
+        """
+        Create a `Fcidump` object from raw numpy arrays.
+
+        Only the symmetry-unique elements (i >= j for `hcore`, canonical 8-fold permutations for
+        `eri`) are stored in the integral dicts.
+
+        Parameters
+        ----------
+        hcore: np.ndarray
+            One-electron integrals as a symmetric (norb, norb) array.
+        eri: np.ndarray
+            Two-electron integrals as a (norb, norb, norb, norb) array in chemist's notation
+            (ij|kl) with 8-fold permutation symmetry.
+        nelec: int
+            Number of active electrons.
+        ms2: int, default: 0
+            Twice the total spin projection, i.e. the difference of alpha and beta electrons.
+        e_nuc: float, default: 0.0
+            Core energy contribution.
+        orbsym: Sequence[int] | None, default: None
+            Symmetry labels of the orbitals. Defaults to all orbitals in irrep 1.
+        isym: int, default: 1
+            Overall symmetry of the electronic structure.
+        orbital_energies: Sequence[float] | None, default: None
+            Orbital energies. Not part of ORCA-generated FCIDUMP files but supported.
+        tol: float, default: 0.0
+            Integrals with an absolute value not larger than `tol` are dropped.
+
+        Raises
+        -------
+        ValueError
+            If the array shapes are inconsistent or the required symmetries are violated.
+        """
+        hcore = np.asarray(hcore, dtype=np.float64)
+        eri = np.asarray(eri, dtype=np.float64)
+
+        if hcore.ndim != 2 or hcore.shape[0] != hcore.shape[1]:
+            raise ValueError(f"{cls.__name__}: hcore must be a square matrix, got {hcore.shape}")
+        norb = hcore.shape[0]
+        if eri.shape != (norb,) * 4:
+            raise ValueError(
+                f"{cls.__name__}: eri must have shape {(norb,) * 4} to match hcore, got {eri.shape}"
+            )
+        if not np.allclose(hcore, hcore.T):
+            raise ValueError(f"{cls.__name__}: hcore must be symmetric")
+        # > These three transpositions generate the full 8-fold permutation group
+        for axes in ((1, 0, 2, 3), (0, 1, 3, 2), (2, 3, 0, 1)):
+            if not np.allclose(eri, eri.transpose(axes)):
+                raise ValueError(f"{cls.__name__}: eri must have 8-fold permutation symmetry")
+        if orbsym is not None and len(orbsym) != norb:
+            raise ValueError(f"{cls.__name__}: orbsym must contain exactly {norb} entries")
+
+        # > Unique one-electron elements: lower triangle (i >= j)
+        i1, j1 = np.tril_indices(norb)
+        vals1 = hcore[i1, j1]
+        mask1 = np.abs(vals1) > tol
+        one_electron = {
+            (int(i) + 1, int(j) + 1): float(v)
+            for i, j, v in zip(i1[mask1], j1[mask1], vals1[mask1], strict=True)
+        }
+
+        # > Unique two-electron elements: i >= j, k >= l and pair index (ij) >= (kl)
+        pq, rs = np.tril_indices(i1.size)
+        i2, j2, k2, l2 = i1[pq], j1[pq], i1[rs], j1[rs]
+        vals2 = eri[i2, j2, k2, l2]
+        mask2 = np.abs(vals2) > tol
+        two_electron = {
+            (int(i) + 1, int(j) + 1, int(k) + 1, int(ll) + 1): float(v)
+            for i, j, k, ll, v in zip(
+                i2[mask2], j2[mask2], k2[mask2], l2[mask2], vals2[mask2], strict=True
+            )
+        }
+
+        return cls(
+            norb=norb,
+            nelec=nelec,
+            ms2=ms2,
+            orbsym=list(orbsym) if orbsym is not None else [1] * norb,
+            isym=isym,
+            one_electron=one_electron,
+            two_electron=two_electron,
+            # > Check against None explicitly: `or` would crash on a multi-element numpy array
+            orbital_energies=(
+                {i + 1: float(v) for i, v in enumerate(orbital_energies)}
+                if orbital_energies is not None
+                else {}
+            ),
+            e_nuc=e_nuc,
+        )
+
+    def to_file(self, path: Path | str) -> None:
+        """
+        Write the stored data to a FCIDUMP file, using the same formatting as ORCA.
+
+        The integrals are written as stored in the dicts, i.e. only the symmetry-unique elements
+        provided there end up in the file. `path` is stored in the `path` attribute afterwards.
+        Values are written with 15 decimal places (ORCA's format), so magnitudes below ~1e-15
+        end up as zero in the file.
+
+        Parameters
+        ----------
+        path: Path | str
+            Path of the FCIDUMP file to write.
+
+        Raises
+        -------
+        ValueError
+            If the object contains no orbitals (`norb` < 1) or a negative header value
+            (`nelec`, `ms2`, `isym`), neither of which can be represented in the FCIDUMP format.
+        """
+        if self.norb < 1:
+            raise ValueError(
+                f"{type(self).__name__}: cannot write a FCIDUMP file without orbitals "
+                f"(norb = {self.norb})"
+            )
+        if self.nelec < 0 or self.ms2 < 0 or self.isym < 0:
+            raise ValueError(
+                f"{type(self).__name__}: nelec, ms2, and isym must be non-negative to be "
+                f"written to a FCIDUMP file (got nelec = {self.nelec}, ms2 = {self.ms2}, "
+                f"isym = {self.isym})"
+            )
+        path = Path(path)
+
+        lines = [
+            f"&FCI NORB={self.norb:>2},NELEC={self.nelec:>2},MS2={self.ms2:>2},",
+            " ORBSYM=" + ",".join(str(sym) for sym in self.orbsym) + ",",
+            f" ISYM={self.isym:>2},",
+            "&END",
+        ]
+        for (i, j, k, ll), val in sorted(self.two_electron.items()):
+            lines.append(f"{val:21.15f}   {i} {j} {k} {ll}")
+        for (i, j), val in sorted(self.one_electron.items()):
+            lines.append(f"{val:21.15f}   {i} {j} 0 0")
+        for i, val in sorted(self.orbital_energies.items()):
+            lines.append(f"{val:21.15f}   {i} 0 0 0")
+        lines.append(f"{self.e_nuc:21.15f}   0 0 0 0")
+
+        path.write_text("\n".join(lines) + "\n")
+        self.path = path
 
     @classmethod
     def from_file(cls, path: Path | str) -> Self:

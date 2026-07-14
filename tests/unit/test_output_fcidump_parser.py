@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from opi.output.fcidump import Fcidump
@@ -144,3 +145,109 @@ def test_eri_tensor_shape_and_symmetry() -> None:
     assert pytest.approx(tensor[0, 1, 0, 0]) == val  # (ji|kl)
     assert pytest.approx(tensor[0, 0, 1, 0]) == val  # (kl|ij)
     assert pytest.approx(tensor[0, 0, 0, 1]) == val  # (lk|ij)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_from_arrays_roundtrip() -> None:
+    """`from_arrays()` stores only canonical elements and reproduces the input arrays."""
+    hcore = np.array([[-0.5, 0.1], [0.1, -0.3]])
+    eri = np.zeros((2, 2, 2, 2))
+    for idx, val in (((0, 0, 0, 0), 0.5), ((1, 0, 0, 0), 0.1), ((1, 1, 1, 1), 0.3)):
+        i, j, k, ll = idx
+        for p, q, r, s in (
+            (i, j, k, ll),
+            (j, i, k, ll),
+            (i, j, ll, k),
+            (j, i, ll, k),
+            (k, ll, i, j),
+            (ll, k, i, j),
+            (k, ll, j, i),
+            (ll, k, j, i),
+        ):
+            eri[p, q, r, s] = val
+
+    dump = Fcidump.from_arrays(
+        hcore, eri, nelec=2, e_nuc=-1.5, orbital_energies=np.array([-0.5, 0.2])
+    )
+
+    assert dump.norb == 2
+    assert dump.orbsym == [1, 1]
+    assert dump.orbital_energies == {1: -0.5, 2: 0.2}
+    # only the canonical representatives are stored
+    assert dump.one_electron == {(1, 1): -0.5, (2, 1): 0.1, (2, 2): -0.3}
+    assert dump.two_electron == {(1, 1, 1, 1): 0.5, (2, 1, 1, 1): 0.1, (2, 2, 2, 2): 0.3}
+    # reconstruction from the dicts must give back the input arrays
+    assert np.allclose(dump.hcore_matrix, hcore)
+    assert np.allclose(dump.eri_tensor, eri)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_from_arrays_asymmetric_raises() -> None:
+    """`from_arrays()` rejects a non-symmetric hcore matrix."""
+    hcore = np.array([[-0.5, 0.1], [0.2, -0.3]])
+    eri = np.zeros((2, 2, 2, 2))
+
+    with pytest.raises(ValueError, match="symmetric"):
+        Fcidump.from_arrays(hcore, eri, nelec=2)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_hcore_matrix_conflicting_transposed_keys_stay_symmetric() -> None:
+    """With both (i,j) and (j,i) stored, the reconstructed matrix must still be symmetric."""
+    dump = Fcidump(
+        norb=2, nelec=2, ms2=0, orbsym=[1, 1], isym=0, one_electron={(1, 2): 0.1, (2, 1): 0.2}
+    )
+    mat = dump.hcore_matrix
+
+    assert pytest.approx(mat[0, 1]) == mat[1, 0]
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_hcore_matrix_zero_index_raises() -> None:
+    """An orbital index of 0 (1-based convention) must raise instead of wrapping around."""
+    dump = Fcidump(norb=2, nelec=2, ms2=0, orbsym=[1, 1], isym=0, one_electron={(0, 1): 0.5})
+
+    with pytest.raises(ValueError, match="one_electron"):
+        dump.hcore_matrix
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_to_file_roundtrip(tmp_path: Path) -> None:
+    """A written FCIDUMP file must parse back into an equivalent object."""
+    dump = Fcidump(
+        norb=2,
+        nelec=2,
+        ms2=0,
+        orbsym=[1, 1],
+        isym=1,
+        one_electron={(1, 1): -1.259550439370290, (2, 1): 0.000063953470416},
+        two_electron={(1, 1, 1, 1): 0.764178936345604, (2, 1, 1, 1): -0.000062078881437},
+        orbital_energies={1: -0.578205, 2: 0.670112},
+        e_nuc=-74.204378402010107,
+    )
+    fci_file = tmp_path / "written.fcidump"
+    dump.to_file(fci_file)
+
+    assert dump.path == fci_file
+
+    # negative header values would be unreadable by from_file and must be rejected
+    dump.ms2 = -2
+    with pytest.raises(ValueError, match="ms2"):
+        dump.to_file(tmp_path / "invalid.fcidump")
+    dump.ms2 = 0
+
+    reread = Fcidump.from_file(fci_file)
+    assert reread.norb == dump.norb
+    assert reread.nelec == dump.nelec
+    assert reread.ms2 == dump.ms2
+    assert reread.orbsym == dump.orbsym
+    assert reread.isym == dump.isym
+    assert reread.one_electron == pytest.approx(dump.one_electron)
+    assert reread.two_electron == pytest.approx(dump.two_electron)
+    assert reread.orbital_energies == pytest.approx(dump.orbital_energies)
+    assert reread.e_nuc == pytest.approx(dump.e_nuc)
