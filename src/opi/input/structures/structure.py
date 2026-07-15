@@ -949,7 +949,7 @@ class Structure:
     
     
     @requires_molbar
-    def to_molbar(
+    def calculate_molbar(
         self,
         *,
         mode: "MolBarMode | str" = MolBarMode.MB,
@@ -1003,7 +1003,7 @@ class Structure:
         )
     
     @requires_molbar
-    def to_molbar_data(
+    def calculate_molbar_data(
         self,
         *,
         mode: "MolBarMode | str" = MolBarMode.MB,

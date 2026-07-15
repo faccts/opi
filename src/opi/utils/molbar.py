@@ -116,7 +116,7 @@ def call_molbar(
 
     return cast(
         "str | tuple[str, dict[str, Any]]",
-        get_molbar_from_coordinates(
+        _get_molbar_from_coordinates(
             coordinates,
             elements,
             total_charge=total_charge,
