@@ -130,7 +130,6 @@ class Fcidump:
         orbsym: Sequence[int] | None = None,
         isym: int = 1,
         orbital_energies: Sequence[float] | None = None,
-        tol: float = 0.0,
     ) -> Self:
         """
         Create a `Fcidump` object from raw numpy arrays.
@@ -157,8 +156,6 @@ class Fcidump:
             Overall symmetry of the electronic structure.
         orbital_energies: Sequence[float] | None, default: None
             Orbital energies. Not part of ORCA-generated FCIDUMP files but supported.
-        tol: float, default: 0.0
-            Integrals with an absolute value not larger than `tol` are dropped.
 
         Raises
         -------
@@ -187,22 +184,17 @@ class Fcidump:
         # > Unique one-electron elements: lower triangle (i >= j)
         i1, j1 = np.tril_indices(norb)
         vals1 = hcore[i1, j1]
-        mask1 = np.abs(vals1) > tol
         one_electron = {
-            (int(i) + 1, int(j) + 1): float(v)
-            for i, j, v in zip(i1[mask1], j1[mask1], vals1[mask1], strict=True)
+            (int(i) + 1, int(j) + 1): float(v) for i, j, v in zip(i1, j1, vals1, strict=True)
         }
 
         # > Unique two-electron elements: i >= j, k >= l and pair index (ij) >= (kl)
         pq, rs = np.tril_indices(i1.size)
         i2, j2, k2, l2 = i1[pq], j1[pq], i1[rs], j1[rs]
         vals2 = eri[i2, j2, k2, l2]
-        mask2 = np.abs(vals2) > tol
         two_electron = {
             (int(i) + 1, int(j) + 1, int(k) + 1, int(ll) + 1): float(v)
-            for i, j, k, ll, v in zip(
-                i2[mask2], j2[mask2], k2[mask2], l2[mask2], vals2[mask2], strict=True
-            )
+            for i, j, k, ll, v in zip(i2, j2, k2, l2, vals2, strict=True)
         }
 
         return cls(

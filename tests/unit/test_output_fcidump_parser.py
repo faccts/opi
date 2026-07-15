@@ -167,16 +167,20 @@ def test_from_arrays_roundtrip() -> None:
         ):
             eri[p, q, r, s] = val
 
-    dump = Fcidump.from_arrays(
-        hcore, eri, nelec=2, e_nuc=-1.5, orbital_energies=np.array([-0.5, 0.2])
-    )
+    dump = Fcidump.from_arrays(hcore, eri, nelec=2, e_nuc=-1.5)
 
     assert dump.norb == 2
     assert dump.orbsym == [1, 1]
-    assert dump.orbital_energies == {1: -0.5, 2: 0.2}
-    # only the canonical representatives are stored
+    # all canonical representatives are stored, including zeros
     assert dump.one_electron == {(1, 1): -0.5, (2, 1): 0.1, (2, 2): -0.3}
-    assert dump.two_electron == {(1, 1, 1, 1): 0.5, (2, 1, 1, 1): 0.1, (2, 2, 2, 2): 0.3}
+    assert dump.two_electron == {
+        (1, 1, 1, 1): 0.5,
+        (2, 1, 1, 1): 0.1,
+        (2, 1, 2, 1): 0.0,
+        (2, 2, 1, 1): 0.0,
+        (2, 2, 2, 1): 0.0,
+        (2, 2, 2, 2): 0.3,
+    }
     # reconstruction from the dicts must give back the input arrays
     assert np.allclose(dump.hcore_matrix, hcore)
     assert np.allclose(dump.eri_tensor, eri)
@@ -227,7 +231,6 @@ def test_to_file_roundtrip(tmp_path: Path) -> None:
         isym=1,
         one_electron={(1, 1): -1.259550439370290, (2, 1): 0.000063953470416},
         two_electron={(1, 1, 1, 1): 0.764178936345604, (2, 1, 1, 1): -0.000062078881437},
-        orbital_energies={1: -0.578205, 2: 0.670112},
         e_nuc=-74.204378402010107,
     )
     fci_file = tmp_path / "written.fcidump"
@@ -249,5 +252,4 @@ def test_to_file_roundtrip(tmp_path: Path) -> None:
     assert reread.isym == dump.isym
     assert reread.one_electron == pytest.approx(dump.one_electron)
     assert reread.two_electron == pytest.approx(dump.two_electron)
-    assert reread.orbital_energies == pytest.approx(dump.orbital_energies)
     assert reread.e_nuc == pytest.approx(dump.e_nuc)
