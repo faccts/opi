@@ -2,12 +2,16 @@ import pytest
 
 from examples.exmp003_opt.job import run_exmp003
 from opi.input.structures import Structure
+from tests.helpers import OutFileExporter
 
 
 @pytest.mark.examples
 @pytest.mark.orca
 @pytest.mark.json_files
-def test_exmp003_opt(example_input_file, tmp_path, json_files_exporter) -> None:
+@pytest.mark.out_files
+def test_exmp003_opt(
+    example_input_file, tmp_path, json_files_exporter, out_file_exporter: OutFileExporter
+) -> None:
     """Ensure optimization example runs successfully and produces a final energy and structure."""
     # Get input file from example folder
     input_file = example_input_file(run_exmp003)
@@ -24,3 +28,6 @@ def test_exmp003_opt(example_input_file, tmp_path, json_files_exporter) -> None:
 
     # optional export of json files
     json_files_exporter.export_jsons_from(tmp_path)
+
+    # optional export of .out fixture
+    out_file_exporter.export_from(tmp_path / "job.out")

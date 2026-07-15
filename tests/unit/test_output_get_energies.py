@@ -59,3 +59,29 @@ def test_get_zpe_returns_correct_type(output_object_factory, task: str):
 def test_get_zpe_returns_correct_none(empty_output_object):
     """Test if `Output.get_zpe()` returns None when expected."""
     assert not empty_output_object.get_zpe()
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_final_energy_fallback(output_no_json):
+    """Test that `get_final_energy()` falls back to grepping the .out file when no JSON is present."""
+    energy = output_no_json.get_final_energy()
+    assert isinstance(energy, float)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_final_energy_fallback_index(output_no_json):
+    """Test that grepper fallback respects the index argument and returns different values per geometry."""
+    e0 = output_no_json.get_final_energy(index=0)
+    e_last = output_no_json.get_final_energy(index=-1)
+    assert isinstance(e0, float)
+    assert isinstance(e_last, float)
+    assert e0 != e_last
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_final_energy_no_fallback(output_no_json):
+    """Test that `get_final_energy(fallback=False)` returns None when no JSON is present."""
+    assert output_no_json.get_final_energy(fallback=False) is None

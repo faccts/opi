@@ -33,8 +33,6 @@ class AuxBasisSet(SimpleKeywordBox):
     """SimpleKeyword: AuxBasisSet."""
     AUG_CC_PVTZ_C = SimpleKeyword("aug-cc-pvtz/c")
     """SimpleKeyword: AuxBasisSet."""
-    AUG_CC_PVTZ_C = SimpleKeyword("aug-cc-pvtz/c")
-    """SimpleKeyword: AuxBasisSet."""
     AUG_CC_PVTZ_JK = SimpleKeyword("aug-cc-pvtz/jk")
     """SimpleKeyword: AuxBasisSet."""
     AUG_CC_PWCV5Z_C = SimpleKeyword("aug-cc-pwcv5z/c")

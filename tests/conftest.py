@@ -5,9 +5,7 @@ To define the location of module containing fixtures, the absolute path to that 
 starting from the main package folder must be given.
 """
 
-import shutil
 from collections.abc import Generator
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
@@ -16,6 +14,8 @@ from _pytest._code.code import ExceptionRepr
 from _pytest.nodes import Item
 from _pytest.reports import TestReport
 from _pytest.runner import CallInfo
+
+from tests.helpers import JsonFilesExporter, OutFileExporter
 
 JSON_DIR = Path(__file__).parent / "json_files"
 
@@ -145,69 +145,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=False,
         help="After json file generator tests pass, copy all produced *.json from tmp_path into tests/json_files/.",
     )
-
-
-@dataclass(frozen=True)
-class JsonFilesExporter:
-    json_files_dir: Path
-    prefix: str
-    enabled: bool
-
-    def export_jsons_from(
-        self,
-        src_dir: Path,
-        *,
-        recursive: bool = False,
-        overwrite: bool = True,
-        gbw_subdir: str = "gbw",
-        property_subdir: str = "property",
-    ) -> tuple[list[Path], list[Path]]:
-        """
-        Copy JSON files from src_dir into tests/json_files/<plain_subdir|property_subdir>.
-
-        - plain:     *.json excluding *.property.json
-        - property:  *.property.json
-
-        Destination filenames are prefixed:
-            <prefix>__<original_filename>
-
-        Returns: (plain_dests, property_dests)
-        """
-        pattern = "**/*.json" if recursive else "*.json"
-        sources = sorted(p for p in src_dir.glob(pattern) if p.is_file())
-
-        plain_out = self.json_files_dir / gbw_subdir
-        prop_out = self.json_files_dir / property_subdir
-        plain_out.mkdir(parents=True, exist_ok=True)
-        prop_out.mkdir(parents=True, exist_ok=True)
-
-        plain_dests: list[Path] = []
-        prop_dests: list[Path] = []
-
-        for src in sources:
-            name = src.name
-
-            is_property = name.endswith(".property.json")
-            if is_property:
-                dst = prop_out / f"{self.prefix}_{name}"
-                prop_dests.append(dst)
-            else:
-                # it's a .json from the glob, but not a .property.json
-                dst = plain_out / f"{self.prefix}_{name}"
-                plain_dests.append(dst)
-
-            if not self.enabled:
-                continue
-
-            if dst.exists() and not overwrite:
-                raise FileExistsError(f"JSON file exists (overwrite disabled): {dst}")
-
-            shutil.copy2(src, dst)
-
-        if self.enabled and not (plain_dests or prop_dests):
-            raise FileNotFoundError(f"No JSON files found in {src_dir} (pattern={pattern!r})")
-
-        return plain_dests, prop_dests
+    parser.addoption(
+        "--update-out-files",
+        action="store_true",
+        default=False,
+        help="After out file generator tests pass, extract grepper-relevant blocks from the produced .out file and write to tests/fixtures/job_fallback.out.",
+    )
 
 
 @pytest.fixture(scope="session")
@@ -224,4 +167,20 @@ def json_files_exporter(request: pytest.FixtureRequest, json_files_dir: Path) ->
         json_files_dir=json_files_dir,
         prefix=request.node.name,  # json_file basename
         enabled=request.config.getoption("--update-json-files"),
+    )
+
+
+@pytest.fixture(scope="session")
+def fixtures_dir(request: pytest.FixtureRequest) -> Path:
+    return Path(request.config.rootpath) / "tests" / "fixtures"
+
+
+@pytest.fixture
+def out_file_exporter(request: pytest.FixtureRequest, fixtures_dir: Path) -> OutFileExporter:
+    if "out_files" not in request.node.keywords:
+        pytest.fail("out_file_exporter is intended for tests marked with @pytest.mark.out_files")
+
+    return OutFileExporter(
+        out_file=fixtures_dir / "job_fallback.out",
+        enabled=request.config.getoption("--update-out-files"),
     )

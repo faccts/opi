@@ -16,10 +16,15 @@ from pydantic import StrictInt, StrictStr
 from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
+from opi.output.fcidump import Fcidump
 from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
+    get_error_message,
+    get_error_messages,
     get_float_from_line,
     get_lines_from_block,
+    has_casscf_converged,
+    has_cc_converged,
     has_geometry_optimization_converged,
     has_scf_converged,
     has_terminated_normally,
@@ -100,6 +105,7 @@ class Output:
         working_dir: Path | None = None,
         version_check: bool = True,
         parse: bool = False,
+        strict: bool = True,
     ):
         """
         ORCA output parser that is mainly based on the JSON-property and JSON-GBW file.
@@ -120,6 +126,10 @@ class Output:
             True: Create (if turned on by `create_gbw_json/create_property_json`) and parse JSONs files at the end of the initialization.
             False: Only return an Output object. In order to use the object to access the JSON data,
                    `Output.parse()` has to be called first.
+        strict: bool, default: True
+            If `True`, a `ValidationError` is raised when any field in the parsed output cannot be validated.
+            If `False`, fields that fail validation are silently set to `None` and a `UserWarning` is emitted.
+            Only takes effect when `parse=True`; otherwise pass `strict` directly to `Output.parse()`.
 
         Raises
         ----------
@@ -153,7 +163,7 @@ class Output:
 
         # // CREATE AND PARSE JSONS FILES
         if parse:
-            self.parse()
+            self.parse(strict=strict)
 
     def parse(
         self,
@@ -161,6 +171,7 @@ class Output:
         do_create_gbw_json: bool | None = None,
         read_prop_json: bool = True,
         read_gbw_json: bool = True,
+        strict: bool = True,
     ) -> None:
         """
         Create and read property- and gbw-JSON file(s) (according to `do_create_property_json` and `do_create_gbw_json`).
@@ -181,6 +192,9 @@ class Output:
             Whether to read the gbw JSON files. If True, the base gbw JSON file and any gbw JSON files from multi gbw
             runs (e.g., scan or neb) will be read. If False, none of these files will be read.
             If any of the JSON files that should be read are not present, a FileNotFoundError is raised.
+        strict: bool, default: True
+            If `True`, a `ValidationError` is raised when any field in the parsed output cannot be validated.
+            If `False`, fields that fail validation are silently set to `None` and a `UserWarning` is emitted.
 
         Raises
         ----------
@@ -188,20 +202,22 @@ class Output:
             If any JSON file should be read that is not present.
         """
         if read_prop_json:
-            self.parse_property(do_create_property_json=do_create_property_json)
+            self.parse_property(do_create_property_json=do_create_property_json, strict=strict)
         else:
             # // version check is performed with property JSON
             if self.do_version_check:
                 warn("No version check possible.")
 
         if read_gbw_json:
-            self.parse_gbw(do_create_gbw_json=do_create_gbw_json)
+            self.parse_gbw(do_create_gbw_json=do_create_gbw_json, strict=strict)
 
         # > Redump JSON files
         if self.do_redump_jsons:
             self._redump_jsons()
 
-    def parse_property(self, do_create_property_json: bool | None = None) -> None:
+    def parse_property(
+        self, do_create_property_json: bool | None = None, strict: bool = True
+    ) -> None:
         """
         Create and read property-JSON file.
 
@@ -210,6 +226,9 @@ class Output:
         do_create_property_json: bool | None, default: None
             Whether to create the property JSON file. If None, the file is only created if it is missing. If True,
             the existing file will be overwritten. If False, the file will not be created. Default is None.
+        strict: bool, default: True
+            If `True`, a `ValidationError` is raised when any field cannot be validated.
+            If `False`, fields that fail validation are set to `None` and a `UserWarning` is emitted.
         """
         # // Use default name if None was supplied
         if not self.property_json_file:
@@ -225,9 +244,11 @@ class Output:
         # > Check in property JSON whether version fits:
         if self.do_version_check:
             self.check_version()
-        self.results_properties = PropertyResults(**self.property_json_data)
+        self.results_properties = PropertyResults.model_validate(
+            self.property_json_data, context={"strict": strict}
+        )
 
-    def parse_gbw(self, do_create_gbw_json: bool | None = None) -> None:
+    def parse_gbw(self, do_create_gbw_json: bool | None = None, strict: bool = True) -> None:
         """
         Create and read gbw-JSON file(s).
 
@@ -236,6 +257,10 @@ class Output:
         do_create_gbw_json: bool | None, default: None
             Whether to create the gbw JSON files. If None, the files are only created if they are missing. If True,
             the existing files will be overwritten. If False, the files will not be created. Default is None.
+        strict: bool, default: True
+
+            If `True`, a `ValidationError` is raised when any field cannot be validated.
+            If `False`, fields that fail validation are set to `None` and a `UserWarning` is emitted.
         """
         # // Use default names if None was supplied
         if not self.gbw_json_files:
@@ -248,7 +273,10 @@ class Output:
 
         # // read the GBW files
         self.gbw_json_data = self._process_json_files(self.gbw_json_files, continue_on_error=True)
-        self.results_gbw = [GbwResults(**data) for data in self.gbw_json_data]
+        self.results_gbw = [
+            GbwResults.model_validate(data, context={"strict": strict})
+            for data in self.gbw_json_data
+        ]
 
     @property
     def gbw_json_files(self) -> tuple[Path, ...]:
@@ -666,11 +694,47 @@ class Output:
         bool
             True if "ORCA TERMINATED NORMALLY" is found in ".out" file else False
         """
+        return self._has(has_terminated_normally)
+
+    def _has(self, has_func: Callable[[Path], bool]) -> bool:
         outfile = self.get_outfile()
         try:
-            return has_terminated_normally(outfile)
+            return has_func(outfile)
         except FileNotFoundError:
             return False
+
+    def error_messages(self) -> list[str]:
+        """
+        Return all known error messages found in the ORCA output file.
+        Scanning stops early when a critical pattern is matched. Critical patterns are patterns that directly terminate ORCA.
+        If the output file does not exist a corresponding error message is returned.
+
+        Returns
+        -------
+        list[str]
+            List of error message strings if any errors were detected, else an empty list.
+        """
+        outfile = self.get_outfile()
+        try:
+            return get_error_messages(outfile)
+        except FileNotFoundError:
+            return [f"Could not find output file: {outfile}"]
+
+    def error_message(self) -> str:
+        """
+        Return the most important error message found in the ORCA output file or an empty string if no known error was detected.
+        If the output file does not exist a corresponding error message is returned.
+
+        Returns
+        -------
+        str
+            Error message string if an error was detected, else an empty string.
+        """
+        outfile = self.get_outfile()
+        try:
+            return get_error_message(outfile)
+        except FileNotFoundError:
+            return f"Could not find output file: {outfile}"
 
     def scf_converged(self) -> bool:
         """
@@ -683,11 +747,33 @@ class Output:
         bool
             True if "SUCCESS" is found in ".out" file else False
         """
-        outfile = self.get_outfile()
-        try:
-            return has_scf_converged(outfile)
-        except FileNotFoundError:
-            return False
+        return self._has(has_scf_converged)
+
+    def casscf_converged(self) -> bool:
+        """
+        Determine if ORCA CAS-SCF converged, by looking for "THE CAS-SCF GRADIENT HAS CONVERGED" in the ".out" file.
+        Check only if ORCA CAS-SCF was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if string is found in ".out" file else False
+        """
+        return self._has(has_casscf_converged)
+
+    def cc_converged(self) -> bool:
+        """
+        Determine if ORCA coupled-cluster iterations converged, by looking for "The Coupled-Cluster iterations have converged" in the ".out" file.
+        Check only if CC was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if string is found in ".out" file else False
+        """
+        return self._has(has_cc_converged)
 
     def geometry_optimization_converged(self) -> bool:
         """
@@ -700,11 +786,7 @@ class Output:
         bool
             True if "HURRAY" is found in ".out" file else False
         """
-        outfile = self.get_outfile()
-        try:
-            return has_geometry_optimization_converged(outfile)
-        except FileNotFoundError:
-            return False
+        return self._has(has_geometry_optimization_converged)
 
     def print_graph(self, *, max_length: int = 3, depth: int = -1) -> None:
         """
@@ -1029,9 +1111,17 @@ class Output:
         else:
             return None
 
-    def get_charge(self) -> StrictInt | None:
+    def get_charge(self, *, fallback: bool = True) -> StrictInt | None:
         """
-        Get the molecular charge from the json properties file.
+        Get the molecular charge.
+
+        Parameters
+        ----------
+        fallback : bool, default: True
+            If True and the JSON output is unavailable, attempt to parse the charge from the
+            plain-text `.out` file by grepping for "Total Charge           Charge".
+            This line is present in standard ORCA output but not for external methods
+            such as GFN-FF, where None is returned.
 
         Returns
         -------
@@ -1040,13 +1130,27 @@ class Output:
         charge = self._safe_get("results_properties", "calculation_info", "charge")
 
         if charge is not None:
-            charge = cast(StrictInt, charge)
+            return cast(StrictInt, charge)
 
-        return charge
+        if not fallback:
+            return None
 
-    def get_mult(self) -> StrictPositiveInt | None:
+        raw = get_float_from_line(
+            self.get_outfile(), "Total Charge           Charge", 0, -1, strict=False
+        )
+        return int(raw) if raw is not None else None
+
+    def get_mult(self, *, fallback: bool = True) -> StrictPositiveInt | None:
         """
-        Get the molecular electron multiplicity from the json properties file.
+        Get the molecular electron multiplicity.
+
+        Parameters
+        ----------
+        fallback : bool, default: True
+            If True and the JSON output is unavailable, attempt to parse the multiplicity
+            from the plain-text `.out` file by grepping for "Multiplicity           Mult".
+            This line is present in standard ORCA output but not for external methods
+            such as GFN-FF, where None is returned.
 
         Returns
         -------
@@ -1055,9 +1159,15 @@ class Output:
         mult = self._safe_get("results_properties", "calculation_info", "mult")
 
         if mult is not None:
-            mult = cast(StrictPositiveInt, mult)
+            return cast(StrictPositiveInt, mult)
 
-        return mult
+        if not fallback:
+            return None
+
+        raw = get_float_from_line(
+            self.get_outfile(), "Multiplicity           Mult", 0, -1, strict=False
+        )
+        return int(raw) if raw is not None else None
 
     def get_nelectrons(
         self, *, spin_resolved: bool = False
@@ -1122,7 +1232,9 @@ class Output:
 
         return nbf
 
-    def get_final_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
+    def get_final_energy(
+        self, *, index: int = -1, fallback: bool = True
+    ) -> StrictFiniteFloat | None:
         """
         Easy access to the final single point energy.
 
@@ -1131,6 +1243,9 @@ class Output:
         index : int, default: -1
             Index of the geometry for which the energy should be returned. The default -1 refers to the final geometry.
             Silently ignores if the requested index is not available and returns None.
+        fallback : bool, default: True
+            If True and the JSON output is unavailable, attempt to parse the energy from the plain-text
+            `.out` file by grepping for "FINAL SINGLE POINT ENERGY".
 
         Returns
         ----------
@@ -1145,8 +1260,14 @@ class Output:
 
         if final_energy is not None:
             final_energy = cast(StrictFiniteFloat, final_energy)
+            return final_energy
 
-        return final_energy
+        if not fallback:
+            return None
+
+        return get_float_from_line(
+            self.get_outfile(), "FINAL SINGLE POINT ENERGY", index, -1, strict=False
+        )
 
     def get_energies(self, *, index: int = -1) -> dict[str, Energy] | None:
         """
@@ -1201,7 +1322,9 @@ class Output:
 
         return energy_dict
 
-    def get_gradient(self, *, index: int = -1) -> list[StrictFiniteFloat] | None:
+    def get_gradient(
+        self, *, index: int = -1, fallback: bool = True
+    ) -> list[StrictFiniteFloat] | None:
         """
         Easy access to the nuclear gradient
 
@@ -1213,6 +1336,9 @@ class Output:
             geometry, so the default index will return None. You can request the gradient for the structure one step
             before the final one with the index -2. For most intents and purposes, the last and second to last
             geometries, energies and gradients are the same within the given tolerances.
+        fallback : bool, default: True
+            If True and the JSON output is unavailable, attempt to parse the gradient from the plain-text
+            `.out` file by grepping for "CARTESIAN GRADIENT".
 
         Returns
         ----------
@@ -1232,11 +1358,16 @@ class Output:
                 gradient,
             )
             flat = [inner[0] for inner in gradient]
-            gradient = flat
+            return flat
 
-        return gradient
+        if not fallback:
+            return None
 
-    def get_structure(self, *, index: int = -1, with_fragments: bool = True) -> Structure | None:
+        return self._grep_gradient(index)
+
+    def get_structure(
+        self, *, index: int = -1, with_fragments: bool = True, fallback: bool = True
+    ) -> Structure | None:
         """
         Returns structure from ORCA job as Structure object (by default the final structure).
         Silently returns None of no structure is available.
@@ -1247,6 +1378,10 @@ class Output:
             index of geometry to return. The default -1 refers to the final geometry.
         with_fragments : bool, default: True
             whether the fragment IDs should be added as well to the structure (if available)
+        fallback : bool, default: True
+            If True and the JSON output is unavailable, attempt to parse the structure from the plain-text
+            `.out` file by grepping for "CARTESIAN COORDINATES (ANGSTROEM)". This is useful for recovering
+            structures from failed or incomplete geometry optimisations where no JSON was written.
 
         Returns
         ----------
@@ -1259,7 +1394,9 @@ class Output:
         cartesians = self._get_cartesians(index)
 
         if cartesians is None:
-            return None
+            if not fallback:
+                return None
+            return self._grep_structure(index)
 
         for line in cartesians:
             elem, x_au, y_au, z_au = line
@@ -1347,6 +1484,82 @@ class Output:
             )
 
         return fragments
+
+    def _grep_structure(self, index: int, /) -> Structure | None:
+        """Parse structure from "CARTESIAN COORDINATES (ANGSTROEM)" block in the .out file."""
+        # > Get geometry block in the output file
+        lines = get_lines_from_block(
+            self.get_outfile(),
+            "CARTESIAN COORDINATES (ANGSTROEM)",
+            index=index,
+            offset=2,
+        )
+
+        # > If we found nothing we return None
+        if not lines:
+            return None
+
+        # > Collect the atoms from the block
+        atoms: list[Atom] = []
+        for line in lines:
+            parts = line.split()
+            if len(parts) != 4:
+                continue
+            try:
+                elem = parts[0]
+                x, y, z = float(parts[1]), float(parts[2]), float(parts[3])
+            except ValueError:
+                continue
+            atoms.append(Atom(element=elem, coordinates=Coordinates((x, y, z))))
+
+        # > If no atoms were collected return None
+        if not atoms:
+            return None
+
+        # > Assemble the structure
+        structure = Structure(atoms)
+
+        # > Add molecular charge if present
+        charge = self.get_charge()
+        if charge is not None:
+            structure.charge = charge
+
+        # > Add molecular multiplicity if present
+        mult = self.get_mult()
+        if mult is not None:
+            structure.multiplicity = mult
+
+        return structure
+
+    def _grep_gradient(self, index: int, /) -> list[StrictFiniteFloat] | None:
+        """Parse gradient from "CARTESIAN GRADIENT" block in the .out file (Eh/Bohr)."""
+        # > Get gradient block from the output file
+        lines = get_lines_from_block(
+            self.get_outfile(),
+            "CARTESIAN GRADIENT",
+            index=index,
+            offset=3,
+        )
+
+        # > Return None if no block was found
+        if not lines:
+            return None
+
+        # > Collect gradient line by line
+        gradient: list[StrictFiniteFloat] = []
+        for line in lines:
+            parts = line.split()
+            # format: "1  O  :  x  y  z"
+            if len(parts) < 6 or parts[2] != ":":
+                continue
+            try:
+                x, y, z = float(parts[3]), float(parts[4]), float(parts[5])
+            except ValueError:
+                continue
+            gradient.extend(cast(list[StrictFiniteFloat], [x, y, z]))
+
+        # > Return gradient or None
+        return gradient if gradient else None
 
     def get_mos(self, gbw_index: int = 0) -> dict[str, list[MO]] | None:
         """
@@ -1777,32 +1990,56 @@ class Output:
 
         return pol
 
-    def get_s2(self, *, index: int = -1) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | None:
+    def get_s2(
+        self, *, index: int = -1
+    ) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | tuple[None, None]:
         """
-        Get the S² expectation value and the ideal S² value by grepping them from the output file.
+        Get the S² expectation value and the ideal S² value by grepping them from the output file for UHF and returning
+        the ideal values for RHF and ROHF. The ideal value for ROHF requires the multiplicity which is obtained via
+        `self.get_mult()`.
 
         Parameters
         ----------
         index : int, default: -1
             Index of the geometry for which S² should be returned. The default -1 refers to the final geometry.
             Silently ignores if the requested index is not available and returns None.
+            For RHF/ROHF the index is not relevant since the ideal values are returned.
 
         Returns
         ----------
-        tuple[StrictFiniteFloat, StrictFiniteFloat] | None
+        tuple[StrictFiniteFloat, StrictFiniteFloat] | tuple[None, None]
             Return the expectation value and the ideal value or None if nothing is found.
         """
-        outfile = self.get_outfile()
-        # // String for searching the S² expectation value.
-        expec_string = "Expectation value of <S**2>"
-        # // String for searching the ideal S² value.
-        ideal_string = "Ideal value S*(S+1)"
-        expec_s2 = get_float_from_line(outfile, expec_string, index, strict=False)
-        ideal_s2 = get_float_from_line(outfile, ideal_string, index, strict=False)
+        expec_s2: StrictFiniteFloat | None = None
+        ideal_s2: StrictFiniteFloat | None = None
+        # > Get HFType
+        hftype = self.get_hftype()
+        match hftype:
+            # > RHF/RKS just returns the ideal value zero
+            case Hftyp.RHF:
+                return 0.0, 0.0
+            # > ROHF/ROKS - ideal S2 value by construction
+            case Hftyp.ROHF:
+                mult = self.get_mult()
+                # > Cannot determine S2 without multiplicity
+                if mult:
+                    ideal_s2 = (mult**2 - 1) / 4
+                    expec_s2 = ideal_s2
+            # > For UHF or None we just try to get S2 from the output
+            case Hftyp.UHF | _:
+                # > Grep from output file
+                outfile = self.get_outfile()
+                # // String for searching the S² expectation value.
+                expec_string = "Expectation value of <S**2>"
+                # // String for searching the ideal S² value.
+                ideal_string = "Ideal value S*(S+1)"
+                expec_s2 = get_float_from_line(outfile, expec_string, index, strict=False)
+                ideal_s2 = get_float_from_line(outfile, ideal_string, index, strict=False)
+
         if expec_s2 is not None and ideal_s2 is not None:
             return expec_s2, ideal_s2
         else:
-            return None
+            return None, None
 
     def get_zpe(self, *, index: int = -1) -> StrictPositiveFloat | None:
         """
@@ -1985,6 +2222,115 @@ class Output:
         else:
             return None
 
+    def get_frequencies(
+        self, *, index: int = -1, threshold: float | None = None
+    ) -> dict[int, float] | None:
+        """
+        Returns all vibrational frequencies (in cm⁻¹). Requires a frequency calculation (FREQ or NUMFREQ).
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the frequencies should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            frequencies are only available for the final geometry.
+        threshold : float | None, default: None
+            Frequencies more negative than ``-threshold`` (in cm⁻¹) are returned.
+            If threshold is None no frequencies will be sorted out.
+
+        Returns
+        ----------
+        frequencies : dict[int, float] | None
+            Dictionary mapping 1-based mode index to vibrational frequency in cm⁻¹, or None if no frequency
+            data is found.
+        """
+        # > "thermochemistry_energies" contains a list, but there should always be only one index
+        freq_list = self._safe_get(
+            "results_properties", "geometries", index, "thermochemistry_energies", 0, "freq"
+        )
+
+        if freq_list is None:
+            return None
+
+        freq_list = cast(list[list[float]], freq_list)
+
+        return {
+            i + 1: inner[0]
+            for i, inner in enumerate(freq_list)
+            if threshold is None or inner[0] < -threshold
+        }
+
+    def get_imaginary_frequencies(self, *, threshold: float = 0.0) -> dict[int, float] | None:
+        """
+        Returns only the imaginary (negative) vibrational frequencies (in cm⁻¹). Requires a frequency
+        calculation (FREQ or NUMFREQ).
+
+        threshold : float, default: 0.0
+            Frequencies more negative than ``-threshold`` (in cm⁻¹) are considered imaginary.
+            A positive threshold ignores small negative frequencies that may arise from numerical
+            noise, e.g. a threshold of 50.0 treats any frequency above -50.0 cm⁻¹ as real.
+
+        Returns
+        ----------
+        imaginary_frequencies : dict[int, float] | None
+            Dictionary mapping 1-based mode index to imaginary frequency in cm⁻¹. Returns None if no frequency
+            data is present, and an empty dict if all frequencies are real.
+        """
+        return self.get_frequencies(threshold=threshold)
+
+    def is_pes_minimum(self, *, threshold: float = 0.0) -> bool | None:
+        """
+        Returns True if the structure is a PES minimum, i.e. all vibrational frequencies are real
+        within the given threshold. Requires a frequency calculation (FREQ or NUMFREQ).
+
+        Parameters
+        ----------
+        threshold : float, default: 0.0
+            Frequencies more negative than ``-threshold`` (in cm⁻¹) are considered imaginary.
+            A positive threshold ignores small negative frequencies that may arise from numerical
+            noise, e.g. a threshold of 50.0 treats any frequency above -50.0 cm⁻¹ as real.
+
+        Returns
+        ----------
+        is_minimum : bool | None
+            True if no frequency lies below ``-threshold``, False if at least one does, or None
+            if no frequency data is available.
+        """
+        imaginary_frequencies = self.get_imaginary_frequencies(threshold=threshold)
+
+        if imaginary_frequencies is None:
+            return None
+
+        # > Minimum if no imaginary_frequency is present
+        return not bool(imaginary_frequencies)
+
+    def is_pes_transition_state(self, *, threshold: float = 0.0) -> bool | None:
+        """
+        Returns True if the structure is a first-order saddle point (transition state), i.e.
+        exactly one vibrational frequency lies below ``-threshold``. Requires a frequency calculation
+        (FREQ or NUMFREQ).
+
+        Parameters
+        ----------
+        threshold : float, default: 0.0
+            Frequencies more negative than ``-threshold`` (in cm⁻¹) are considered imaginary.
+            A positive threshold ignores small negative frequencies that may arise from numerical
+            noise, e.g. a threshold of 50.0 treats any frequency above -50.0 cm⁻¹ as real.
+
+        Returns
+        ----------
+        is_transition_state : bool | None
+            True if exactly one frequency lies below ``-threshold``, False otherwise, or None
+            if no frequency data is available.
+        """
+        imaginary_frequencies = self.get_imaginary_frequencies(threshold=threshold)
+
+        if imaginary_frequencies is None:
+            return None
+
+        # > Transition state if only one imaginary mode is present
+        return len(imaginary_frequencies) == 1
+
     def recreate_gbw_results(self, config_dict: dict[str, Any], gbw_index: int = 0, /) -> None:
         """
         Function for recreating a specific gbw-JSON file with a config dict. Silently does nothing if `gbw_index` is
@@ -2074,6 +2420,111 @@ class Output:
 
         if hcore_list is not None:
             return np.array(hcore_list)
+        else:
+            return None
+
+    def get_int_kinetic(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the kinetic energy integral matrix as numpy array.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request the kinetic energy integrals to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
+        """
+
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            # // 1elIntegrals
+            if "1elIntegrals" not in self.config_dict:
+                self.config_dict["1elIntegrals"] = []
+            # // T Integrals
+            if "T" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("T")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        # > get kinetic integrals from gbw json files
+        kinetic_list = self._safe_get("results_gbw", gbw_index, "molecule", "t_matrix")
+
+        if kinetic_list is not None:
+            return np.array(kinetic_list)
+        else:
+            return None
+
+    def get_int_nuc_attr(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the nuclear attraction integral matrix as numpy array.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request the nuclear attraction integrals to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
+        """
+
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            # // 1elIntegrals
+            if "1elIntegrals" not in self.config_dict:
+                self.config_dict["1elIntegrals"] = []
+            # // V Integrals
+            if "V" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("V")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        # > get nuclear attraction integrals from gbw json files
+        nuclear_list = self._safe_get("results_gbw", gbw_index, "molecule", "v_matrix")
+
+        if nuclear_list is not None:
+            return np.array(nuclear_list)
+        else:
+            return None
+
+    def get_int_hmo(
+        self, recreate_json: bool = False, gbw_index: int = 0
+    ) -> npt.NDArray[np.float64] | None:
+        """
+        Returns the core hamiltonian integral matrix in MO basis as numpy array.
+
+        Parameters
+        ----------
+        recreate_json : bool, default = False
+            If True, recreate the gbw json file and request the hmo integrals to be included.
+            The request for these integrals will be added to the `config_dict` attribute.
+        gbw_index: int, default = 0
+                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices are not allowed. Default 0 refers to the main gbw file.
+        """
+
+        if recreate_json:
+            if self.config_dict is None:
+                self.config_dict = {}
+            # // 1elIntegrals
+            if "1elIntegrals" not in self.config_dict:
+                self.config_dict["1elIntegrals"] = []
+            # // HMO Integrals
+            if "HMO" not in self.config_dict["1elIntegrals"]:
+                self.config_dict["1elIntegrals"].append("HMO")
+            self.recreate_gbw_results(self.config_dict, gbw_index)
+
+        # > get hmo from gbw json files
+        hmo_list = self._safe_get("results_gbw", gbw_index, "molecule", "hmo")
+
+        if hmo_list is not None:
+            return np.array(hmo_list)
         else:
             return None
 
@@ -2292,3 +2743,33 @@ class Output:
         except (KeyError, IndexError):
             return None
         return float(free_solv_energy)
+
+    def get_fcidump(self) -> Fcidump | None:
+        """
+        Parse the FCIDUMP file generated by ORCA and return its data in the `Fcidump` data class.
+        The FCIDUMP file has to be generated by the ORCA job and cannot be generated on-the-fly after the calculation.
+        To generate FCIDUMP files, set the following options:
+        ```
+        %output
+           dumpactints true
+        end
+        ```
+        See `BlockOutput` for the related block option.
+
+        Returns
+        -------
+        fcidump_data: Fcidump | None
+            The parsed FCIDUMP data or None if the file is not present or could not be parsed.
+        """
+
+        # > Get path to the FCIDUMP file
+        fci_path = self.get_file(".fcidump")
+
+        # > If there is no file we return None
+        if not fci_path.is_file():
+            return None
+
+        try:
+            return Fcidump.from_file(fci_path)
+        except ValueError:
+            return None
