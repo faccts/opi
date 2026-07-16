@@ -29,11 +29,12 @@ try:
 except ImportError:
     # Ensure the name exists in the global namespace so the decorator can
     # check it unconditionally without a NameError.
-    get_molbar_from_coordinates = None 
+    get_molbar_from_coordinates = None  # type: ignore[assignment,unused-ignore]
 
 # ============================================================
 # Mode classification
 # ============================================================
+
 
 class MolBarMode(StringEnum):
     """Valid calculation modes for `Structure.to_molbar`.
@@ -72,9 +73,7 @@ def requires_molbar(func: Callable[..., _T]) -> Callable[..., _T]:
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> _T:
         if get_molbar_from_coordinates is None:
-            raise ImportError(
-                "MolBar is not installed. Install it with: pip install molbar"
-            )
+            raise ImportError("MolBar is not installed. Install it with: pip install molbar")
         return func(*args, **kwargs)
 
     return wrapper
@@ -83,6 +82,7 @@ def requires_molbar(func: Callable[..., _T]) -> Callable[..., _T]:
 # ============================================================
 # Free helper function
 # ============================================================
+
 
 def call_molbar(
     elements: list[str],
@@ -116,7 +116,7 @@ def call_molbar(
 
     return cast(
         "str | tuple[str, dict[str, Any]]",
-        _get_molbar_from_coordinates(
+        get_molbar_from_coordinates(  # type: ignore[operator,unused-ignore]
             coordinates,
             elements,
             total_charge=total_charge,

@@ -9,8 +9,8 @@ Covers:
 - requires_molbar() decorator
 - Structure._validate_molbar_mode()
 - Structure._get_molbar_from_coordinates()
-- Structure.to_molbar()
-- Structure.to_molbar_data()
+- Structure.calculate_molbar()
+- Structure.calculate_molbar_data()
 
 Edge cases: invalid mode, empty structure, ghost atom exclusion,
 point charge exclusion, mode case-insensitivity.
@@ -20,7 +20,6 @@ import pytest
 
 pytest.importorskip("molbar", reason="MolBar not installed")
 
-import numpy as np
 
 from opi.input.structures.atom import Atom, GhostAtom, PointCharge
 from opi.input.structures.coordinates import Coordinates
@@ -70,6 +69,7 @@ def no_real_atoms_structure() -> Structure:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestMolBarMode:
     def test_mb_value(self):
         """`MolBarMode.MB` should have value `"mb"`."""
@@ -98,6 +98,7 @@ class TestMolBarMode:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestRequiresMolbar:
     def test_decorated_function_runs(self):
         """A function decorated with `requires_molbar()` should run normally when MolBar is installed."""
@@ -114,6 +115,7 @@ class TestRequiresMolbar:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestValidateMolbarMode:
     def test_valid_string_mb(self, water):
         """`_validate_molbar_mode()` should accept `"mb"` and return `MolBarMode.MB`."""
@@ -143,6 +145,7 @@ class TestValidateMolbarMode:
 # ============================================================
 
 
+@pytest.mark.unit
 class TestGetMolbarFromCoordinates:
     def test_raises_for_no_real_atoms(self, no_real_atoms_structure):
         """`_get_molbar_from_coordinates()` should raise `ValueError` if there are no real atoms."""
@@ -164,44 +167,45 @@ class TestGetMolbarFromCoordinates:
 
 
 # ============================================================
-# to_molbar
+# calculate_molbar
 # ============================================================
 
 
-class TestToMolbar:
+@pytest.mark.unit
+class TestCalculateMolbar:
     def test_returns_string(self, water):
-        """`to_molbar()` should return a string."""
-        assert isinstance(water.to_molbar(), str)
+        """`calculate_molbar()` should return a string."""
+        assert isinstance(water.calculate_molbar(), str)
 
     def test_known_barcode(self, water):
         """
-        `to_molbar()` should return the expected barcode for water.
+        `calculate_molbar()` should return the expected barcode for water.
         Hard-coded from a verified MolBar 1.1.3 run.
         """
-        assert water.to_molbar() == (
+        assert water.calculate_molbar() == (
             "MolBar | 1.1.3 | OH2 | 0 | -84 20 344 | 80 | -47 12 315 | 0 "
         )
 
     def test_topo_mode(self, water):
         """
-        `to_molbar()` with `mode="topo"` should return the topology-only barcode.
+        `calculate_molbar()` with `mode="topo"` should return the topology-only barcode.
         Hard-coded from a verified MolBar 1.1.3 run.
         """
-        assert water.to_molbar(mode="topo") == "TopoBar | 1.1.3 | OH2 | -84 20 344 | 80"
+        assert water.calculate_molbar(mode="topo") == "TopoBar | 1.1.3 | OH2 | -84 20 344 | 80"
 
     def test_mode_case_insensitive(self, water):
-        """`to_molbar()` should accept mode strings case-insensitively."""
-        assert water.to_molbar(mode="MB") == water.to_molbar(mode="mb")
+        """`calculate_molbar()` should accept mode strings case-insensitively."""
+        assert water.calculate_molbar(mode="MB") == water.calculate_molbar(mode="mb")
 
     def test_raises_for_no_real_atoms(self, no_real_atoms_structure):
-        """`to_molbar()` should raise `ValueError` if there are no real atoms."""
+        """`calculate_molbar()` should raise `ValueError` if there are no real atoms."""
         with pytest.raises(ValueError, match="no real atoms"):
-            no_real_atoms_structure.to_molbar()
+            no_real_atoms_structure.calculate_molbar()
 
     def test_raises_for_invalid_mode(self, water):
-        """`to_molbar()` should raise `ValueError` for an invalid mode."""
+        """`calculate_molbar()` should raise `ValueError` for an invalid mode."""
         with pytest.raises(ValueError, match="Invalid mode"):
-            water.to_molbar(mode="invalid")
+            water.calculate_molbar(mode="invalid")
 
     def test_ghost_atom_excluded(self):
         """
@@ -216,13 +220,23 @@ class TestToMolbar:
         )
         with_ghost = Structure(
             atoms=[
-                Atom(element=Element("O"), coordinates=Coordinates(coordinates=(0.0, 0.0, 0.119748))),
-                Atom(element=Element("H"), coordinates=Coordinates(coordinates=(0.0, 0.756950, -0.478993))),
-                Atom(element=Element("H"), coordinates=Coordinates(coordinates=(0.0, -0.756950, -0.478993))),
-                GhostAtom(element=Element("C"), coordinates=Coordinates(coordinates=(5.0, 5.0, 5.0))),
+                Atom(
+                    element=Element("O"), coordinates=Coordinates(coordinates=(0.0, 0.0, 0.119748))
+                ),
+                Atom(
+                    element=Element("H"),
+                    coordinates=Coordinates(coordinates=(0.0, 0.756950, -0.478993)),
+                ),
+                Atom(
+                    element=Element("H"),
+                    coordinates=Coordinates(coordinates=(0.0, -0.756950, -0.478993)),
+                ),
+                GhostAtom(
+                    element=Element("C"), coordinates=Coordinates(coordinates=(5.0, 5.0, 5.0))
+                ),
             ]
         )
-        assert plain.to_molbar() == with_ghost.to_molbar()
+        assert plain.calculate_molbar() == with_ghost.calculate_molbar()
 
     def test_point_charge_excluded(self):
         """
@@ -237,48 +251,57 @@ class TestToMolbar:
         )
         with_pc = Structure(
             atoms=[
-                Atom(element=Element("O"), coordinates=Coordinates(coordinates=(0.0, 0.0, 0.119748))),
-                Atom(element=Element("H"), coordinates=Coordinates(coordinates=(0.0, 0.756950, -0.478993))),
-                Atom(element=Element("H"), coordinates=Coordinates(coordinates=(0.0, -0.756950, -0.478993))),
+                Atom(
+                    element=Element("O"), coordinates=Coordinates(coordinates=(0.0, 0.0, 0.119748))
+                ),
+                Atom(
+                    element=Element("H"),
+                    coordinates=Coordinates(coordinates=(0.0, 0.756950, -0.478993)),
+                ),
+                Atom(
+                    element=Element("H"),
+                    coordinates=Coordinates(coordinates=(0.0, -0.756950, -0.478993)),
+                ),
                 PointCharge(coordinates=Coordinates(coordinates=(5.0, 5.0, 5.0)), charge=1.0),
             ]
         )
-        assert plain.to_molbar() == with_pc.to_molbar()
+        assert plain.calculate_molbar() == with_pc.calculate_molbar()
 
 
 # ============================================================
-# to_molbar_data
+# calculate_molbar_data
 # ============================================================
 
 
-class TestToMolbarData:
+@pytest.mark.unit
+class TestCalculateMolbarData:
     def test_returns_tuple(self, water):
-        """`to_molbar_data()` should return a tuple of length 2."""
-        result = water.to_molbar_data()
+        """`calculate_molbar_data()` should return a tuple of length 2."""
+        result = water.calculate_molbar_data()
         assert isinstance(result, tuple)
         assert len(result) == 2
 
     def test_first_element_is_string(self, water):
-        """`to_molbar_data()` first element should be the barcode string."""
-        barcode, _ = water.to_molbar_data()
+        """`calculate_molbar_data()` first element should be the barcode string."""
+        barcode, _ = water.calculate_molbar_data()
         assert isinstance(barcode, str)
 
     def test_second_element_is_dict(self, water):
-        """`to_molbar_data()` second element should be a dictionary."""
-        _, data = water.to_molbar_data()
+        """`calculate_molbar_data()` second element should be a dictionary."""
+        _, data = water.calculate_molbar_data()
         assert isinstance(data, dict)
 
-    def test_barcode_matches_to_molbar(self, water):
-        """The barcode in `to_molbar_data()` should match `to_molbar()`."""
-        barcode, _ = water.to_molbar_data()
-        assert barcode == water.to_molbar()
+    def test_barcode_matches_calculate_molbar(self, water):
+        """The barcode in `calculate_molbar_data()` should match `calculate_molbar()`."""
+        barcode, _ = water.calculate_molbar_data()
+        assert barcode == water.calculate_molbar()
 
     def test_data_keys(self, water):
         """
-        `to_molbar_data()` data dictionary should contain the expected top-level keys.
+        `calculate_molbar_data()` data dictionary should contain the expected top-level keys.
         Keys verified against MolBar 1.1.3.
         """
-        _, data = water.to_molbar_data()
+        _, data = water.calculate_molbar_data()
         expected_keys = {
             "MolBar",
             "topology_spectrum",
@@ -303,16 +326,16 @@ class TestToMolbarData:
         assert set(data.keys()) == expected_keys
 
     def test_raises_for_no_real_atoms(self, no_real_atoms_structure):
-        """`to_molbar_data()` should raise `ValueError` if there are no real atoms."""
+        """`calculate_molbar_data()` should raise `ValueError` if there are no real atoms."""
         with pytest.raises(ValueError, match="no real atoms"):
-            no_real_atoms_structure.to_molbar_data()
+            no_real_atoms_structure.calculate_molbar_data()
 
     def test_raises_for_invalid_mode(self, water):
-        """`to_molbar_data()` should raise `ValueError` for an invalid mode."""
+        """`calculate_molbar_data()` should raise `ValueError` for an invalid mode."""
         with pytest.raises(ValueError, match="Invalid mode"):
-            water.to_molbar_data(mode="invalid")
+            water.calculate_molbar_data(mode="invalid")
 
     def test_topo_mode(self, water):
-        """`to_molbar_data()` with `mode="topo"` should return the topology barcode."""
-        barcode, _ = water.to_molbar_data(mode="topo")
+        """`calculate_molbar_data()` with `mode="topo"` should return the topology barcode."""
+        barcode, _ = water.calculate_molbar_data(mode="topo")
         assert barcode == "TopoBar | 1.1.3 | OH2 | -84 20 344 | 80"
