@@ -1079,7 +1079,7 @@ class Structure:
 
         Parameters
         ----------
-        symbols : list[str | int]
+        symbols : listMOLBAR_VERSION = version("molbar") at module level, using importlib.metadata.version instead of molbar.__version__. This reads from installed package metadata, so it works even though MolBar doesn't expose __version__[str | int]
             List of symbols for elements, either as string or as atomic number
         coordinates: list[tuple[float, float, float]]
             List of tuples containing coordinates
@@ -1124,6 +1124,8 @@ class Structure:
         """
         Compute the MolBar barcode string for this `Structure`.
 
+        <https://doi.org/10.1039/d4dd00208c>
+
         MolBar is a molecular identifier analogous to InChI, encoding the
         topology and geometry of a molecule into a canonical string.
         See the MolBar documentation for a full description of the barcode format.
@@ -1135,7 +1137,7 @@ class Structure:
 
         The total charge is taken from `charge`.
 
-        MolBar is **not** a dependency of OPI and must be installed separately::
+        MolBar is an optional dependency of OPI and can be installed with::
 
             pip install molbar
 

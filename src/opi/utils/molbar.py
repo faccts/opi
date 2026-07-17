@@ -8,6 +8,7 @@ MolBar is not a dependency of OPI. Install it separately::
 
 from __future__ import annotations
 
+import importlib.util
 from functools import wraps
 from typing import Any, Callable, TypeVar, cast
 
@@ -22,14 +23,16 @@ __all__ = (
 # MolBar optional import
 # ============================================================
 
-# MolBar is an optional dependency. The decorator below guards every method
-# that calls it and raises a clear ImportError if it is not installed.
-try:
-    from molbar.barcode import get_molbar_from_coordinates  # type: ignore
-except ImportError:
-    # Ensure the name exists in the global namespace so the decorator can
-    # check it unconditionally without a NameError.
-    get_molbar_from_coordinates = None  # type: ignore[assignment,unused-ignore]
+# > MolBar is an optional dependency with heavy dependencies. It is imported
+# > lazily inside `call_molbar()` so that merely importing `opi.utils.molbar`
+# > (which happens transitively on almost any OPI import via structure.py)
+# > does not pull in MolBar for users who never compute a barcode.
+
+
+def _molbar_available() -> bool:
+    """Return `True` if MolBar is installed, without importing it."""
+    return importlib.util.find_spec("molbar") is not None
+
 
 # ============================================================
 # Mode classification
@@ -37,7 +40,7 @@ except ImportError:
 
 
 class MolBarMode(StringEnum):
-    """Valid calculation modes for `Structure.to_molbar`.
+    """Valid calculation modes for `Structure.calculate_molbar`.
 
     Matching is case-insensitive: pass `"MB"`, `"mb"`, or `"Mb"`
     and all will be accepted.
@@ -65,14 +68,15 @@ def requires_molbar(func: Callable[..., _T]) -> Callable[..., _T]:
     """
     Decorator that raises `ImportError` if MolBar is not installed.
 
-    Apply to any method that calls `molbar.barcode.get_molbar_from_coordinates`
-    to ensure a clear error message is raised at call time rather than at
-    import time.
+    Apply to any method that calls `call_molbar()` to ensure a clear error
+    message is raised at call time rather than at import time. Availability is
+    checked via `importlib.util.find_spec` so the decorator does not import
+    MolBar itself.
     """
 
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> _T:
-        if get_molbar_from_coordinates is None:
+        if not _molbar_available():
             raise ImportError("MolBar is not installed. Install it with: pip install molbar")
         return func(*args, **kwargs)
 
@@ -114,9 +118,13 @@ def call_molbar(
         full MolBar data dictionary, depending on *return_data*.
     """
 
+    # > Imported lazily: this is the first point at which MolBar is actually
+    # > needed, so users who never compute a barcode never pay the import cost.
+    from molbar.barcode import get_molbar_from_coordinates  # type: ignore
+
     return cast(
         "str | tuple[str, dict[str, Any]]",
-        get_molbar_from_coordinates(  # type: ignore[operator,unused-ignore]
+        get_molbar_from_coordinates(
             coordinates,
             elements,
             total_charge=total_charge,

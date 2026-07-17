@@ -20,12 +20,17 @@ import pytest
 
 pytest.importorskip("molbar", reason="MolBar not installed")
 
+from importlib.metadata import version
 
 from opi.input.structures.atom import Atom, GhostAtom, PointCharge
 from opi.input.structures.coordinates import Coordinates
 from opi.input.structures.structure import Structure
 from opi.utils.element import Element
 from opi.utils.molbar import MolBarMode, requires_molbar
+
+# > Version of the installed MolBar, read from package metadata rather than a
+# > hard-coded literal so the tests stay valid across MolBar releases.
+MOLBAR_VERSION = version("molbar")
 
 # ============================================================
 # Helpers
@@ -180,18 +185,32 @@ class TestCalculateMolbar:
     def test_known_barcode(self, water):
         """
         `calculate_molbar()` should return the expected barcode for water.
-        Hard-coded from a verified MolBar 1.1.3 run.
+        The version field is checked against the installed MolBar version; the
+        spectra are pinned from a verified run and are stable for this geometry.
         """
-        assert water.calculate_molbar() == (
-            "MolBar | 1.1.3 | OH2 | 0 | -84 20 344 | 80 | -47 12 315 | 0 "
+        barcode = water.calculate_molbar()
+        assert barcode == (
+            f"MolBar | {MOLBAR_VERSION} | OH2 | 0 | -84 20 344 | 80 | -47 12 315 | 0 "
         )
+
+    def test_barcode_structure(self, water):
+        """
+        `calculate_molbar()` output should have the expected field structure and
+        carry the installed MolBar version, independent of the numeric spectra.
+        """
+        fields = [f.strip() for f in water.calculate_molbar().split("|")]
+        assert fields[0] == "MolBar"
+        assert fields[1] == MOLBAR_VERSION
+        assert fields[2] == "OH2"
 
     def test_topo_mode(self, water):
         """
         `calculate_molbar()` with `mode="topo"` should return the topology-only barcode.
-        Hard-coded from a verified MolBar 1.1.3 run.
+        The version field is checked against the installed MolBar version.
         """
-        assert water.calculate_molbar(mode="topo") == "TopoBar | 1.1.3 | OH2 | -84 20 344 | 80"
+        assert water.calculate_molbar(mode="topo") == (
+            f"TopoBar | {MOLBAR_VERSION} | OH2 | -84 20 344 | 80"
+        )
 
     def test_mode_case_insensitive(self, water):
         """`calculate_molbar()` should accept mode strings case-insensitively."""
@@ -338,4 +357,4 @@ class TestCalculateMolbarData:
     def test_topo_mode(self, water):
         """`calculate_molbar_data()` with `mode="topo"` should return the topology barcode."""
         barcode, _ = water.calculate_molbar_data(mode="topo")
-        assert barcode == "TopoBar | 1.1.3 | OH2 | -84 20 344 | 80"
+        assert barcode == f"TopoBar | {MOLBAR_VERSION} | OH2 | -84 20 344 | 80"
