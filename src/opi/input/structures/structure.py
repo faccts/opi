@@ -1079,7 +1079,7 @@ class Structure:
 
         Parameters
         ----------
-        symbols : listMOLBAR_VERSION = version("molbar") at module level, using importlib.metadata.version instead of molbar.__version__. This reads from installed package metadata, so it works even though MolBar doesn't expose __version__[str | int]
+        symbols : list[str | int]
             List of symbols for elements, either as string or as atomic number
         coordinates: list[tuple[float, float, float]]
             List of tuples containing coordinates
@@ -1124,11 +1124,18 @@ class Structure:
         """
         Compute the MolBar barcode string for this `Structure`.
 
-        <https://doi.org/10.1039/d4dd00208c>
+        MolBar (Molecular Barcode) was introduced by van Staalduinen and
+        Bannwarth as a chemical identifier that overcomes limitations of
+        SMILES and InChI for inorganic molecules and non-central stereochemistry
+        (e.g. axial and planar chirality). It combines the conventional
+        atomistic description with a fragment-based approach: fragment 3D
+        structures are normalised with a specialised force field and
+        characterised by physically inspired matrices derived solely from
+        atomic positions. The resulting permutation-invariant representation
+        is built from the eigenvalue spectra of these matrices, encoding both
+        bonding and stereochemistry. See the original publication for details:
 
-        MolBar is a molecular identifier analogous to InChI, encoding the
-        topology and geometry of a molecule into a canonical string.
-        See the MolBar documentation for a full description of the barcode format.
+        <https://doi.org/10.1039/d4dd00208c>
 
         Only real `Atom` entries are passed to MolBar; `EmbeddingPotential`,
         `GhostAtom`, and `PointCharge` instances are silently skipped. Note
