@@ -22,11 +22,13 @@ pytest.importorskip("molbar", reason="MolBar not installed")
 
 from importlib.metadata import version
 
+import numpy as np
+
 from opi.input.structures.atom import Atom, GhostAtom, PointCharge
 from opi.input.structures.coordinates import Coordinates
 from opi.input.structures.structure import Structure
 from opi.utils.element import Element
-from opi.utils.molbar import MolBarMode, requires_molbar
+from opi.utils.molbar import MolBarMode, call_molbar, requires_molbar
 
 # > Version of the installed MolBar, read from package metadata rather than a
 # > hard-coded literal so the tests stay valid across MolBar releases.
@@ -45,6 +47,14 @@ def make_atom(element: str, x: float, y: float, z: float) -> Atom:
     )
 
 
+# > Reference water geometry in list form, matching the XYZ block used by the
+# > `water` fixture. Used by the `call_molbar` tests, which need raw
+# > coordinates rather than an XYZ string.
+_WATER_COORDS = [
+    [0.0, 0.0, 0.119748],
+    [0.0, 0.756950, -0.478993],
+    [0.0, -0.756950, -0.478993],
+]
 # ============================================================
 # Fixtures
 # ============================================================
@@ -113,6 +123,72 @@ class TestRequiresMolbar:
             return "ok"
 
         assert dummy() == "ok"
+
+
+# ============================================================
+# call_molbar input-type conversion
+# ============================================================
+
+
+@pytest.mark.unit
+class TestCallMolbar:
+    def test_accepts_element_objects(self):
+        """`call_molbar()` should accept a list of `Element` instances."""
+        result = call_molbar(
+            elements=[Element("O"), Element("H"), Element("H")],
+            coordinates=np.array(_WATER_COORDS),
+            total_charge=0,
+            mode=MolBarMode.MB,
+            return_data=False,
+        )
+        assert isinstance(result, str)
+
+    def test_accepts_string_symbols_and_list_coords(self):
+        """`call_molbar()` should accept element-symbol strings and a nested list."""
+        result = call_molbar(
+            elements=["O", "H", "H"],
+            coordinates=_WATER_COORDS,
+            total_charge=0,
+            mode=MolBarMode.MB,
+            return_data=False,
+        )
+        assert isinstance(result, str)
+
+    def test_element_and_string_inputs_agree(self):
+        """Passing `Element` objects vs. strings should give the same barcode."""
+        via_elements = call_molbar(
+            elements=[Element("O"), Element("H"), Element("H")],
+            coordinates=_WATER_COORDS,
+            total_charge=0,
+            mode=MolBarMode.MB,
+            return_data=False,
+        )
+        via_strings = call_molbar(
+            elements=["O", "H", "H"],
+            coordinates=_WATER_COORDS,
+            total_charge=0,
+            mode=MolBarMode.MB,
+            return_data=False,
+        )
+        assert via_elements == via_strings
+
+    def test_array_and_list_coords_agree(self):
+        """Passing a NumPy array vs. a nested list of coordinates should agree."""
+        via_array = call_molbar(
+            elements=["O", "H", "H"],
+            coordinates=np.array(_WATER_COORDS),
+            total_charge=0,
+            mode=MolBarMode.MB,
+            return_data=False,
+        )
+        via_list = call_molbar(
+            elements=["O", "H", "H"],
+            coordinates=_WATER_COORDS,
+            total_charge=0,
+            mode=MolBarMode.MB,
+            return_data=False,
+        )
+        assert via_array == via_list
 
 
 # ============================================================

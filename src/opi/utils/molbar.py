@@ -10,28 +10,24 @@ from __future__ import annotations
 
 import importlib.util
 from functools import wraps
+from importlib import import_module
 from typing import Any, Callable, TypeVar, cast
 
+import numpy as np
+import numpy.typing as npt
+
 from opi.models.string_enum import StringEnum
+from opi.utils.element import Element
 
 __all__ = (
     "MolBarMode",
     "requires_molbar",
 )
 
-# ============================================================
-# MolBar optional import
-# ============================================================
-
-# > MolBar is an optional dependency with heavy dependencies. It is imported
-# > lazily inside `call_molbar()` so that merely importing `opi.utils.molbar`
-# > (which happens transitively on almost any OPI import via structure.py)
-# > does not pull in MolBar for users who never compute a barcode.
-
-
-def _molbar_available() -> bool:
-    """Return `True` if MolBar is installed, without importing it."""
-    return importlib.util.find_spec("molbar") is not None
+# > Populated on first use by the `@_import_molbar` decorator (see below).
+# > Declared here so the name resolves for type checkers and at call time,
+# > before the first invocation has cached the real function.
+get_molbar_from_coordinates: Any = None
 
 
 # ============================================================
@@ -40,17 +36,18 @@ def _molbar_available() -> bool:
 
 
 class MolBarMode(StringEnum):
-    """Valid calculation modes for `Structure.calculate_molbar`.
+    """
+    Molbar's calculations modes.
+    More details about these can be found: <https://bannwarthlab.pages.rwth-aachen.de/molbardocs/>
 
-    Matching is case-insensitive: pass `"MB"`, `"mb"`, or `"Mb"`
-    and all will be accepted.
+    Entries in the enum can be resolved case-insensitively.
 
     Attributes
     ----------
     MB : str
-        Full MolBar barcode (`"mb"`).
+        Full MolBar barcode (`mb`).
     TOPO : str
-        Topology-only barcode (`"topo"`).
+        Topology-only barcode (`topo`).
     """
 
     MB = "mb"
@@ -58,10 +55,15 @@ class MolBarMode(StringEnum):
 
 
 # ============================================================
-# Decorator
+# Decorators
 # ============================================================
 
 _T = TypeVar("_T")
+
+
+def _molbar_available() -> bool:
+    """Return `True` if MolBar is installed, without importing it."""
+    return importlib.util.find_spec("molbar") is not None
 
 
 def requires_molbar(func: Callable[..., _T]) -> Callable[..., _T]:
@@ -83,14 +85,46 @@ def requires_molbar(func: Callable[..., _T]) -> Callable[..., _T]:
     return wrapper
 
 
+def _import_molbar(func: Callable[..., _T]) -> Callable[..., _T]:
+    """
+    Decorator that lazily imports MolBar on first call and caches it.
+
+    MolBar has heavy dependencies and `opi.utils.molbar` is imported
+    transitively on almost any OPI import (via `structure.py`). Deferring the
+    import means users who never compute a barcode never pay the cost. On the
+    first invocation of the decorated function, `molbar.barcode` is imported
+    via `importlib.import_module` and `get_molbar_from_coordinates` is injected
+    into this module's `globals()`; subsequent calls reuse the cached global,
+    so the import happens at most once and only when actually needed.
+
+    Warnings
+    --------
+    The first-call import-and-cache step is **not thread-safe**. If two threads
+    call the decorated function concurrently before the first import has
+    completed, the import may run more than once. This is harmless in practice
+    (the module is cached in `sys.modules` and the resulting function is
+    identical) but is noted here for completeness.
+    """
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> _T:
+        if globals()["get_molbar_from_coordinates"] is None:
+            module = import_module("molbar.barcode")
+            globals()["get_molbar_from_coordinates"] = module.get_molbar_from_coordinates
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 # ============================================================
 # Free helper function
 # ============================================================
 
 
+@_import_molbar
 def call_molbar(
-    elements: list[str],
-    coordinates: list[list[float]],
+    elements: list[Element] | list[str],
+    coordinates: npt.NDArray[np.float64] | list[list[float]],
     total_charge: int,
     mode: MolBarMode,
     return_data: bool,
@@ -98,12 +132,22 @@ def call_molbar(
     """
     Thin wrapper around `molbar.barcode.get_molbar_from_coordinates`.
 
+    This is the boundary at which OPI-native datatypes are converted into the
+    plain types MolBar expects. Conversions are performed here, as late as
+    possible, so callers can pass their natural data (`Element` instances, a
+    NumPy coordinate array) without knowing MolBar's input format.
+
+    The MolBar import is handled by the `@_import_molbar` decorator, which
+    imports the package on first call and caches it in the module globals.
+
     Parameters
     ----------
-    elements : list[str]
-        Element symbols for all real atoms.
-    coordinates : list[list[float]]
-        Cartesian coordinates in Ångström, shape (N, 3).
+    elements : list[Element] | list[str]
+        Elements for all real atoms, either as `Element` instances or as
+        element-symbol strings.
+    coordinates : npt.NDArray[np.float64] | list[list[float]]
+        Cartesian coordinates in Ångström, shape (N, 3), as a NumPy array or a
+        nested list.
     total_charge : int
         Total charge of the structure.
     mode : MolBarMode
@@ -118,15 +162,15 @@ def call_molbar(
         full MolBar data dictionary, depending on *return_data*.
     """
 
-    # > Imported lazily: this is the first point at which MolBar is actually
-    # > needed, so users who never compute a barcode never pay the import cost.
-    from molbar.barcode import get_molbar_from_coordinates  # type: ignore
+    # > Convert OPI-native types to the plain types MolBar understands.
+    element_symbols: list[str] = [e.value if isinstance(e, Element) else e for e in elements]
+    coords: list[list[float]] = np.asarray(coordinates, dtype=np.float64).tolist()
 
     return cast(
         "str | tuple[str, dict[str, Any]]",
         get_molbar_from_coordinates(
-            coordinates,
-            elements,
+            coords,
+            element_symbols,
             total_charge=total_charge,
             return_data=return_data,
             mode=mode,

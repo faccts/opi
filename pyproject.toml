@@ -39,7 +39,7 @@ Changelog = "https://github.com/faccts/opi/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 molbar = [
-    "molbar==1.1.3",
+    "molbar~=1.1",
 ]
 
 [build-system]

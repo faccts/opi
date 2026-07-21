@@ -1131,7 +1131,9 @@ class Structure:
         atomistic description with a fragment-based approach: fragment 3D
         structures are normalised with a specialised force field and
         characterised by physically inspired matrices derived solely from
-        atomic positions. The resulting permutation-invariant representation
+        atomic positions.
+
+        The resulting permutation-invariant representation
         is built from the eigenvalue spectra of these matrices, encoding both
         bonding and stereochemistry. See the original publication for details:
 
@@ -1551,6 +1553,10 @@ class Structure:
             if n_struc_limit and n_struc >= n_struc_limit:
                 break
 
+    # ------------------------------------------------------------------ #
+    #  MOLBAR                                                            #
+    # ------------------------------------------------------------------ #
+
     def _get_molbar_from_coordinates(
         self,
         mode: MolBarMode,
@@ -1586,17 +1592,18 @@ class Structure:
                 "cannot build MolBar input."
             )
 
-        # Only real Atom instances are passed to MolBar; EmbeddingPotential,
-        # GhostAtom, and PointCharge entries are excluded via real_atoms.
-        # Note that GhostAtom is a subclass of Atom, so type(a) is Atom is
-        # used rather than isinstance inside the real_atoms property.
+        # > Only real Atom instances are passed to MolBar; EmbeddingPotential,
+        # > GhostAtom, and PointCharge entries are excluded via real_atoms.
+        # > Note that GhostAtom is a subclass of Atom, so type(a) is Atom is
+        # > used rather than isinstance inside the real_atoms property.
+
+        # > OPI-native types (Element instances, NumPy array) are passed as-is;
+        # > `call_molbar` handles the conversion to MolBar's expected format.
         real_indices = [i for i, a in enumerate(self.atoms) if type(a) is Atom]
-        elements: list[str] = [atom.element.value for atom in self.real_atoms]
-        coordinates: list[list[float]] = self.get_coordinates(only_atoms=real_indices).tolist()
 
         return call_molbar(
-            elements=elements,
-            coordinates=coordinates,
+            elements=[atom.element for atom in self.real_atoms],
+            coordinates=self.get_coordinates(only_atoms=real_indices),
             total_charge=self.charge,
             mode=mode,
             return_data=return_data,
@@ -1621,7 +1628,7 @@ class Structure:
         ValueError
             If *mode* is not a valid `MolBarMode` value.
         """
-        # Normalise and validate mode (case-insensitive via StringEnum._missing_)
+        # > Normalise and validate mode (case-insensitive via StringEnum._missing_)
         try:
             return MolBarMode(mode)
         except ValueError:
