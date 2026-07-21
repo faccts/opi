@@ -181,3 +181,6 @@ _version.py
 # Documentation
 docs/contents/api
 docs/contents/scripts/*.sha256
+
+# Claude files&folders
+.claude
