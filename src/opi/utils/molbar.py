@@ -9,9 +9,10 @@ MolBar is not a dependency of OPI. Install it separately::
 from __future__ import annotations
 
 import importlib.util
+from collections.abc import Sequence
 from functools import wraps
 from importlib import import_module
-from typing import Any, Callable, TypeVar, cast
+from typing import Any, Callable, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -21,13 +22,15 @@ from opi.utils.element import Element
 
 __all__ = (
     "MolBarMode",
+    "call_molbar",
     "requires_molbar",
 )
 
 # > Populated on first use by the `@_import_molbar` decorator (see below).
 # > Declared here so the name resolves for type checkers and at call time,
 # > before the first invocation has cached the real function.
-get_molbar_from_coordinates: Any = None
+# > For the exact function signature, consult MolBar's documentation.
+get_molbar_from_coordinates: Callable[..., str | tuple[str, dict[str, Any]]] | None = None
 
 
 # ============================================================
@@ -123,8 +126,8 @@ def _import_molbar(func: Callable[..., _T]) -> Callable[..., _T]:
 
 @_import_molbar
 def call_molbar(
-    elements: list[Element] | list[str],
-    coordinates: npt.NDArray[np.float64] | list[list[float]],
+    elements: Sequence[Element | str],
+    coordinates: npt.NDArray[np.float64] | Sequence[Sequence[float]],
     total_charge: int,
     mode: MolBarMode,
     return_data: bool,
@@ -142,12 +145,12 @@ def call_molbar(
 
     Parameters
     ----------
-    elements : list[Element] | list[str]
-        Elements for all real atoms, either as `Element` instances or as
-        element-symbol strings.
-    coordinates : npt.NDArray[np.float64] | list[list[float]]
+    elements : Sequence[Element | str]
+        Elements for all real atoms, as `Element` instances, element-symbol
+        strings, or a mix of both.
+    coordinates : npt.NDArray[np.float64] | Sequence[Sequence[float]]
         Cartesian coordinates in Ångström, shape (N, 3), as a NumPy array or a
-        nested list.
+        nested sequence.
     total_charge : int
         Total charge of the structure.
     mode : MolBarMode
@@ -163,16 +166,16 @@ def call_molbar(
     """
 
     # > Convert OPI-native types to the plain types MolBar understands.
-    element_symbols: list[str] = [e.value if isinstance(e, Element) else e for e in elements]
-    coords: list[list[float]] = np.asarray(coordinates, dtype=np.float64).tolist()
+    element_symbols: list[str] = [Element(e).value for e in elements]
+    coords = np.asarray(coordinates, dtype=np.float64)
 
-    return cast(
-        "str | tuple[str, dict[str, Any]]",
-        get_molbar_from_coordinates(
-            coords,
-            element_symbols,
-            total_charge=total_charge,
-            return_data=return_data,
-            mode=mode,
-        ),
+    # > The @_import_molbar decorator guarantees this is populated by call time.
+    assert get_molbar_from_coordinates is not None
+
+    return get_molbar_from_coordinates(
+        coords,
+        element_symbols,
+        total_charge=total_charge,
+        return_data=return_data,
+        mode=mode,
     )
