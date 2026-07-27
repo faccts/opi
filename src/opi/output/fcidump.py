@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Self
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 
 @dataclass
@@ -16,9 +17,9 @@ class Fcidump:
     Reads and stores data from a FCIDUMP file. One and two-electrons integrals are stored as dicts and can be
     accessed as numpy arrays via `hcore_matrix` and `eri_tensor`.
 
-    Besides parsing a file with `from_file`, objects can be created directly from the integral
-    dicts (default constructor) or from numpy arrays via `from_arrays`, and written to a
-    FCIDUMP file with `to_file`.
+    Besides parsing a file with `from_file()`, objects can be created directly from the integral
+    dicts (default constructor) or from numpy arrays via `from_arrays()`, and written to a
+    FCIDUMP file with `to_file()`.
 
     Attributes
     --------
@@ -37,7 +38,7 @@ class Fcidump:
     two_electron: dict[tuple[int, int, int, int], float]
         Dictionary that contains the two-electron integrals.
     orbital_energies: dict[int, float]
-        Dictionary that contains the orbital energies, if present in the FCIDUMP file.
+        Dictionary that contains the orbital energies, if present in the FCIDUMP file (not in ORCA FCIDUMP).
     e_nuc: float
         Core energy contribution. Contains the contracted energy of the inactive space.
     path: Path
@@ -121,13 +122,13 @@ class Fcidump:
     @classmethod
     def from_arrays(
         cls,
-        hcore: np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        eri: np.ndarray[tuple[int, int, int, int], np.dtype[np.float64]],
+        hcore: ArrayLike,
+        eri: ArrayLike,
         nelec: int,
         ms2: int = 0,
         *,
         e_nuc: float = 0.0,
-        orbsym: Sequence[int] | None = None,
+        orbsym: Sequence[int] = (),
         isym: int = 1,
         orbital_energies: Sequence[float] | None = None,
     ) -> Self:
@@ -139,9 +140,9 @@ class Fcidump:
 
         Parameters
         ----------
-        hcore: np.ndarray
+        hcore: ArrayLike
             One-electron integrals as a symmetric (norb, norb) array.
-        eri: np.ndarray
+        eri: ArrayLike
             Two-electron integrals as a (norb, norb, norb, norb) array in chemist's notation
             (ij|kl) with 8-fold permutation symmetry.
         nelec: int
@@ -150,7 +151,7 @@ class Fcidump:
             Twice the total spin projection, i.e. the difference of alpha and beta electrons.
         e_nuc: float, default: 0.0
             Core energy contribution.
-        orbsym: Sequence[int] | None, default: None
+        orbsym: Sequence[int], default: ()
             Symmetry labels of the orbitals. Defaults to all orbitals in irrep 1.
         isym: int, default: 1
             Overall symmetry of the electronic structure.
@@ -178,7 +179,7 @@ class Fcidump:
         for axes in ((1, 0, 2, 3), (0, 1, 3, 2), (2, 3, 0, 1)):
             if not np.allclose(eri, eri.transpose(axes)):
                 raise ValueError(f"{cls.__name__}: eri must have 8-fold permutation symmetry")
-        if orbsym is not None and len(orbsym) != norb:
+        if orbsym and len(orbsym) != norb:
             raise ValueError(f"{cls.__name__}: orbsym must contain exactly {norb} entries")
 
         # > Unique one-electron elements: lower triangle (i >= j)
@@ -201,7 +202,7 @@ class Fcidump:
             norb=norb,
             nelec=nelec,
             ms2=ms2,
-            orbsym=list(orbsym) if orbsym is not None else [1] * norb,
+            orbsym=list(orbsym) if orbsym else [1] * norb,
             isym=isym,
             one_electron=one_electron,
             two_electron=two_electron,

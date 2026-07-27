@@ -2,6 +2,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from opi.output.fcidump import Fcidump
 
@@ -199,14 +201,54 @@ def test_from_arrays_asymmetric_raises() -> None:
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_hcore_matrix_conflicting_transposed_keys_stay_symmetric() -> None:
+@given(
+    norb=st.integers(min_value=2, max_value=8),
+    data=st.data(),
+)
+def test_hcore_matrix_conflicting_transposed_keys_stay_symmetric(
+    norb: int, data: st.DataObject
+) -> None:
     """With both (i,j) and (j,i) stored, the reconstructed matrix must still be symmetric."""
+    # Pick a subset of upper-triangle index pairs (1-based, i < j) to populate.
+    pairs = [(i, j) for i in range(1, norb + 1) for j in range(i, norb + 1)]
+    chosen = data.draw(
+        st.lists(st.sampled_from(pairs), min_size=1, max_size=len(pairs), unique=True)
+    )
+
+    one_electron: dict[tuple[int, int], float] = {}
+    finite = st.floats(min_value=-10, max_value=10, allow_nan=False, allow_infinity=False)
+    for i, j in chosen:
+        one_electron[(i, j)] = data.draw(finite)
+        if i != j:
+            # Store a conflicting transposed key too.
+            one_electron[(j, i)] = data.draw(finite)
+
     dump = Fcidump(
-        norb=2, nelec=2, ms2=0, orbsym=[1, 1], isym=0, one_electron={(1, 2): 0.1, (2, 1): 0.2}
+        norb=norb,
+        nelec=2,
+        ms2=0,
+        orbsym=[1] * norb,
+        isym=0,
+        one_electron=one_electron,
     )
     mat = dump.hcore_matrix
 
-    assert pytest.approx(mat[0, 1]) == mat[1, 0]
+    assert mat.shape == (norb, norb)
+    np.testing.assert_allclose(mat, mat.T)
+
+
+@pytest.mark.parametrize(
+    "one_electron, expected",
+    [
+        ({(1, 2): 0.1, (2, 1): 0.2}, 0.2),
+        ({(2, 1): 0.2, (1, 2): 0.1}, 0.1),
+    ],
+)
+def test_hcore_matrix_last_write_wins(one_electron, expected) -> None:
+    dump = Fcidump(norb=2, nelec=2, ms2=0, orbsym=[1, 1], isym=0, one_electron=one_electron)
+    mat = dump.hcore_matrix
+    assert pytest.approx(mat[0, 1]) == expected
+    assert pytest.approx(mat[1, 0]) == expected
 
 
 @pytest.mark.unit
@@ -214,6 +256,16 @@ def test_hcore_matrix_conflicting_transposed_keys_stay_symmetric() -> None:
 def test_hcore_matrix_zero_index_raises() -> None:
     """An orbital index of 0 (1-based convention) must raise instead of wrapping around."""
     dump = Fcidump(norb=2, nelec=2, ms2=0, orbsym=[1, 1], isym=0, one_electron={(0, 1): 0.5})
+
+    with pytest.raises(ValueError, match="one_electron"):
+        dump.hcore_matrix
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_hcore_matrix_negative_index_raises() -> None:
+    """An orbital index that is negative must raise instead of wrapping around."""
+    dump = Fcidump(norb=2, nelec=2, ms2=0, orbsym=[1, 1], isym=0, one_electron={(-1, 1): 0.5})
 
     with pytest.raises(ValueError, match="one_electron"):
         dump.hcore_matrix
