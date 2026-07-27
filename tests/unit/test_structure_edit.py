@@ -12,6 +12,7 @@ This module contains tests for structure-related operations such as:
 - Extracting substructure.
 """
 
+
 @pytest.fixture
 def new_coord_block() -> np.ndarray:
     """Empty coordinate block."""
@@ -44,7 +45,9 @@ def test_add_atom_with_position(water_structure: Structure, test_h_atom: Atom, p
 
 @pytest.mark.unit
 @pytest.mark.input
-def test_add_atom_invalid_position(water_structure: Structure, test_h_atom: Atom, invalid_position: int):
+def test_add_atom_invalid_position(
+    water_structure: Structure, test_h_atom: Atom, invalid_position: int
+):
     """Test to check if `Structure.add_atom()` correctly raises errors given invalid positions."""
     with pytest.raises(ValueError):
         water_structure.add_atom(test_h_atom, invalid_position)

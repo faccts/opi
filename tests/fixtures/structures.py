@@ -1,5 +1,7 @@
 import pytest
-from opi.input.structures import Structure, Atom, GhostAtom
+
+from opi.input.structures import Atom, GhostAtom, Structure
+
 
 @pytest.fixture
 def water_structure() -> Structure:
@@ -13,11 +15,13 @@ def water_structure() -> Structure:
     structure = Structure.from_xyz_block(content)
     return structure
 
+
 @pytest.fixture
 def test_h_atom():
     """Test instance of H `Atom`."""
     atom = Atom("H", coordinates=[3.88959, 1.36040, 0.81444])
     return atom
+
 
 @pytest.fixture
 def test_ghost_h_atom():

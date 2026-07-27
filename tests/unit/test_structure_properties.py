@@ -1,9 +1,6 @@
 import pytest
 
-from opi.input.structures import Atom, GhostAtom, Structure
-
-
-
+from opi.input.structures import GhostAtom, Structure
 
 
 @pytest.mark.unit
