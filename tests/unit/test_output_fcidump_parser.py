@@ -205,51 +205,71 @@ def test_from_arrays_asymmetric_raises() -> None:
     norb=st.integers(min_value=2, max_value=8),
     data=st.data(),
 )
-def test_hcore_matrix_conflicting_transposed_keys_stay_symmetric(
-    norb: int, data: st.DataObject
-) -> None:
-    """With both (i,j) and (j,i) stored, the reconstructed matrix must still be symmetric."""
-    # Pick a subset of upper-triangle index pairs (1-based, i < j) to populate.
+def test_hcore_matrix_transposed_keys(norb: int, data: st.DataObject) -> None:
+    """Initializing hcore with symmetry equivalent keys, (i,j) and (j,i), should raise a ValueError."""
+    # > Pick a subset of upper-triangle index pairs (1-based, i <= j) to populate.
     pairs = [(i, j) for i in range(1, norb + 1) for j in range(i, norb + 1)]
-    chosen = data.draw(
-        st.lists(st.sampled_from(pairs), min_size=1, max_size=len(pairs), unique=True)
-    )
-
     one_electron: dict[tuple[int, int], float] = {}
     finite = st.floats(min_value=-10, max_value=10, allow_nan=False, allow_infinity=False)
-    for i, j in chosen:
+    for i, j in pairs:
         one_electron[(i, j)] = data.draw(finite)
         if i != j:
-            # Store a conflicting transposed key too.
+            # > Store a transposed key too - Could be any value
             one_electron[(j, i)] = data.draw(finite)
 
-    dump = Fcidump(
-        norb=norb,
-        nelec=2,
-        ms2=0,
-        orbsym=[1] * norb,
-        isym=0,
-        one_electron=one_electron,
-    )
-    mat = dump.hcore_matrix
-
-    assert mat.shape == (norb, norb)
-    np.testing.assert_allclose(mat, mat.T)
+    # > Raise a value error due to symmetry-equivalent keys
+    with pytest.raises(ValueError, match="symmetry-equivalent keys"):
+        Fcidump(
+            norb=norb,
+            nelec=2,
+            ms2=0,
+            orbsym=[1] * norb,
+            isym=0,
+            one_electron=one_electron,
+        )
 
 
+@pytest.mark.unit
+@pytest.mark.output
+# > The seven non-identity elements of the 8-fold permutation group of (12|34)
 @pytest.mark.parametrize(
-    "one_electron, expected",
+    "equivalent",
     [
-        ({(1, 2): 0.1, (2, 1): 0.2}, 0.2),
-        ({(2, 1): 0.2, (1, 2): 0.1}, 0.1),
+        (2, 1, 3, 4),
+        (1, 2, 4, 3),
+        (2, 1, 4, 3),
+        (3, 4, 1, 2),
+        (4, 3, 1, 2),
+        (3, 4, 2, 1),
+        (4, 3, 2, 1),
     ],
 )
-def test_hcore_matrix_conflicting_transposed_keys_order(one_electron, expected) -> None:
-    """With both (i,j) and (j,i) stored, the last element in the `one_electron` dict is used for the matrix construction."""
-    dump = Fcidump(norb=2, nelec=2, ms2=0, orbsym=[1, 1], isym=0, one_electron=one_electron)
-    mat = dump.hcore_matrix
-    assert pytest.approx(mat[0, 1]) == expected
-    assert pytest.approx(mat[1, 0]) == expected
+def test_eri_symmetry_equivalent_keys_raise(equivalent: tuple[int, int, int, int]) -> None:
+    """Any two keys related by the 8-fold permutation symmetry must raise a ValueError."""
+    two_electron = {(1, 2, 3, 4): 0.1, equivalent: 0.2}
+
+    with pytest.raises(ValueError, match="two_electron: symmetry-equivalent keys"):
+        Fcidump(norb=4, nelec=2, ms2=0, orbsym=[1] * 4, isym=0, two_electron=two_electron)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_from_file_symmetry_equivalent_keys_raise(tmp_path: Path) -> None:
+    """Duplicates are also rejected when parsed from a file, where the dicts are filled in after construction."""
+    fci_file = tmp_path / "duplicates.fcidump"
+    fci_file.write_text(
+        "&FCI NORB= 2,NELEC= 2,MS2= 0,\n"
+        " ORBSYM=1,1,\n"
+        " ISYM= 1,\n"
+        "&END\n"
+        "  0.500000000000000   1 1 1 1\n"
+        "  1.000000000000000   1 2 0 0\n"
+        "  2.000000000000000   2 1 0 0\n"
+        "  0.000000000000000   0 0 0 0\n"
+    )
+
+    with pytest.raises(ValueError, match="one_electron: symmetry-equivalent keys"):
+        Fcidump.from_file(fci_file)
 
 
 @pytest.mark.unit

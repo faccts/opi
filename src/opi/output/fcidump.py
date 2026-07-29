@@ -1,21 +1,24 @@
 """Read, create, and write FCIDUMP files"""
 
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
-from typing import Self
+from typing import Self, TypeVar
 
 import numpy as np
 from numpy.typing import ArrayLike
+
+K = TypeVar("K")
 
 
 @dataclass
 class Fcidump:
     """
-    Reads and stores data from a FCIDUMP file. One and two-electrons integrals are stored as dicts and can be
-    accessed as numpy arrays via `hcore_matrix` and `eri_tensor`.
+    Reads and stores data from a FCIDUMP file. One and two-electrons integrals are stored as dicts and
+    can be accessed as numpy arrays via `hcore_matrix` and `eri_tensor`. Integrals must contain only symmetry-unique
+    elements.
 
     Besides parsing a file with `from_file()`, objects can be created directly from the integral
     dicts (default constructor) or from numpy arrays via `from_arrays()`, and written to a
@@ -34,9 +37,9 @@ class Fcidump:
     isym: int
         Overall symmetry of the electronic structure.
     one_electron: dict[tuple[int, int], float]
-        Dictionary that contains the one-electron integrals.
+        Dictionary that contains the one-electron integrals. Must only contain symmetry-unique elements.
     two_electron: dict[tuple[int, int, int, int], float]
-        Dictionary that contains the two-electron integrals.
+        Dictionary that contains the two-electron integrals. Must only contain symmetry-unique elements.
     orbital_energies: dict[int, float]
         Dictionary that contains the orbital energies, if present in the FCIDUMP file (not in ORCA FCIDUMP).
     e_nuc: float
@@ -55,6 +58,29 @@ class Fcidump:
     orbital_energies: dict[int, float] = field(default_factory=dict)
     e_nuc: float = 0.0
     path: Path = field(default_factory=Path)
+
+    def __post_init__(self) -> None:
+        """
+        Check that the one- and two-electron integrals contain no symmetry-equivalent keys.
+
+        Raises
+        -------
+        ValueError
+            If symmetry-equivalent keys are present, e.g. (i,j) and (j,i) for one-electron integrals.
+        """
+        self._validate_integrals()
+
+    def _validate_integrals(self) -> None:
+        """
+        Check that the one- and two-electron integral dicts hold only symmetry-unique keys.
+
+        Raises
+        -------
+        ValueError
+            If symmetry-equivalent keys are present, e.g. (i,j) and (j,i) for one-electron integrals.
+        """
+        self._check_no_symmetry_duplicates(self.one_electron, self._canon_1e, "one_electron")
+        self._check_no_symmetry_duplicates(self.two_electron, self._canon_2e, "two_electron")
 
     @cached_property
     def hcore_matrix(self) -> np.ndarray[tuple[int, int], np.dtype[np.float64]]:
@@ -75,8 +101,8 @@ class Fcidump:
         if idx.min() < 0:
             raise ValueError(f"{type(self).__name__}: orbital indices in one_electron must be >= 1")
 
-        # > Canonicalize to the lower triangle so duplicate (i, j)/(j, i) keys resolve
-        # > consistently, then mirror the resolved values to keep the matrix symmetric
+        # > Keys may be stored in either triangle, so sort them into the lower one and
+        # > mirror the values to keep the matrix symmetric
         row = np.maximum(idx[:, 0], idx[:, 1])
         col = np.minimum(idx[:, 0], idx[:, 1])
         mat[row, col] = vals
@@ -277,7 +303,8 @@ class Fcidump:
         Raises
         -------
         ValueError
-            If the FCIDUMP file cannot be parsed.
+            If the FCIDUMP file cannot be parsed or contains symmetry-equivalent integrals,
+            e.g. both (i,j) and (j,i) for the one-electron integrals.
         FileNotFoundError
             If the FCIDUMP file cannot be found at the given path.
         """
@@ -337,6 +364,9 @@ class Fcidump:
             else:
                 dump.two_electron[(i, j, k, ll)] = val
 
+        # > The integrals are filled in after construction, so `__post_init__` could not check them
+        dump._validate_integrals()
+
         return dump
 
     @classmethod
@@ -360,3 +390,32 @@ class Fcidump:
         if not values or any(v < 0 for v in values):
             raise ValueError(f"{cls.__name__}: Could not parse {key}")
         return values
+
+    @staticmethod
+    def _canon_1e(key: tuple[int, int]) -> tuple[int, int]:
+        """Canonicalize the key of one-electron integrals."""
+        p, q = key
+        return (p, q) if p <= q else (q, p)
+
+    @staticmethod
+    def _canon_2e(key: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+        """Canonicalize the key of two-electron integrals."""
+        p, q, r, s = key
+        pq = (p, q) if p <= q else (q, p)
+        rs = (r, s) if r <= s else (s, r)
+        return (*pq, *rs) if pq <= rs else (*rs, *pq)
+
+    @classmethod
+    def _check_no_symmetry_duplicates(
+        cls, integral_dict: dict[K, float], canon: Callable[[K], K], name: str
+    ) -> None:
+        """Raise a ValueError if symmetry-equivalent keys are present."""
+        seen: dict[K, K] = {}
+        for key in integral_dict:
+            c: K = canon(key)
+            if c in seen:
+                raise ValueError(
+                    f"{cls.__name__}: {name}: symmetry-equivalent keys {seen[c]} and {key} "
+                    "both present"
+                )
+            seen[c] = key
