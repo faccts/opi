@@ -202,6 +202,7 @@ class Fcidump:
             norb=norb,
             nelec=nelec,
             ms2=ms2,
+            # > If no orbsym is available we use the total symmetric representation (array of 1)
             orbsym=list(orbsym) if orbsym else [1] * norb,
             isym=isym,
             one_electron=one_electron,

@@ -244,7 +244,8 @@ def test_hcore_matrix_conflicting_transposed_keys_stay_symmetric(
         ({(2, 1): 0.2, (1, 2): 0.1}, 0.1),
     ],
 )
-def test_hcore_matrix_last_write_wins(one_electron, expected) -> None:
+def test_hcore_matrix_conflicting_transposed_keys_order(one_electron, expected) -> None:
+    """With both (i,j) and (j,i) stored, the last element in the `one_electron` dict is used for the matrix construction."""
     dump = Fcidump(norb=2, nelec=2, ms2=0, orbsym=[1, 1], isym=0, one_electron=one_electron)
     mat = dump.hcore_matrix
     assert pytest.approx(mat[0, 1]) == expected
@@ -254,7 +255,7 @@ def test_hcore_matrix_last_write_wins(one_electron, expected) -> None:
 @pytest.mark.unit
 @pytest.mark.output
 def test_hcore_matrix_zero_index_raises() -> None:
-    """An orbital index of 0 (1-based convention) must raise instead of wrapping around."""
+    """An orbital index of 0 (1-based convention) must raise a ValueError instead of wrapping around."""
     dump = Fcidump(norb=2, nelec=2, ms2=0, orbsym=[1, 1], isym=0, one_electron={(0, 1): 0.5})
 
     with pytest.raises(ValueError, match="one_electron"):
@@ -264,7 +265,7 @@ def test_hcore_matrix_zero_index_raises() -> None:
 @pytest.mark.unit
 @pytest.mark.output
 def test_hcore_matrix_negative_index_raises() -> None:
-    """An orbital index that is negative must raise instead of wrapping around."""
+    """An orbital index that is negative must raise a ValueError instead of wrapping around."""
     dump = Fcidump(norb=2, nelec=2, ms2=0, orbsym=[1, 1], isym=0, one_electron={(-1, 1): 0.5})
 
     with pytest.raises(ValueError, match="one_electron"):
