@@ -29,6 +29,7 @@
 - Added `calculate_molbar()` and `calculate_molbar_data()` to get Molbar from `Structure` (#227)
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
+- Updated unit conversion constants to be consistent with ORCA (#269).
 
 ### Deprecated
 ### Removed
