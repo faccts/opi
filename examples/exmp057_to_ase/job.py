@@ -30,13 +30,13 @@ def run_exmp057(working_dir: Path | None = Path("RUN")) -> Output:
 
     calc = Calculator(basename="job", working_dir=working_dir)
     calc.structure = structure
-    calc.input.add_simple_keywords(Scf.NOAUTOSTART, Method.HF, BasisSet.DEF2_SVP, Task.OPT)
+    calc.input.add_simple_keywords(Method.HF, BasisSet.DEF2_SVP, Task.OPT)
 
     calc.write_input()
     calc.run()
 
     output = calc.get_output()
-    if not output.terminated_normally():
+    if not output.terminated_normally() and output.geometry_optimization_converged():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
         print(output.error_message())
         sys.exit(1)
