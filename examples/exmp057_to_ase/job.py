@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from opi.core import Calculator
-from opi.input.simple_keywords import BasisSet, Method, Scf, Task
+from opi.input.simple_keywords import BasisSet, Method, Task
 from opi.input.structures import Structure
 from opi.output.core import Output
 
