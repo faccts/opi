@@ -1,5 +1,7 @@
 """
-Contains conversion factors for different units.
+Contains conversion factors for different units. These are selected to be consistent with ORCA.
+See the ORCA manual as reference for some of them:
+https://www.faccts.de/docs/orca/6.1/manual/contents/orcaarchitecture/conversionfactors.html
 """
 
 # Atomic unit of length (Bohr) to Angstrom
