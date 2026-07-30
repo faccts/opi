@@ -22,4 +22,4 @@ def test_exmp057_to_ase(tmp_path) -> None:
     assert isinstance(ase_atoms, Atoms)
     assert ase_atoms.get_chemical_symbols() == ["O", "H", "H"]
     assert ase_atoms.info["charge"] == 1
-    assert ase_atoms.info["multiplicity"] == 2
+    assert ase_atoms.info["spin"] == 2

@@ -66,7 +66,7 @@ def run_exmp057(working_dir: Path | None = Path("RUN")) -> Output:
     # > Charge and multiplicity are carried in Atoms.info, not in the per-atom
     # > initial_charges / initial_magnetic_moments arrays.
     print(f"Charge from Atoms.info: {ase_atoms.info['charge']}")
-    print(f"Multiplicity from Atoms.info: {ase_atoms.info['multiplicity']}")
+    print(f"Multiplicity from Atoms.info: {ase_atoms.info['spin']}")
 
     # > Everything below is computed by ASE itself
     print(f"Chemical formula: {ase_atoms.get_chemical_formula()}")

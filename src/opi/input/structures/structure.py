@@ -980,7 +980,7 @@ class Structure:
            have been set. The charge is their sum, the multiplicity is the rounded
            absolute total magnetization plus one;
         3. the molecular metadata in `Atoms.info` under the keys `"charge"` and
-           `"multiplicity"`, which is where `to_ase` stores them;
+           `"spin"`, which is where `to_ase` stores them;
         4. a neutral closed-shell default, i.e. `charge=0` and `multiplicity=1`.
 
         Parameters
@@ -991,10 +991,6 @@ class Structure:
             Optional charge of the molecule, will overwrite charge from ase.
         multiplicity : int | None, default:  None
             Optional multiplicity of the molecule, will overwrite multiplicity from ase.
-
-        See Also
-        --------
-        to_ase : The inverse conversion, which writes charge and multiplicity to `Atoms.info`.
 
         Returns
         ----------
@@ -1087,7 +1083,7 @@ class Structure:
                 spin = int(round(abs(total_magnetization)))
                 multiplicity = spin + 1
             else:
-                multiplicity = int(ase_atoms.info.get("multiplicity", 1))
+                multiplicity = int(ase_atoms.info.get("spin", 1))
 
         return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)
 
@@ -1102,7 +1098,7 @@ class Structure:
         coordinates in Ångström, which is also the unit ASE expects.
 
         Charge and multiplicity are transported via `Atoms.info` under the keys
-        `"charge"` and `"multiplicity"`. They are deliberately not written to ASE's
+        `"charge"` and `"spin"`. They are deliberately not written to ASE's
         per-atom `initial_charges` and `initial_magnetic_moments` arrays, because OPI
         has no per-atom partitioning of these molecular quantities.
 
@@ -1110,7 +1106,7 @@ class Structure:
         -------
         AseAtoms
             ASE `Atoms` object holding the elements and coordinates of all real atoms,
-            with `charge` and `multiplicity` stored in `Atoms.info`.
+            with `charge` and `spin` stored in `Atoms.info`.
 
         Raises
         ------
@@ -1139,7 +1135,7 @@ class Structure:
         return _AseAtoms(
             symbols=[atom.element.value for atom in self.real_atoms],
             positions=self.get_coordinates(only_atoms=real_indices),
-            info={"charge": self.charge, "multiplicity": self.multiplicity},
+            info={"charge": self.charge, "spin": self.multiplicity},
         )
 
     @classmethod
