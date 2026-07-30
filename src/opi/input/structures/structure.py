@@ -973,6 +973,16 @@ class Structure:
         Function to generate Structure from `Atoms` object from the Atomic Simulation Environment (ASE).
         Since ORCA and OPI do not support structures with periodic boundary conditions these are ignored.
 
+        Charge and multiplicity are resolved in this order, independently of each other:
+
+        1. the *charge* and *multiplicity* arguments, if given;
+        2. ASE's per-atom `initial_charges` / `initial_magnetic_moments` arrays, if they
+           have been set. The charge is their sum, the multiplicity is the rounded
+           absolute total magnetization plus one;
+        3. the molecular metadata in `Atoms.info` under the keys `"charge"` and
+           `"multiplicity"`, which is where `to_ase` stores them;
+        4. a neutral closed-shell default, i.e. `charge=0` and `multiplicity=1`.
+
         Parameters
         ----------
         ase_atoms : AseAtoms
@@ -981,6 +991,10 @@ class Structure:
             Optional charge of the molecule, will overwrite charge from ase.
         multiplicity : int | None, default:  None
             Optional multiplicity of the molecule, will overwrite multiplicity from ase.
+
+        See Also
+        --------
+        to_ase : The inverse conversion, which writes charge and multiplicity to `Atoms.info`.
 
         Returns
         ----------
@@ -1051,19 +1065,82 @@ class Structure:
                 )
             )
 
-        # > Get charge if not supplied
+        # > Get charge if not supplied. ASE's per-atom `initial_charges` array takes
+        # > precedence, as it is what ASE calculators actually consume. Only if that
+        # > array was never set do we fall back to the molecular metadata in
+        # > `Atoms.info`, which is where `to_ase` stores the charge, and finally to a
+        # > neutral default. ASE creates the array lazily, so membership in
+        # > `Atoms.arrays` distinguishes "never set" from "explicitly set to zero".
         if charge is None:
-            charges = ase_atoms.get_initial_charges()
-            charge = int(round(np.sum(charges)))
+            if "initial_charges" in ase_atoms.arrays:
+                charges = ase_atoms.get_initial_charges()
+                charge = int(round(np.sum(charges)))
+            else:
+                charge = int(ase_atoms.info.get("charge", 0))
 
-        # > Get magnetic moment if no multiplicity supplied
+        # > Get magnetic moment if no multiplicity supplied. Same precedence as for the
+        # > charge above; note that ASE stores the moments under the key `initial_magmoms`.
         if multiplicity is None:
-            magmoms = ase_atoms.get_initial_magnetic_moments()
-            total_magnetization = np.sum(magmoms)
-            spin = int(round(abs(total_magnetization)))
-            multiplicity = spin + 1
+            if "initial_magmoms" in ase_atoms.arrays:
+                magmoms = ase_atoms.get_initial_magnetic_moments()
+                total_magnetization = np.sum(magmoms)
+                spin = int(round(abs(total_magnetization)))
+                multiplicity = spin + 1
+            else:
+                multiplicity = int(ase_atoms.info.get("multiplicity", 1))
 
         return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)
+
+    def to_ase(self) -> "AseAtoms":
+        """
+        Convert this `Structure` into an `Atoms` object of the Atomic Simulation Environment (ASE).
+
+        Only real `Atom` entries are converted; `EmbeddingPotential`, `GhostAtom`,
+        and `PointCharge` instances are silently skipped.
+
+        Coordinates are passed through unchanged: `Structure` stores Cartesian
+        coordinates in Ångström, which is also the unit ASE expects.
+
+        Charge and multiplicity are transported via `Atoms.info` under the keys
+        `"charge"` and `"multiplicity"`. They are deliberately not written to ASE's
+        per-atom `initial_charges` and `initial_magnetic_moments` arrays, because OPI
+        has no per-atom partitioning of these molecular quantities.
+
+        Returns
+        -------
+        AseAtoms
+            ASE `Atoms` object holding the elements and coordinates of all real atoms,
+            with `charge` and `multiplicity` stored in `Atoms.info`.
+
+        Raises
+        ------
+        ImportError
+            If ASE is not installed.
+        ValueError
+            If this structure contains no real atoms.
+        """
+        # > ASE is an optional dependency and must not be required to import OPI,
+        # > hence the in-method import. The module-level `AseAtoms` name is a
+        # > TYPE_CHECKING-only alias that exists solely for annotations.
+        try:
+            from ase import Atoms as _AseAtoms
+        except ImportError as err:
+            raise ImportError("ASE is not installed. Install it with: pip install ase") from err
+
+        if not self.real_atoms:
+            raise ValueError(
+                f"{self.__class__.__name__}: structure contains no real atoms; "
+                "cannot build ASE Atoms object."
+            )
+
+        # > Only real Atom instances are converted
+        real_indices = [i for i, a in enumerate(self.atoms) if type(a) is Atom]
+
+        return _AseAtoms(
+            symbols=[atom.element.value for atom in self.real_atoms],
+            positions=self.get_coordinates(only_atoms=real_indices),
+            info={"charge": self.charge, "multiplicity": self.multiplicity},
+        )
 
     @classmethod
     def from_lists(

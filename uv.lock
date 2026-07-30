@@ -1714,6 +1714,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+ase = [
+    { name = "ase" },
+]
 molbar = [
     { name = "molbar" },
 ]
@@ -1754,6 +1757,7 @@ spell-check = [
     { name = "codespell" },
 ]
 tests = [
+    { name = "ase" },
     { name = "hypothesis" },
     { name = "jsonschema" },
     { name = "pytest" },
@@ -1767,6 +1771,7 @@ type-check = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ase", marker = "extra == 'ase'", specifier = "~=3.23" },
     { name = "molbar", marker = "extra == 'molbar'", specifier = "~=1.1" },
     { name = "numpy", specifier = ">=2.2.6,<3" },
     { name = "platformdirs", specifier = ">=4.3.8,<5" },
@@ -1774,7 +1779,7 @@ requires-dist = [
     { name = "rdkit", specifier = ">=2025.3.2,<2026" },
     { name = "semantic-version", specifier = ">=2.10.0,<3" },
 ]
-provides-extras = ["molbar"]
+provides-extras = ["ase", "molbar"]
 
 [package.metadata.requires-dev]
 dead-code = [{ name = "vulture", specifier = ">=2.14" }]
@@ -1804,6 +1809,7 @@ docs = [
 lint = [{ name = "ruff", specifier = ">=0.11.12" }]
 spell-check = [{ name = "codespell", specifier = ">=2.4.1" }]
 tests = [
+    { name = "ase", specifier = "~=3.23" },
     { name = "hypothesis", specifier = ">=6.133.0,<7" },
     { name = "jsonschema", specifier = ">=4.24.0,<5" },
     { name = "pytest", specifier = ">=9,<10" },

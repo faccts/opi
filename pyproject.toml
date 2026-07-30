@@ -38,6 +38,9 @@ Issues = "https://github.com/faccts/opi/issues"
 Changelog = "https://github.com/faccts/opi/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
+ase = [
+    "ase~=3.23",
+]
 molbar = [
     "molbar~=1.1",
 ]
@@ -68,6 +71,7 @@ dev = [
     "nox>=2025.5.1",
 ]
 tests = [
+    "ase~=3.23",
     "hypothesis>=6.133.0,<7",
     "jsonschema>=4.24.0,<5",
     "pytest>=9,<10",
