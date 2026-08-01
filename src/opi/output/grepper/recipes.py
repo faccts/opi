@@ -281,7 +281,7 @@ def has_scf(file_name: Path, /) -> bool:
 
 def has_scf_converged(file_name: Path, /) -> bool:
     """
-    Searches for the message 'SUCCESS' or 'xTB END OF CALCULATION' as indicator that the SCF converged.
+    Searches for the message 'SUCCESS' or 'convergence criteria satisfied after' as indicator that the SCF converged.
 
     Parameter
     ---------

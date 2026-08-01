@@ -132,7 +132,7 @@ def test_has_scf_converged_external_xtb(tmp_path):
     xtb_outfile = tmp_path / "xtb_calc.out"
     xtb_outfile.write_text(
         "------------------------------------------------------------------------------\n"
-        "                         xTB END OF CALCULATION                               \n"
+        "                convergence criteria satisfied after  12 iterations            \n"
         "------------------------------------------------------------------------------\n"
     )
     assert has_scf_converged(xtb_outfile) is True
