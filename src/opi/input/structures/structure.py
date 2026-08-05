@@ -161,9 +161,8 @@ class Structure:
             Returns the number of electrons for the structure. Can be negative!
         """
         nelectrons = 0
-        for atom in self.atoms:
-            if isinstance(atom, Atom):
-                nelectrons += atom.element.atomic_number
+        for atom in self.real_atoms:
+            nelectrons += atom.element.atomic_number
         nelectrons -= self.charge
         return nelectrons
 
