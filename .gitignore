@@ -182,5 +182,6 @@ _version.py
 docs/contents/api
 docs/contents/scripts/*.sha256
 
-# Claude files&folders
+# Claude files & folders
 .claude
+CLAUDE.md
