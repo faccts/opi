@@ -48,6 +48,7 @@ def requires_ase(func: Callable[..., _T]) -> Callable[..., _T]:
     Apply to any method that calls `build_ase_atoms()` to ensure a clear error
     message is raised at call time rather than at import time.
     """
+
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> _T:
         if not _ase_available():
