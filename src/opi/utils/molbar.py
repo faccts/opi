@@ -1,9 +1,7 @@
 """
 Optional interface to MolBar (https://git.rwth-aachen.de/bannwarthlab/molbar).
 
-MolBar is not a dependency of OPI. Install it separately::
-
-    pip install molbar
+MolBar is an optional dependency of OPI. See pyproject.toml for details.
 """
 
 from __future__ import annotations
@@ -82,7 +80,7 @@ def requires_molbar(func: Callable[..., _T]) -> Callable[..., _T]:
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> _T:
         if not _molbar_available():
-            raise ImportError("MolBar is not installed. Install it with: pip install molbar")
+            raise ImportError("MolBar is not installed. It is an optional dependency of OPI.")
         return func(*args, **kwargs)
 
     return wrapper

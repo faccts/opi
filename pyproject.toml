@@ -182,7 +182,7 @@ enable-colors = true
 [tool.vulture]
 #exclude = []
 #ignore_decorators = []
-ignore_names = ["RdkitMol"]
+ignore_names = ["RdkitMol", "AseAtoms"]
 make_whitelist = false
 min_confidence = 70
 paths = ["src/"]

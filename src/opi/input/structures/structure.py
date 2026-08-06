@@ -20,6 +20,7 @@ from opi.input.structures.atom import (
     PointCharge,
 )
 from opi.input.structures.coordinates import Coordinates
+from opi.utils.ase import build_ase_atoms, requires_ase
 from opi.utils.element import ATOMIC_MASSES_FROM_ELEMENT, Element
 from opi.utils.molbar import MolBarMode, call_molbar, requires_molbar
 from opi.utils.rotconst import (
@@ -1092,6 +1093,7 @@ class Structure:
 
         return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)
 
+    @requires_ase
     def to_ase(self) -> "AseAtoms":
         """
         Convert this `Structure` into an `Atoms` object of the Atomic Simulation Environment (ASE).
@@ -1120,24 +1122,17 @@ class Structure:
         ValueError
             If this structure contains no real atoms.
         """
-        # > ASE is an optional dependency and must not be required to import OPI,
-        # > hence the in-method import. The module-level `AseAtoms` name is a
-        # > TYPE_CHECKING-only alias that exists solely for annotations.
-        try:
-            from ase import Atoms as _AseAtoms
-        except ImportError as err:
-            raise ImportError("ASE is not installed. Install it with: pip install ase") from err
-
         if not self.real_atoms:
             raise ValueError(
                 f"{self.__class__.__name__}: structure contains no real atoms; "
                 "cannot build ASE Atoms object."
             )
 
-        return _AseAtoms(
-            symbols=[atom.element.value for atom in self.real_atoms],
-            positions=self.get_coordinates(only_atoms=self.real_atom_indices),
-            info={"charge": self.charge, "spin": self.multiplicity},
+        return build_ase_atoms(
+            elements=[atom.element for atom in self.real_atoms],
+            coordinates=self.get_coordinates(only_atoms=self.real_atom_indices),
+            total_charge=self.charge,
+            multiplicity=self.multiplicity,
         )
 
     @classmethod
