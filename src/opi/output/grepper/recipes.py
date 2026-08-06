@@ -5,7 +5,7 @@ from opi.output.grepper.patterns import (
     CASSCF_CONVERGED,
     CC_CONVERGED,
     ERROR_PATTERNS,
-    EXTERNAL_XTB_CONVERGED,
+    EXTERNAL_XTB_SCF_CONVERGED,
     GEOMETRY_CONVERGED,
     HAS_ABORTING,
     HAS_FREQ,
@@ -294,7 +294,7 @@ def has_scf_converged(file_name: Path, /) -> bool:
         True if expression is found in file else False
     """
     return has_string_in_file(file_name, SCF_CONVERGED) or has_string_in_file(
-        file_name, EXTERNAL_XTB_CONVERGED
+        file_name, EXTERNAL_XTB_SCF_CONVERGED
     )
 
 

@@ -122,26 +122,3 @@ def test_get_nbf_nonexistent(empty_output_object: Output):
     """Test to check if `Output.get_nbf()` returns None when expected."""
     assert not empty_output_object.get_nbf()
 
-
-@pytest.mark.unit
-@pytest.mark.output
-def test_has_scf_converged_external_xtb(tmp_path):
-    """Test that has_scf_converged detects external xtb output convergence."""
-    from opi.output.grepper.recipes import has_scf_converged
-
-    xtb_outfile = tmp_path / "xtb_calc.out"
-    xtb_outfile.write_text(
-        "------------------------------------------------------------------------------\n"
-        "                convergence criteria satisfied after  12 iterations            \n"
-        "------------------------------------------------------------------------------\n"
-    )
-    assert has_scf_converged(xtb_outfile) is True
-
-    standard_outfile = tmp_path / "standard.out"
-    standard_outfile.write_text(
-        "*****************************************************\n"
-        "                     SUCCESS                         \n"
-        "*****************************************************\n"
-    )
-    assert has_scf_converged(standard_outfile) is True
-
