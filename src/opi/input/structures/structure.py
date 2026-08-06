@@ -117,6 +117,13 @@ class Structure:
         return [a for a in self.atoms if type(a) is Atom]
 
     @property
+    def real_atom_indices(self) -> list[int]:
+        """
+        Return the indices of real `Atom` instances as provided by `real_atoms()`.
+        """
+        return [i for i, a in enumerate(self.atoms) if type(a) is Atom]
+
+    @property
     def charge(self) -> int:
         return self._charge
 
@@ -243,8 +250,7 @@ class Structure:
             New `Structure` with centered coordinates.
         """
         new_structure = copy.deepcopy(self)
-        real_indices = [i for i, a in enumerate(new_structure.atoms) if type(a) is Atom]
-        centroid = new_structure.get_coordinates(only_atoms=real_indices).mean(axis=0)
+        centroid = new_structure.get_coordinates(only_atoms=self.real_atom_indices).mean(axis=0)
         new_structure.set_coordinates(new_structure.get_coordinates() - centroid)
         return new_structure
 
@@ -1128,12 +1134,9 @@ class Structure:
                 "cannot build ASE Atoms object."
             )
 
-        # > Only real Atom instances are converted
-        real_indices = [i for i, a in enumerate(self.atoms) if type(a) is Atom]
-
         return _AseAtoms(
             symbols=[atom.element.value for atom in self.real_atoms],
-            positions=self.get_coordinates(only_atoms=real_indices),
+            positions=self.get_coordinates(only_atoms=self.real_atom_indices),
             info={"charge": self.charge, "spin": self.multiplicity},
         )
 
@@ -1671,11 +1674,9 @@ class Structure:
 
         # > OPI-native types (Element instances, NumPy array) are passed as-is;
         # > `call_molbar` handles the conversion to MolBar's expected format.
-        real_indices = [i for i, a in enumerate(self.atoms) if type(a) is Atom]
-
         return call_molbar(
             elements=[atom.element for atom in self.real_atoms],
-            coordinates=self.get_coordinates(only_atoms=real_indices),
+            coordinates=self.get_coordinates(only_atoms=self.real_atom_indices),
             total_charge=self.charge,
             mode=mode,
             return_data=return_data,
