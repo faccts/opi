@@ -37,6 +37,11 @@ Repository = "https://github.com/faccts/opi"
 Issues = "https://github.com/faccts/opi/issues"
 Changelog = "https://github.com/faccts/opi/blob/main/CHANGELOG.md"
 
+[project.optional-dependencies]
+molbar = [
+    "molbar~=1.1",
+]
+
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"

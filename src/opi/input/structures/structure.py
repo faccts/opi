@@ -21,6 +21,7 @@ from opi.input.structures.atom import (
 )
 from opi.input.structures.coordinates import Coordinates
 from opi.utils.element import ATOMIC_MASSES_FROM_ELEMENT, Element
+from opi.utils.molbar import MolBarMode, call_molbar, requires_molbar
 from opi.utils.rotconst import (
     PrincipalMoments,
     RotationalConstants,
@@ -160,9 +161,8 @@ class Structure:
             Returns the number of electrons for the structure. Can be negative!
         """
         nelectrons = 0
-        for atom in self.atoms:
-            if isinstance(atom, Atom):
-                nelectrons += atom.element.atomic_number
+        for atom in self.real_atoms:
+            nelectrons += atom.element.atomic_number
         nelectrons -= self.charge
         return nelectrons
 
@@ -1111,6 +1111,134 @@ class Structure:
         return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)
 
     # ------------------------------------------------------------------ #
+    #  MOLBAR                                                            #
+    # ------------------------------------------------------------------ #
+
+    @requires_molbar
+    def calculate_molbar(
+        self,
+        *,
+        mode: "MolBarMode | str" = MolBarMode.MB,
+    ) -> str:
+        """
+        Compute the MolBar barcode string for this `Structure`.
+
+        MolBar (Molecular Barcode) was introduced by van Staalduinen and
+        Bannwarth as a chemical identifier that overcomes limitations of
+        SMILES and InChI for inorganic molecules and non-central stereochemistry
+        (e.g. axial and planar chirality). It combines the conventional
+        atomistic description with a fragment-based approach: fragment 3D
+        structures are normalised with a specialised force field and
+        characterised by physically inspired matrices derived solely from
+        atomic positions.
+
+        The resulting permutation-invariant representation
+        is built from the eigenvalue spectra of these matrices, encoding both
+        bonding and stereochemistry. See the original publication for details:
+
+        <https://doi.org/10.1039/d4dd00208c>
+
+        Only real `Atom` entries are passed to MolBar; `EmbeddingPotential`,
+        `GhostAtom`, and `PointCharge` instances are silently skipped. Note
+        that `GhostAtom` is a subclass of `Atom`, so an exact type check is
+        used rather than `isinstance`.
+
+        The total charge is taken from `charge`.
+
+        MolBar is an optional dependency of OPI and can be installed with::
+
+            pip install molbar
+
+        Parameters
+        ----------
+        mode : MolBarMode | str, default MolBarMode.MB
+            MolBar calculation mode. Accepts a `MolBarMode` member or a
+            plain string (case-insensitive). `"mb"` computes the full barcode;
+            `"topo"` computes only the topology part.
+
+        Returns
+        -------
+        str
+            The MolBar barcode string.
+
+        Raises
+        ------
+        ImportError
+            If MolBar is not installed.
+        ValueError
+            If *mode* is not a valid `MolBarMode` value.
+        ValueError
+            If this structure contains no real atoms.
+
+        See Also
+        --------
+        calculate_molbar_data : Returns the barcode together with the full MolBar data dictionary.
+        """
+        return cast(
+            str,
+            self._get_molbar_from_coordinates(self._validate_molbar_mode(mode), return_data=False),
+        )
+
+    @requires_molbar
+    def calculate_molbar_data(
+        self,
+        *,
+        mode: "MolBarMode | str" = MolBarMode.MB,
+    ) -> "tuple[str, dict[str, Any]]":
+        """
+        Compute the MolBar barcode string and full data dictionary for this
+        `Structure`.
+
+        Behaves identically to `calculate_molbar` regarding MolBar installation,
+        atom filtering, and mode selection — see `calculate_molbar` for details.
+
+        The data dictionary contains the following top-level keys:
+
+        `"molbar"`
+            The barcode string, identical to the `calculate_molbar` return value.
+        `"atoms"`
+            Per-atom information after MolBar's internal geometry normalisation,
+            including `"atomic_numbers"`, `"positions"` (Å), and
+            `"partial_charges"`.
+        `"bonds"`
+            Detected bond graph: `"bond_indices"` (pairs) and `"bond_orders"`.
+        `"fragments"`
+            List of disconnected fragments found in the structure.
+        `"topo"`
+            Topology-only barcode (the first component of the full barcode).
+
+        See the MolBar documentation for an authoritative and up-to-date description of every key.
+
+        Parameters
+        ----------
+        mode : MolBarMode | str, default MolBarMode.MB
+            MolBar calculation mode. See `calculate_molbar` for details.
+
+        Returns
+        -------
+        tuple[str, dict[str, Any]]
+            A two-element tuple of the MolBar barcode string and the full
+            MolBar data dictionary.
+
+        Raises
+        ------
+        ImportError
+            If MolBar is not installed.
+        ValueError
+            If *mode* is not a valid `MolBarMode` value.
+        ValueError
+            If this structure contains no real atoms.
+
+        See Also
+        --------
+        calculate_molbar : Returns only the barcode string.
+        """
+        return cast(
+            "tuple[str, dict[str, Any]]",
+            self._get_molbar_from_coordinates(self._validate_molbar_mode(mode), return_data=True),
+        )
+
+    # ------------------------------------------------------------------ #
     #  RMSD                                                              #
     # ------------------------------------------------------------------ #
 
@@ -1423,6 +1551,89 @@ class Structure:
             n_struc += 1
             if n_struc_limit and n_struc >= n_struc_limit:
                 break
+
+    # ------------------------------------------------------------------ #
+    #  MOLBAR                                                            #
+    # ------------------------------------------------------------------ #
+
+    def _get_molbar_from_coordinates(
+        self,
+        mode: MolBarMode,
+        return_data: bool,
+    ) -> "str | tuple[str, dict[str, Any]]":
+        """
+        Shared implementation for `calculate_molbar` and `calculate_molbar_data`.
+
+        Collects elements and coordinates from `real_atoms` via
+        `get_coordinates`, and delegates to `call_molbar`.
+
+        Parameters
+        ----------
+        mode : MolBarMode
+            Already-validated calculation mode.
+        return_data : bool
+            If `True` returns `tuple[str, dict[str, Any]]`; if `False` returns `str`.
+
+        Returns
+        -------
+        str | tuple[str, dict[str, Any]]
+            Either the barcode string or the barcode string together with the
+            full MolBar data dictionary, depending on *return_data*.
+
+        Raises
+        ------
+        ValueError
+            If this structure contains no real atoms.
+        """
+        if not self.real_atoms:
+            raise ValueError(
+                f"{self.__class__.__name__}: structure contains no real atoms; "
+                "cannot build MolBar input."
+            )
+
+        # > Only real Atom instances are passed to MolBar; EmbeddingPotential,
+        # > GhostAtom, and PointCharge entries are excluded via real_atoms.
+        # > Note that GhostAtom is a subclass of Atom, so type(a) is Atom is
+        # > used rather than isinstance inside the real_atoms property.
+
+        # > OPI-native types (Element instances, NumPy array) are passed as-is;
+        # > `call_molbar` handles the conversion to MolBar's expected format.
+        real_indices = [i for i, a in enumerate(self.atoms) if type(a) is Atom]
+
+        return call_molbar(
+            elements=[atom.element for atom in self.real_atoms],
+            coordinates=self.get_coordinates(only_atoms=real_indices),
+            total_charge=self.charge,
+            mode=mode,
+            return_data=return_data,
+        )
+
+    def _validate_molbar_mode(self, mode: "MolBarMode | str") -> MolBarMode:
+        """
+        Validate and normalise a MolBar calculation mode.
+
+        Parameters
+        ----------
+        mode : MolBarMode | str
+            Calculation mode to validate.
+
+        Returns
+        -------
+        MolBarMode
+            The validated and normalised mode.
+
+        Raises
+        ------
+        ValueError
+            If *mode* is not a valid `MolBarMode` value.
+        """
+        # > Normalise and validate mode (case-insensitive via StringEnum._missing_)
+        try:
+            return MolBarMode(mode)
+        except ValueError:
+            raise ValueError(
+                f"Invalid mode {mode!r}. Must be one of {[m.value for m in MolBarMode]}"
+            )
 
     def _filtered_atoms(
         self,
