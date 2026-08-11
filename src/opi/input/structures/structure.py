@@ -20,7 +20,7 @@ from opi.input.structures.atom import (
     PointCharge,
 )
 from opi.input.structures.coordinates import Coordinates
-from opi.utils.ase import build_ase_atoms, requires_ase
+from opi.utils.ase import requires_ase
 from opi.utils.element import ATOMIC_MASSES_FROM_ELEMENT, Element
 from opi.utils.molbar import MolBarMode, call_molbar, requires_molbar
 from opi.utils.rotconst import (
@@ -120,7 +120,7 @@ class Structure:
     @property
     def real_atom_indices(self) -> list[int]:
         """
-        Return the indices of real `Atom` instances as provided by `real_atoms()`.
+        Return the indices of real `Atom` instances as provided by `real_atoms`.
         """
         return [i for i, a in enumerate(self.atoms) if type(a) is Atom]
 
@@ -1128,11 +1128,17 @@ class Structure:
                 "cannot build ASE Atoms object."
             )
 
-        return build_ase_atoms(
-            elements=[atom.element for atom in self.real_atoms],
-            coordinates=self.get_coordinates(only_atoms=self.real_atom_indices),
-            total_charge=self.charge,
-            multiplicity=self.multiplicity,
+        elements = [atom.element for atom in self.real_atoms]
+        coordinates = self.get_coordinates(only_atoms=self.real_atom_indices)
+
+        # > Convert OPI-native types to the plain types ASE understands.
+        element_symbols: list[str] = [Element(e).value for e in elements]
+        coords = np.asarray(coordinates, dtype=np.float64)
+
+        return AseAtoms(
+            symbols=element_symbols,
+            positions=coords,
+            info={"charge": self.charge, "spin": self.multiplicity},
         )
 
     @classmethod
