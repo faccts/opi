@@ -31,6 +31,7 @@
 - Added `Fcidump.from_arrays()` for constructing a `Fcidump` from numpy arrays and `Fcidump.to_file()` for writing FCIDUMP files (#267).
 - `Fcidump` now raises a `ValueError` if the one- or two-electron integrals contain symmetry-equivalent keys (#267).
 - Added `to_ase()` to convert a `Structure` into an ASE `Atoms` object (#273)
+- `Structure.from_ase()` now falls back to the `charge` and `spin` entries of `Atoms.info` if ASE's per-atom `initial_charges` / `initial_magnetic_moments` arrays are unset (#273)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
