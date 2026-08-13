@@ -64,7 +64,7 @@ def run_subprocess_with_fanout(
     cmd : Sequence[str]
         Sequence of program arguments, e.g. ["orca", "job.inp"]
     stdin : str | None, optional
-        Optional string to send to the stdin of the sbuprocess, by default None
+        Optional string to send to the stdin of the subprocess, by default None
     stdout : StreamTargetSpec, optional
         Single or multiple stream targets to pipe stdout to, by default ()
     stderr : StreamTargetSpec, optional
