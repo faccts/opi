@@ -132,12 +132,13 @@ def run_subprocess_with_fanout(
 
         # > Create thread that writes to STDIN to avoid blocking
         if stdin is not None and proc.stdin is not None:
-            # Optionally pipe `stdin` to `proc.stdin`
-            try:
-                proc.stdin.write(stdin)
-                proc.stdin.close()
-            except BrokenPipeError:
-                pass
+            thread = threading.Thread(
+                target=pump_text_stream,
+                args=(stdin, proc.stdin, errors),
+                daemon=True,
+            )
+            thread.start()
+            threads.append(thread)
 
         try:
             # > Wait for the process to exit
