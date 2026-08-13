@@ -5,7 +5,7 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 from types import FrameType
-from typing import Sequence, Callable, Any
+from typing import Callable, Sequence
 
 from opi.execution.text_stream import StreamTargetSpec, open_text_stream_fanout, pump_text_stream
 
@@ -54,13 +54,13 @@ class SubprocessRunResult:
 
 
 def run_subprocess_with_fanout(
-        cmd: Sequence[str],
-        *,
-        stdin: str | None = None,
-        stdout: StreamTargetSpec = (),
-        stderr: StreamTargetSpec = (),
-        timeout: float | None = None,
-        cwd: Path | None = None,
+    cmd: Sequence[str],
+    *,
+    stdin: str | None = None,
+    stdout: StreamTargetSpec = (),
+    stderr: StreamTargetSpec = (),
+    timeout: float | None = None,
+    cwd: Path | None = None,
 ) -> SubprocessRunResult:
     """
     Run a subprocess outputting to multiple stdout and stderr target streams.
@@ -111,7 +111,7 @@ def run_subprocess_with_fanout(
             errors="replace",  # > Replace invalid bytes/chars with a replacement marker,
             # > Creating process in new session, so that we can later kill the entire process tree
             # > to avoid orphans
-            start_new_session=True
+            start_new_session=True,
         )
         # > Registering signal handler
         for sig in SIGNALS_TO_FORWARD:
@@ -211,7 +211,7 @@ def run_subprocess_with_fanout(
                 signal.signal(sig, signal.SIG_DFL)
 
 
-def _signal_handler(pid: int, /) -> Callable[[int, FrameType | None], Any | int | signal.Handlers | None]:
+def _signal_handler(pid: int, /) -> Callable[[int, FrameType | None], None]:
     """
     Signal handler that forwards signals to the ORCA process group.
     This is necessary as the ORCA process is started in a separate session.
@@ -222,7 +222,7 @@ def _signal_handler(pid: int, /) -> Callable[[int, FrameType | None], Any | int 
         Process ID of the ORCA process.
     """
 
-    def handler(signum: int, __: FrameType | None) -> Any | int | signal.Handlers | None:
+    def handler(signum: int, __: FrameType | None) -> None:
         os.killpg(os.getpgid(pid), signum)
 
     return handler
