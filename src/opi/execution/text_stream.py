@@ -15,7 +15,7 @@ from typing import (
     TypeGuard,
 )
 
-CaptureType = int  # -1 is the sentinel value used by subprocess
+CaptureType = int  # > -1 is the sentinel value used by subprocess
 CAPTURE: Final[CaptureType] = subprocess.PIPE
 
 
@@ -155,23 +155,23 @@ def target_spec_to_stream_targets(targets: StreamTargetSpec) -> StreamTargets:
     if targets == ():
         return ()
 
-    # Capture output is denoted by subprocess.PIPE (matches subprocess.run semantics)
+    # > Capture output is denoted by subprocess.PIPE (matches subprocess.run semantics)
     if targets == subprocess.PIPE:
         return (CAPTURE,)
 
-    # Any other `int` value is not supported
+    # > Any other `int` value is not supported
     if isinstance(targets, int):
         raise TypeError("Only 'subprocess.PIPE' is allowed as 'int' input")
 
-    # normalize string filename to `Path`
+    # > normalize string filename to `Path`
     if isinstance(targets, str):
         targets = Path(targets)
 
-    # Any single file path, callable or writable stream gets normalized to a single tuple
+    # > Any single file path, callable or writable stream gets normalized to a single tuple
     if isinstance(targets, Path) or callable(targets) or _is_writable_stream(targets):
         return (targets,)
 
-    # Iterate over the sequence flattening all results into a single tuple.
+    # > Iterate over the sequence flattening all results into a single tuple.
     if isinstance(targets, AbstractSequence):
         normalized: list[StreamDestination] = []
         for index, target in enumerate(targets):
@@ -181,7 +181,7 @@ def target_spec_to_stream_targets(targets: StreamTargetSpec) -> StreamTargets:
                 raise TypeError(f"Unsupported stream target at index {index}: {target!r}") from exc
         return tuple(normalized)
 
-    # Any other types are unsupported.
+    # > Any other types are unsupported.
     raise TypeError(f"Unsupported stream target: {targets!r}")
 
 

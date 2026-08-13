@@ -37,7 +37,7 @@ class SubprocessRunResult:
         if not self.returncode_ok():
             raise RuntimeError(
                 f"Command failed with exit code: {self.returncode}"
-            )  # change to OpiExecutionError when PR #224 merged
+            )  # > change to OpiExecutionError when PR #224 merged
 
     def get_signal(self) -> int | None:
         """Check and return IPC signals."""
@@ -95,23 +95,22 @@ def run_subprocess_with_fanout(
         proc = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE if stdin is not None else None,
-            # if stdout is active pipe output otherwise send to devnull
+            # > if stdout is active pipe output otherwise send to devnull
             stdout=subprocess.PIPE if stdout_target.active else subprocess.DEVNULL,
-            # if stderr is active pipe output otherwise send to devnull
+            # > if stderr is active pipe output otherwise send to devnull
             stderr=subprocess.PIPE if stderr_target.active else subprocess.DEVNULL,
             cwd=cwd,
-            text=True,  # Force text mode so that `stdout` and `stderr` are `IO[str]` streams.
+            text=True,  # > Force text mode so that `stdout` and `stderr` are `IO[str]` streams.
             encoding="utf-8",
-            errors="replace",  # Replace invalid bytes/chars with a replacement marker
-            bufsize=1,  # buffer a single line at a time, TODO: should this be configurable?
+            errors="replace",  # > Replace invalid bytes/chars with a replacement marker
         )
 
-        errors: list[Exception] = []  # List used for write error accumulations
-        threads: list[threading.Thread] = []  # List to accumulate active write threads
+        errors: list[Exception] = []  # > List used for write error accumulations
+        threads: list[threading.Thread] = []  # > List to accumulate active write threads
 
         # > Check if stdout target is active and proc.stdout is a readable stream
         if stdout_target.active and proc.stdout is not None:
-            # Create stdout write thread
+            # > Create stdout write thread
             thread = threading.Thread(
                 target=pump_text_stream,
                 args=(proc.stdout, stdout_target, errors),
@@ -122,7 +121,7 @@ def run_subprocess_with_fanout(
 
         # > Check if stderr target is active and proc.stdout is a readable stream
         if stderr_target.active and proc.stderr is not None:
-            # Create stderr write thread
+            # > Create stderr write thread
             thread = threading.Thread(
                 target=pump_text_stream,
                 args=(proc.stderr, stderr_target, errors),
@@ -131,6 +130,7 @@ def run_subprocess_with_fanout(
             thread.start()
             threads.append(thread)
 
+        # > Create thread that writes to STDIN to avoid blocking
         if stdin is not None and proc.stdin is not None:
             # Optionally pipe `stdin` to `proc.stdin`
             try:
@@ -140,29 +140,32 @@ def run_subprocess_with_fanout(
                 pass
 
         try:
-            # Wait for the process to exit
+            # > Wait for the process to exit
             returncode = proc.wait(timeout=timeout)
         except subprocess.TimeoutExpired as exc:
-            # Make sure the process has exited
+            # > Make sure the process has exited
             proc.kill()
             proc.wait()
 
-            # Join all active threads
+            # > Join all active threads
             for thread in threads:
                 thread.join()  # TODO: should we set a timeout?
 
             raise subprocess.TimeoutExpired(
                 cmd=cmd,
-                timeout=timeout or 0.0,  # appease the type checker
+                timeout=timeout or 0.0,  # > appease the type checker
                 output=stdout_target.get_captured(),
                 stderr=stderr_target.get_captured(),
             ) from exc
 
-        # Join active writer threads once the subprocess exits normally.
+        # > Join active writer threads once the subprocess exits normally.
         for thread in threads:
-            thread.join()
+            # > The timeout does not actually kill thread if it's exceed, but it makes sure
+            # > that `join()` does not block.
+            # >> I'm not aware of any way to kill threads, aside from terminating the parent process.
+            thread.join(timeout=timeout)
 
-        # If any errors occurred in the writer threads then re-raise the first error.
+        # > If any errors occurred in the writer threads then re-raise all of them.
         if errors:
             raise ExceptionGroup("ORCA execution", errors)
 
