@@ -27,11 +27,11 @@ class Runner(BaseRunner):
         *extra_args: str,
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
-        silent: bool = True,
         timeout: int = -1,
     ) -> None:
         """
         Execute ORCA's main binary and pass the path to the main input file as well as extra arguments.
+        By default, STDOUT and STDERR are dumped into `<basename>.out` and `<basename>.err`, respectively.
 
         Parameters
         ----------
@@ -39,8 +39,6 @@ class Runner(BaseRunner):
             Path to ORCA's main input file.
         *extra_args: str
             Additional arguments passed to ORCA.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
         timeout : int, default: -1
             Optional timeout in seconds to wait for process to complete.
         """
@@ -65,7 +63,6 @@ class Runner(BaseRunner):
                 arguments,
                 stdout=concatentate_stream_targets(stdout, outfile),
                 stderr=concatentate_stream_targets(stderr, errfile),
-                # silent=silent,
                 timeout=timeout,
             )
         finally:
@@ -83,12 +80,14 @@ class Runner(BaseRunner):
         *extra_args: str,
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
-        silent: bool = True,
         timeout: int = -1,
     ) -> None:
         """
-        Executes the orca_plot binary in the interactive mode and passes the gbw path, an input string, and extra
-        arguments to the binary. Note that currently only the interactive mode (orca_plot (gbw) -i) is supported.
+        Executes the orca_plot binary in the interactive mode and passes the gbw path,
+        an input string, and extra arguments to the binary.
+        Note that currently only the interactive mode (orca_plot (gbw) -i) is supported.
+        By default, STDOUT and STDERR are dumped into
+        `<basename>.plot.out` and `<basename>.plot.err`, respectively.
 
         Parameters
         ----------
@@ -98,8 +97,6 @@ class Runner(BaseRunner):
             Input string handed to stdin of orca_plot.
         *extra_args: str
             Additional arguments passed to orca_plot.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
         timeout : int, default: -1
             Optional timeout in seconds to wait for process to complete.
 
@@ -116,7 +113,7 @@ class Runner(BaseRunner):
         if not stdin_list:
             raise ValueError("stdin_list is required but was empty or not provided.")
 
-        # Sets the output and error file from the gbwfile.
+        # > Sets the output and error file from the gbwfile.
         outfile = gbwfile.with_suffix(".plot.out")
         errfile = gbwfile.with_suffix(".plot.err")
 
@@ -132,14 +129,13 @@ class Runner(BaseRunner):
         stdin_str = "\n".join(stdin_list) + "\n"
 
         try:
-            # Run orca_plot
+            # > Run orca_plot
             self.run(
                 OrcaBinary.ORCA_PLOT,
                 arguments,
                 stdin=stdin_str,
                 stdout=concatentate_stream_targets(stdout, outfile),
                 stderr=concatentate_stream_targets(stderr, errfile),
-                # silent=silent,
                 timeout=timeout,
             )
         finally:

@@ -178,7 +178,7 @@ class BaseRunner:
         stderr: StreamTargetSpec = (),
         cwd: Path | None = None,
         timeout: float | None = None,
-        # deprecated
+        # > deprecated parameters
         stdin_str: _Unset | str | None = UNSET,
         capture: _Unset | bool = UNSET,
         silent: _Unset | bool = UNSET,
