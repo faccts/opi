@@ -121,3 +121,4 @@ def test_get_nelectrons_nonexistent(empty_output_object: Output):
 def test_get_nbf_nonexistent(empty_output_object: Output):
     """Test to check if `Output.get_nbf()` returns None when expected."""
     assert not empty_output_object.get_nbf()
+

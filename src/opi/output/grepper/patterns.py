@@ -16,6 +16,7 @@ from opi.output.grepper.error_pattern import (
 # > Success strings - String that indicate something finished with success
 TERMINATED_NORMALLY = "****ORCA TERMINATED NORMALLY****"
 SCF_CONVERGED = "SUCCESS"
+EXTERNAL_XTB_SCF_CONVERGED = "convergence criteria satisfied after"
 GEOMETRY_CONVERGED = "HURRAY"
 CC_CONVERGED = "The Coupled-Cluster iterations have converged"
 CASSCF_CONVERGED = "---- THE CAS-SCF GRADIENT HAS CONVERGED ----"
