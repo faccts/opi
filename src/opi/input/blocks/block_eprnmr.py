@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputFilePath, NumList
 from opi.models import IntGroup
 from opi.utils.element import Element
@@ -271,7 +271,7 @@ class NmrEquiv(BaseModel):
         return NmrEquiv(groups=groups)
 
 
-class BlockEprnmr(Block):
+class BlockEprnmr(BlockABC):
     """Class to model %eprnmr block in ORCA"""
 
     _name: str = "eprnmr"

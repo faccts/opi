@@ -8,7 +8,7 @@ from pydantic import (
     model_validator,
 )
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.fragment import FragList, Fragment, Frags
 from opi.input.blocks.geom_wrapper import GeomWrapper, GeomWrapperBox
 from opi.input.blocks.util import InputFilePath, NumList
@@ -493,7 +493,7 @@ class ConnectFragments(GeomWrapperBox):
         return s
 
 
-class BlockGeom(Block):
+class BlockGeom(BlockABC):
     """Class to model %geom block in ORCA"""
 
     _name: str = "geom"

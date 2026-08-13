@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.simple_keywords import Solvent
 
 __all__ = ("AtomRadii", "Radius", "BlockCpcm")
@@ -48,7 +48,7 @@ class Radius(BaseModel):
         return f"[{self.n}] {str(self.value)}"
 
 
-class BlockCpcm(Block):
+class BlockCpcm(BlockABC):
     """Class to model %cpcm block in ORCA"""
 
     _name: str = "cpcm"

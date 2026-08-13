@@ -2,7 +2,8 @@
 Modules that hold Python objects representing the most common block options.
 """
 
-from opi.input.blocks.base import Block
+from opi.input.blocks.base import BlockABC
+from opi.input.blocks.block import Block
 from opi.input.blocks.block_autoci import BlockAutoCI
 from opi.input.blocks.block_basis import (
     BlockBasis,
@@ -59,7 +60,7 @@ from opi.input.blocks.geom_wrapper import Internal, Internals
 from opi.input.blocks.util import InputFilePath, InputString, NumList
 
 __all__ = [
-    "Block",
+    "BlockABC",
     "NumList",
     "InputFilePath",
     "InputString",
@@ -131,4 +132,5 @@ __all__ = [
     "Frags",
     "Internal",
     "Internals",
+    "Block",
 ]

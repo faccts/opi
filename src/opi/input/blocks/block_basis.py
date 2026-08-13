@@ -3,7 +3,7 @@ import re
 from pydantic import BaseModel, ConfigDict, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputFilePath
 from opi.input.simple_keywords import (
     SimpleKeyword,
@@ -170,7 +170,7 @@ class FragEcp(FragBasis):
     name: str = "fragecp"
 
 
-class BlockBasis(Block):
+class BlockBasis(BlockABC):
     """Class to model %basis block in ORCA"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

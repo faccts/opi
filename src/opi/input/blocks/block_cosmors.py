@@ -1,13 +1,13 @@
 from pydantic import field_validator
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputFilePath
 from opi.input.simple_keywords import SimpleKeyword, Solvent
 
 __all__ = ("BlockCosmors",)
 
 
-class BlockCosmors(Block):
+class BlockCosmors(BlockABC):
     """Class to model %cosmors block in ORCA"""
 
     _name: str = "cosmors"

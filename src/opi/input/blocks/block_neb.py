@@ -2,14 +2,14 @@ from typing import Literal
 
 from pydantic import field_validator
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.geom_wrapper import Internal, Internals
 from opi.input.blocks.util import InputFilePath
 
 __all__ = ("BlockNeb",)
 
 
-class BlockNeb(Block):
+class BlockNeb(BlockABC):
     """Class to model %neb block in ORCA"""
 
     _name: str = "neb"

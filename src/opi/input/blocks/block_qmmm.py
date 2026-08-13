@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import field_validator
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputFilePath
 from opi.input.simple_keywords import SimpleKeyword
 from opi.models import IntGroupEnd
@@ -10,7 +10,7 @@ from opi.models import IntGroupEnd
 __all__ = ("BlockQmmm",)
 
 
-class BlockQmmm(Block):
+class BlockQmmm(BlockABC):
     """Class to model %qmmm block in ORCA"""
 
     _name: str = "qmmm"
