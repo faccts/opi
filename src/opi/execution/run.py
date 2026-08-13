@@ -146,11 +146,22 @@ def run_subprocess_with_fanout(
         except subprocess.TimeoutExpired as exc:
             # > Make sure the process has exited
             proc.kill()
-            proc.wait()
+            # > Adding another timeout just as precaution, as process that wait for I/O might
+            # > be in deepsleep and cannot be killed.
+            try:
+                proc.wait(timeout=60)
+            except subprocess.TimeoutExpired as exc2:
+                # > Overwriting outer exception
+                exc = exc2
 
             # > Join all active threads
             for thread in threads:
-                thread.join()  # TODO: should we set a timeout?
+                # > The timeout does not actually kill the thread if exceeded, but it makes sure
+                # > that `join()` does not block.
+                # >> I'm not aware of any way to kill threads, aside from terminating the parent process.
+                # >>> If the thread exceeds the timeout, STDOUT and STDERR captures will
+                # >>> mostly likely be incomplete.
+                thread.join(timeout=timeout)
 
             raise subprocess.TimeoutExpired(
                 cmd=cmd,
