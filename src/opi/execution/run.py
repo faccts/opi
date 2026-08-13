@@ -1,10 +1,16 @@
+import os
+import signal
 import subprocess
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from types import FrameType
+from typing import Sequence, Callable, Any
 
 from opi.execution.text_stream import StreamTargetSpec, open_text_stream_fanout, pump_text_stream
+
+# > Signals that we need register a specific handler for, to forward them to the ORCA process.
+SIGNALS_TO_FORWARD = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 
 
 @dataclass(frozen=True)
@@ -48,13 +54,13 @@ class SubprocessRunResult:
 
 
 def run_subprocess_with_fanout(
-    cmd: Sequence[str],
-    *,
-    stdin: str | None = None,
-    stdout: StreamTargetSpec = (),
-    stderr: StreamTargetSpec = (),
-    timeout: float | None = None,
-    cwd: Path | None = None,
+        cmd: Sequence[str],
+        *,
+        stdin: str | None = None,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
+        timeout: float | None = None,
+        cwd: Path | None = None,
 ) -> SubprocessRunResult:
     """
     Run a subprocess outputting to multiple stdout and stderr target streams.
@@ -102,87 +108,121 @@ def run_subprocess_with_fanout(
             cwd=cwd,
             text=True,  # > Force text mode so that `stdout` and `stderr` are `IO[str]` streams.
             encoding="utf-8",
-            errors="replace",  # > Replace invalid bytes/chars with a replacement marker
+            errors="replace",  # > Replace invalid bytes/chars with a replacement marker,
+            # > Creating process in new session, so that we can later kill the entire process tree
+            # > to avoid orphans
+            start_new_session=True
         )
+        # > Registering signal handler
+        for sig in SIGNALS_TO_FORWARD:
+            signal.signal(sig, _signal_handler(proc.pid))
 
         errors: list[Exception] = []  # > List used for write error accumulations
         threads: list[threading.Thread] = []  # > List to accumulate active write threads
 
-        # > Check if stdout target is active and proc.stdout is a readable stream
-        if stdout_target.active and proc.stdout is not None:
-            # > Create stdout write thread
-            thread = threading.Thread(
-                target=pump_text_stream,
-                args=(proc.stdout, stdout_target, errors),
-                daemon=True,
-            )
-            thread.start()
-            threads.append(thread)
-
-        # > Check if stderr target is active and proc.stdout is a readable stream
-        if stderr_target.active and proc.stderr is not None:
-            # > Create stderr write thread
-            thread = threading.Thread(
-                target=pump_text_stream,
-                args=(proc.stderr, stderr_target, errors),
-                daemon=True,
-            )
-            thread.start()
-            threads.append(thread)
-
-        # > Create thread that writes to STDIN to avoid blocking
-        if stdin is not None and proc.stdin is not None:
-            thread = threading.Thread(
-                target=pump_text_stream,
-                args=(stdin, proc.stdin, errors),
-                daemon=True,
-            )
-            thread.start()
-            threads.append(thread)
-
         try:
-            # > Wait for the process to exit
-            returncode = proc.wait(timeout=timeout)
-        except subprocess.TimeoutExpired as exc:
-            # > Make sure the process has exited
-            proc.kill()
-            # > Adding another timeout just as precaution, as process that wait for I/O might
-            # > be in deepsleep and cannot be killed.
-            try:
-                proc.wait(timeout=60)
-            except subprocess.TimeoutExpired as exc2:
-                # > Overwriting outer exception
-                exc = exc2
+            # > Check if stdout target is active and proc.stdout is a readable stream
+            if stdout_target.active and proc.stdout is not None:
+                # > Create stdout write thread
+                thread = threading.Thread(
+                    target=pump_text_stream,
+                    args=(proc.stdout, stdout_target, errors),
+                    daemon=True,
+                )
+                thread.start()
+                threads.append(thread)
 
-            # > Join all active threads
+            # > Check if stderr target is active and proc.stdout is a readable stream
+            if stderr_target.active and proc.stderr is not None:
+                # > Create stderr write thread
+                thread = threading.Thread(
+                    target=pump_text_stream,
+                    args=(proc.stderr, stderr_target, errors),
+                    daemon=True,
+                )
+                thread.start()
+                threads.append(thread)
+
+            # > Create thread that writes to STDIN to avoid blocking
+            if stdin is not None and proc.stdin is not None:
+                thread = threading.Thread(
+                    target=pump_text_stream,
+                    args=(stdin, proc.stdin, errors),
+                    daemon=True,
+                )
+                thread.start()
+                threads.append(thread)
+
+            try:
+                # > Wait for the process to exit
+                returncode = proc.wait(timeout=timeout)
+            except subprocess.TimeoutExpired as exc:
+                # > First try a soft kill
+                proc.terminate()
+                try:
+                    # > Wait 1min for cleanup
+                    proc.wait(timeout=60)
+                except subprocess.TimeoutExpired:
+                    # > Kill the entire process tree with no mercy
+                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                    # > Adding another timeout just as precaution, as processes that wait for I/O might
+                    # > be in deepsleep and cannot be killed.
+                    try:
+                        # > Wait 5 seconds minute. Killing should usually only take microseconds.
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        pass
+
+                # > Join all active threads
+                for thread in threads:
+                    # > The timeout does not actually kill the thread if exceeded, but it makes sure
+                    # > that `join()` does not block.
+                    # >> I'm not aware of any way to kill threads, aside from terminating the parent process.
+                    # >>> If the thread exceeds the timeout, STDOUT and STDERR captures will
+                    # >>> mostly likely be incomplete.
+                    thread.join(timeout=timeout)
+
+                raise subprocess.TimeoutExpired(
+                    cmd=cmd,
+                    timeout=timeout or 0.0,  # > appease the type checker
+                    output=stdout_target.get_captured(),
+                    stderr=stderr_target.get_captured(),
+                ) from exc
+
+            # > Join active writer threads once the subprocess exits normally.
             for thread in threads:
-                # > The timeout does not actually kill the thread if exceeded, but it makes sure
+                # > The timeout does not actually kill thread if it's exceed, but it makes sure
                 # > that `join()` does not block.
                 # >> I'm not aware of any way to kill threads, aside from terminating the parent process.
-                # >>> If the thread exceeds the timeout, STDOUT and STDERR captures will
-                # >>> mostly likely be incomplete.
                 thread.join(timeout=timeout)
 
-            raise subprocess.TimeoutExpired(
-                cmd=cmd,
-                timeout=timeout or 0.0,  # > appease the type checker
-                output=stdout_target.get_captured(),
+            # > If any errors occurred in the writer threads then re-raise all of them.
+            if errors:
+                raise ExceptionGroup("ORCA execution", errors)
+
+            return SubprocessRunResult(
+                returncode=returncode,
+                stdout=stdout_target.get_captured(),
                 stderr=stderr_target.get_captured(),
-            ) from exc
+            )
+        finally:
+            # > Restarting default signal handling again
+            for sig in SIGNALS_TO_FORWARD:
+                signal.signal(sig, signal.SIG_DFL)
 
-        # > Join active writer threads once the subprocess exits normally.
-        for thread in threads:
-            # > The timeout does not actually kill thread if it's exceed, but it makes sure
-            # > that `join()` does not block.
-            # >> I'm not aware of any way to kill threads, aside from terminating the parent process.
-            thread.join(timeout=timeout)
 
-        # > If any errors occurred in the writer threads then re-raise all of them.
-        if errors:
-            raise ExceptionGroup("ORCA execution", errors)
+def _signal_handler(pid: int, /) -> Callable[[int, FrameType | None], Any | int | signal.Handlers | None]:
+    """
+    Signal handler that forwards signals to the ORCA process group.
+    This is necessary as the ORCA process is started in a separate session.
 
-        return SubprocessRunResult(
-            returncode=returncode,
-            stdout=stdout_target.get_captured(),
-            stderr=stderr_target.get_captured(),
-        )
+    Parameters
+    ----------
+    pid : int
+        Process ID of the ORCA process.
+    """
+
+    def handler(signum: int, __: FrameType | None) -> Any | int | signal.Handlers | None:
+        os.killpg(os.getpgid(pid), signum)
+
+    return handler
