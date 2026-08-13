@@ -211,8 +211,10 @@ class BaseRunner:
             DEPRECATED, use `stdin` instead.
         capture : _Unset | bool, default: UNSET
             DEPRECATED, use `stdout`/`stderr`=`subprocess.PIPE` instead.
+            Mutually-exclusive to `silent`.`
         silent : _Unset | bool, default: UNSET
             DEPRECATED, use `stdout`/`stderr`=`()` instead.
+            Mutually-exclusive to `capture`.
 
         Returns
         -------
@@ -246,13 +248,27 @@ class BaseRunner:
                 DeprecationWarning,
                 stacklevel=2,
             )
-            # TODO: should we add `subprocess.PIPE` to `stdout` and `stderr` here?
+            if capture:
+                # > Capturing STDOUT and/or STDERR if no custom targets are specified
+                if stdout == ():
+                    stdout = subprocess.PIPE
+                if stderr == ():
+                    stderr = subprocess.PIPE
         if silent is not UNSET:
             warnings.warn(
                 "`silent` is deprecated; omit stdout/stderr for silent execution.",
                 DeprecationWarning,
                 stacklevel=2,
             )
+            if silent:
+                # > Redirecting STDOUT and/or STDERR into the void
+                if stdout == ():
+                    stdout = subprocess.DEVNULL
+                if stderr == ():
+                    stderr = subprocess.DEVNULL
+        # > Capture and silent are mutually-exclusive
+        if capture is True and silent is True:
+            raise ValueError("'capture' and 'silent' are mutually-exclusive")
 
         # > Get requested ORCA binary
         if not isinstance(binary, OrcaBinary):
