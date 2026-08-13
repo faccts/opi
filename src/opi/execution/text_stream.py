@@ -238,7 +238,7 @@ def open_text_stream_fanout(targets: StreamTargetSpec) -> Iterator[TextStreamFan
 def pump_text_stream(
     stream: IO[str],
     target: TextStreamFanout,
-    errors: list[BaseException],
+    errors: list[Exception],
 ) -> None:
     """
     Pumps the output from `stream` to the `target` fanout.
@@ -254,15 +254,17 @@ def pump_text_stream(
         Input stream from a subprocess's stdout or stderr.
     target : TextStreamFanout
         Target fanout to dispatch lines from the input stream.
-    errors : list[BaseException]
+    errors : list[Exception]
         Error accumulation list, any errors that occur on write are
         captured and appended to the list.
     """
     try:
         for line in stream:
             target.write(line)
-    except BaseException as exc:
-        errors.append(exc)  # TODO: should we raise immediately?
+    except Exception as exc:
+        # > Exceptions are raised as part of an ExceptionGroup
+        # > at the end of `run_subprocess_with_fanout()`
+        errors.append(exc)
     finally:
         try:
             stream.close()

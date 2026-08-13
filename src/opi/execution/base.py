@@ -230,7 +230,7 @@ class BaseRunner:
         subprocess.TimeoutExpired
             Raised by `run_subprocess_with_fanout` if a timeout is set and the process
             times out.
-        BaseException
+        Exception
             Raised by `run_subprocess_with_fanout`, after the process has finished, the
             first error accumulated from a failed write is raised.
         """

@@ -83,7 +83,7 @@ def run_subprocess_with_fanout(
     ------
     subprocess.TimeoutExpired
         Raised if a timeout is set and the process times out.
-    BaseException
+    Exception
         After the process has finished, the first error accumulated from
         a failed write is raised.
     """
@@ -106,7 +106,7 @@ def run_subprocess_with_fanout(
             bufsize=1,  # buffer a single line at a time, TODO: should this be configurable?
         )
 
-        errors: list[BaseException] = []  # List used for write error accumulations
+        errors: list[Exception] = []  # List used for write error accumulations
         threads: list[threading.Thread] = []  # List to accumulate active write threads
 
         # > Check if stdout target is active and proc.stdout is a readable stream
@@ -164,8 +164,7 @@ def run_subprocess_with_fanout(
 
         # If any errors occurred in the writer threads then re-raise the first error.
         if errors:
-            # TODO: should we configure whether to silence this error?
-            raise errors[0]
+            raise ExceptionGroup("ORCA execution", errors)
 
         return SubprocessRunResult(
             returncode=returncode,
