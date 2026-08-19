@@ -263,7 +263,7 @@ class Calculator:
 
         thereby telling ORCA to also create respective JSON files automatically.
         """
-        output_block = self.input.get_blocks(BlockOutput, create_missing=True)[BlockOutput]
+        output_block = self.input.get_block(BlockOutput, create_missing=True)
         # > assert correct type of block for mypy
         assert isinstance(output_block, BlockOutput)
         output_block.jsongbwfile = True

@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.fragment import Fragment, Frags
 from opi.input.blocks.util import InputFilePath, InputString
 
@@ -85,7 +85,7 @@ class FragProc(BaseModel):
         return cls(flags=parts)
 
 
-class BlockFrag(Block):
+class BlockFrag(BlockABC):
     """Class to model %frag block in ORCA"""
 
     _name: str = "frag"

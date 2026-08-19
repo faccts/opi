@@ -1,11 +1,11 @@
 from typing import Literal
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 
 __all__ = ("BlockIce",)
 
 
-class BlockIce(Block):
+class BlockIce(BlockABC):
     """Class to model %ice block in ORCA"""
 
     _name: str = "ice"
