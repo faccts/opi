@@ -68,7 +68,9 @@ def _orca_environment(
             # //////////////////////////////
             return runner(self, *args, **kwargs)
         finally:
-            os.environ = org_env  # type: ignore
+            # > Clearing and updating the dict in-place, prevent breaking any references to dict.
+            os.environ.clear()
+            os.environ.update(org_env)
 
     # << END OF INNER FUNC
 
