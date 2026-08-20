@@ -26,6 +26,7 @@ from opi.output.grepper.recipes import (
     has_casscf_converged,
     has_cc_converged,
     has_geometry_optimization_converged,
+    has_neb_converged,
     has_scf_converged,
     has_terminated_normally,
 )
@@ -861,6 +862,19 @@ class Output:
             True if "HURRAY" is found in ".out" file else False
         """
         return self._has(has_geometry_optimization_converged)
+
+    def neb_converged(self) -> bool:
+        """
+        Determine if an ORCA NEB optimization converged, by looking for "H U R R A Y" in the ".out" file.
+        Check only if an ORCA NEB optimization was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if "H U R R A Y" is found in ".out" file else False
+        """
+        return self._has(has_neb_converged)
 
     def print_graph(self, *, max_length: int = 3, depth: int = -1) -> None:
         """

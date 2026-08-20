@@ -13,11 +13,18 @@ RGX_INT_AND_FLOAT = re.compile(
     r"(?<![A-Za-z])[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[Ee][+-]?\d+)?(?![A-Za-z])"
 )
 
+# > RE for the energy of a NEB structure, which follows a standalone "E" token in the comment line
+RGX_NEB_ENERGY = re.compile(
+    r"(?:^|\s)E\s+([+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[Ee][+-]?\d+)?)(?![A-Za-z])"
+)
+# > RE for the image number of a NEB structure, which is only present in ".allxyz" files
+RGX_NEB_IMAGE = re.compile(r"(?:^|\s)Image\s+(\d+)(?![A-Za-z])")
+
 
 class Properties:
     """
     Class to represent structure properties (e.g., total or relative energies).
-    Currently, properties can only be read from XYZ files created with GOAT or DOCKER.
+    Currently, properties can only be read from XYZ files created with GOAT, DOCKER or NEB.
 
     Attributes
     ----------
@@ -41,7 +48,7 @@ class Properties:
 
     @classmethod
     def from_xyz(
-        cls, xyz_file: Path | str | PathLike[str], mode: Literal["goat", "docker"] = "goat"
+        cls, xyz_file: Path | str | PathLike[str], mode: Literal["goat", "docker", "neb"] = "goat"
     ) -> "Properties":
         """
         Function for reading properties from the comment line of a single structure from a (multi-)XYZ file
@@ -51,8 +58,8 @@ class Properties:
         ----------
         xyz_file : Path | str | PathLike[str]
             Name or path to XYZ file.
-        mode: Literal["goat", "docker"], default = "goat"
-            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
+        mode: Literal["goat", "docker", "neb"], default = "goat"
+            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER, GOAT or NEB run.
 
         Returns
         --------
@@ -76,7 +83,7 @@ class Properties:
         trj_file: Path | str | PathLike[str],
         /,
         *,
-        mode: Literal["goat", "docker"] = "goat",
+        mode: Literal["goat", "docker", "neb"] = "goat",
         comment_symbols: str | Sequence[str] | None = None,
         n_struc_limit: int | None = None,
     ) -> "list[Properties]":
@@ -87,8 +94,8 @@ class Properties:
         ----------
         trj_file : Path | str | PathLike[str]
             Name or path to XYZ file with one or multiple structure(s).
-        mode: Literal["goat", "docker"], default = "goat"
-            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
+        mode: Literal["goat", "docker", "neb"], default = "goat"
+            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER, GOAT or NEB run.
         comment_symbols: str | Sequence[str] | None, default: None
             List of symbols that indicate user comments in the XYZ data.
             User comments have to start with the given symbol, fill a whole line, and come before the actual XYZ data.
@@ -127,7 +134,7 @@ class Properties:
 
     @classmethod
     def from_xyz_block(
-        cls, xyz_string: str, mode: Literal["goat", "docker"] = "goat"
+        cls, xyz_string: str, mode: Literal["goat", "docker", "neb"] = "goat"
     ) -> "Properties":
         """
         Function for reading a single XYZ file from a string and returning a `Properties` object.
@@ -136,8 +143,8 @@ class Properties:
         ----------
         xyz_string: str
             String that contains XYZ file data.
-        mode: Literal["goat", "docker"], default = "goat"
-            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
+        mode: Literal["goat", "docker", "neb"], default = "goat"
+            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER, GOAT or NEB run.
 
         Returns
         --------
@@ -159,7 +166,7 @@ class Properties:
         trj_string: str,
         /,
         *,
-        mode: Literal["goat", "docker"] = "goat",
+        mode: Literal["goat", "docker", "neb"] = "goat",
         comment_symbols: str | Sequence[str] | None = None,
         n_struc_limit: int | None = None,
     ) -> "list[Properties]":
@@ -170,8 +177,8 @@ class Properties:
         ----------
         trj_string : Path | str | PathLike[str]
             String that contains one or multiple XYZ blocks (trajectory data).
-        mode: Literal["goat", "docker"], default = "goat"
-            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
+        mode: Literal["goat", "docker", "neb"], default = "goat"
+            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER, GOAT or NEB run.
         comment_symbols: str | Sequence[str] | None, default: None
             List of symbols that indicate user comments in the XYZ data.
             User comments have to start with the given symbol, fill a whole line, and come before the actual XYZ data.
@@ -204,7 +211,7 @@ class Properties:
         /,
         *,
         comment_symbols: str | Sequence[str] | None = None,
-        mode: Literal["goat", "docker"] = "goat",
+        mode: Literal["goat", "docker", "neb"] = "goat",
     ) -> "Properties":
         """
         Function for reading from the comment line of a XYZ file from a buffer and converting it to a `Properties`
@@ -217,8 +224,8 @@ class Properties:
         comment_symbols: str | Sequence[str] | None, default: None
             List of symbols that indicate user comments in the XYZ data.
             User comments have to start with the given symbol, fill a whole line, and come before the actual XYZ data.
-        mode: Literal["goat", "docker"], default = "goat"
-            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
+        mode: Literal["goat", "docker", "neb"], default = "goat"
+            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER, GOAT or NEB run.
 
         Returns
         --------
@@ -236,6 +243,7 @@ class Properties:
         mode_functions = {
             "goat": cls.goat_energies,
             "docker": cls.docker_energies,
+            "neb": cls.neb_energies,
         }
 
         comments_tuple: tuple[str, ...] | None = None
@@ -322,11 +330,35 @@ class Properties:
         return properties
 
     @classmethod
+    def neb_energies(cls, line: str) -> "Properties":
+        """Function for reading NEB energies from the comment line of a NEB XYZ file and return them in `Properties`
+        object.
+
+        NEB comment lines look like `Coordinates from ORCA-job job_MEP E  -7.336370651022`, and additionally carry
+        `NEB Path Image <n>` in ".allxyz" files. In contrast to `goat_energies`, the energy is taken from behind the
+        standalone "E" token instead of being the first number in the line, because the job name may contain digits.
+        """
+        match_energy = RGX_NEB_ENERGY.search(line)
+        if match_energy is None:
+            raise ValueError("Could not parse NEB energies from comment line.")
+        energy_total = float(match_energy.group(1))
+
+        # > The image number is only present in ".allxyz" files
+        match_image = RGX_NEB_IMAGE.search(line)
+        structure_id = int(match_image.group(1)) if match_image else None
+
+        properties = Properties(
+            structure_id=structure_id,
+            energy_total=energy_total,
+        )
+        return properties
+
+    @classmethod
     def _iter_xyz_structures(
         cls,
         tracked: TrackingTextIO,
         comment_symbols: str | Sequence[str] | None,
-        mode: Literal["goat", "docker"],
+        mode: Literal["goat", "docker", "neb"],
         n_struc_limit: int | None,
     ) -> Iterator["Properties"]:
         """
@@ -339,8 +371,8 @@ class Properties:
         comment_symbols: str | Sequence[str] | None, default: None
             List of symbols that indicate user comments in the XYZ data.
             User comments have to start with the given symbol, fill a whole line, and come before the actual XYZ data.
-        mode: Literal["goat", "docker"], default = "goat"
-            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER or GOAT run.
+        mode: Literal["goat", "docker", "neb"], default = "goat"
+            Define how the comment line should be processed, e.g, it is the comment line from a DOCKER, GOAT or NEB run.
         n_struc_limit: int | None, default: None
             If >0, only read the first n structures.
 

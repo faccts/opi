@@ -8,4 +8,5 @@ from examples.exmp039_neb.job import run_exmp039
 @pytest.mark.slow
 def test_exmp039_neb(example_input_file, tmp_path) -> None:
     """Ensure NEB example runs successfully."""
-    run_exmp039(working_dir=tmp_path)
+    output = run_exmp039(working_dir=tmp_path)
+    assert output.neb_converged()
