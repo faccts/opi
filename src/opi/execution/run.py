@@ -4,13 +4,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
-from opi.execution.text_stream import StreamTargetSpec, open_text_stream_fanout, pump_text_stream, pump_in_text
 from opi.execution.text_stream import (
     StreamTargetSpec,
     open_text_stream_fanout,
     pump_in_text,
     pump_text_stream,
 )
+
+# > Timeout to wait for `Thread.join()`.
+# > If threads don't stop after waiting time, we leave them be and they die,
+# > when the Python process dies.
+THREAD_TIMEOUT = 5
 
 
 @dataclass(frozen=True)
@@ -139,7 +143,7 @@ def run_subprocess_with_fanout(
         # > Create thread that writes to STDIN to avoid blocking
         if stdin is not None and proc.stdin is not None:
             thread = threading.Thread(
-                target=pump_text_stream,
+                target=pump_in_text,
                 args=(stdin, proc.stdin, errors),
                 daemon=True,
             )
@@ -171,7 +175,7 @@ def run_subprocess_with_fanout(
                 # >> I'm not aware of any way to kill threads, aside from terminating the parent process.
                 # >>> If the thread exceeds the timeout, STDOUT and STDERR captures will
                 # >>> mostly likely be incomplete.
-                thread.join(timeout=timeout)
+                thread.join(timeout=THREAD_TIMEOUT)
 
             raise subprocess.TimeoutExpired(
                 cmd=cmd,
@@ -185,7 +189,7 @@ def run_subprocess_with_fanout(
             # > The timeout does not actually kill thread if it's exceed, but it makes sure
             # > that `join()` does not block.
             # >> I'm not aware of any way to kill threads, aside from terminating the parent process.
-            thread.join(timeout=timeout)
+            thread.join(timeout=THREAD_TIMEOUT)
 
         # > If any errors occurred in the writer threads then re-raise all of them.
         if errors:
