@@ -115,7 +115,7 @@ def run_subprocess_with_fanout(
             errors="replace",  # > Replace invalid bytes/chars with a replacement marker
         )
 
-        errors: list[Exception] = []  # > List used for write error accumulations
+        errors: list[BaseException] = []  # > List used for write error accumulations
         threads: list[threading.Thread] = []  # > List to accumulate active write threads
 
         # > Check if stdout target is active and proc.stdout is a readable stream
@@ -193,7 +193,16 @@ def run_subprocess_with_fanout(
 
         # > If any errors occurred in the writer threads then re-raise all of them.
         if errors:
-            raise ExceptionGroup("ORCA execution", errors)
+            exceptions: list[Exception] = []
+            for i, err in enumerate(errors):
+                # > Converting BaseExceptions into Exceptions, as OPI should not die,
+                # > because a subprocess or thread raised a BaseException.
+                if isinstance(err, BaseException) and not isinstance(err, Exception):
+                    exceptions.append(Exception(str(err)).with_traceback(err.__traceback__))
+                else:
+                    exceptions.append(err)
+
+            raise ExceptionGroup("ORCA execution", exceptions)
 
         return SubprocessRunResult(
             returncode=returncode,
