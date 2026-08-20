@@ -24,7 +24,7 @@
 - Added `get_frequencies`, `get_imaginary_frequencies`, `is_pes_minimum`, and `is_pes_transition_state` to the `Output` class (#247).
 - Add `functions to clean up files created by ORCA jobs.(#262)
 - `Output.parse()`, `Output.parse_property()`, `Output.parse_gbw()`, and `Output.__init__()` now accept a `strict` parameter (default True). When set to False, output fields that fail Pydantic validation are silently set to None and a UserWarning is emitted instead of raising a ValidationError (#248).
-- Added `rmsd` and `rmsd_kabsch` to calculate RMSD without and with rotational alignment to `Structure` class (#230). 
+- Added `rmsd` and `rmsd_kabsch` to calculate RMSD without and with rotational alignment to `Structure` class (#230).
 - Added `calc_rotational_constants` to calculate molecular rotational constants to `Structure` class (#230).
 - Added `calc_rotor_type` to classify a molecule's rotor type to `Structure` class (#230).
 - Add type checks for ncores and memory setters in `Input` and checks for invalid negative values (#261).
@@ -51,16 +51,17 @@
 - Updated deprecated `typing` types to be compliant with Python >=3.11 guidelines (#216)
 - Fixed a typo in the badge for the OPI paper (#222).
 - Fixed `Structure.nelectrons` for structures containing ghost atoms (#268).
+- Fixed `_orca_environment()` which now makes changes to `os.environ` in-place without breaking any reference to that dict (#279).
 
 ## [2.0.0] - 2026-02-10
 
 ### Breaking Changes
 - **Minimum required ORCA version is now 6.1.1**.
-  Older ORCA versions are no longer supported. ORCA version 6.1.0 can still be used by setting up the `Calculator` 
+  Older ORCA versions are no longer supported. ORCA version 6.1.0 can still be used by setting up the `Calculator`
   without the version check and disabling it in the `Output`, but it is no longer supported.
 - Remove redundant simple keywords. #48
 - `Output.gbw_json_file` was replaced by `Output.gbw_json_files` (list of JSON files). #83
-- `property_json_file` and `gbw_json_files` are now properties, allowing custom JSON file names to be set via setters. #116 #172 
+- `property_json_file` and `gbw_json_files` are now properties, allowing custom JSON file names to be set via setters. #116 #172
 
 ### Added
 #### Input
@@ -109,7 +110,7 @@
 #### External Methods
 - Enable use of ExtOPT wrappers. #30 #55
 
-### Fixed 
+### Fixed
 - Fixed the links on the tutorial start page. #2
 - Fix to `fragproc` attribute in `BlockFrag`. #43
 - Fixed bug where `%moinp` block was printed without quotation marks around the path. #50

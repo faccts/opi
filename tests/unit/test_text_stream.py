@@ -182,7 +182,7 @@ def test_subprocess_streams_before_process_exits():
 
     We run a separate thread from the parent process which uses a threading.Event
     with a timeout of 0.5s. As the child process is waiting for 1s we should recieve
-    the 'started' signle while the subprocess is still sleeping.
+    the 'started' signal while the subprocess is still sleeping.
     """
     saw_started = threading.Event()
     runner_finished = threading.Event()
