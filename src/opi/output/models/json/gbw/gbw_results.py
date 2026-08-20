@@ -6,7 +6,6 @@ from opi.execution.core import Runner
 from opi.input.structures.atom import Atom, GhostAtom
 from opi.input.structures.coordinates import Coordinates
 from opi.input.structures.structure import Structure
-from opi.output.gbw_suffix import GbwSuffix
 from opi.output.models.json.gbw.properties.cite import Cite
 from opi.output.models.json.gbw.properties.header import OrcaHeader
 from opi.output.models.json.gbw.properties.molecule import Molecule
@@ -41,7 +40,7 @@ class GbwResults(JSONLoadable):
         gbw_file: Path | str,
         /,
         *,
-        force: bool = False,
+        reuse_json: bool = False,
         config: dict[str, bool | str | list[str | int]] | None = None,
     ) -> "GbwResults":
         """
@@ -57,11 +56,10 @@ class GbwResults(JSONLoadable):
         ----------
         gbw_file : Path | str
             Path to the binary gbw file.
-        force : bool, default: False
-            Recreate the JSON file even if it already exists.
+        reuse_json : bool, default: False
+            Whether to use an existing json file or create a new one.
         config : dict[str, bool | str | list[str | int]] | None, default: None
-            Determine contents of the gbw-JSON file.
-            For details about the configuration refer to the ORCA manual "9.3.2 Configuration file"
+            Determine contents of the gbw-JSON file. Does nothing if the JSON file is reused and not re-created
 
         Returns
         -------
@@ -80,10 +78,7 @@ class GbwResults(JSONLoadable):
         if not gbw_file.is_file():
             raise FileNotFoundError(f"File {gbw_file} not found")
 
-        # > `orca_2json` maps every binary suffix onto the same "<basename>.json". Reusing an
-        # > existing JSON is therefore only safe for ".gbw" itself, otherwise we could pick up the
-        # > JSON belonging to a different binary (e.g. "job.gbw" when asked for "job.loc").
-        force = force or gbw_file.suffix != GbwSuffix.GBW.value
+        force = not reuse_json
 
         runner = Runner(working_dir=gbw_file.parent)
         runner.create_gbw_json(gbw_file.stem, force=force, config=config, suffix=gbw_file.suffix)

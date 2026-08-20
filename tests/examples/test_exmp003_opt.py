@@ -49,6 +49,6 @@ def test_exmp003_opt(
 
     # > Recreating the JSON from the binary gbw file must give the same structure again.
     # > Done after the exports so that the committed fixtures stay untouched by it.
-    recreated = GbwResults.from_gbw_file(tmp_path / "job.gbw", force=True).get_structure()
+    recreated = GbwResults.from_gbw_file(tmp_path / "job.gbw").get_structure()
     assert recreated is not None
     assert recreated.rmsd(from_gbw) == pytest.approx(0.0, abs=1e-6)
