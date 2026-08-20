@@ -44,22 +44,16 @@ class GbwResults(JSONLoadable):
         config: dict[str, bool | str | list[str | int]] | None = None,
     ) -> "GbwResults":
         """
-        Creates an object from a binary gbw file by converting it with `orca_2json` first.
-
-        This requires a working ORCA installation. The JSON file created by `orca_2json` is written
-        next to `gbw_file` as `<basename>.json`, just like `Output` does. For a ".gbw" file an
-        already existing JSON is reused unless `force` is given. For the other gbw suffixes
-        (".loc", ".qro", ...) the JSON is always recreated, since `orca_2json` maps all of them
-        onto the same file name.
+        Creates an object from a binary gbw file by converting it with `orca_2json` and initializing from the `.json` file.
 
         Parameters
         ----------
         gbw_file : Path | str
             Path to the binary gbw file.
         reuse_json : bool, default: False
-            Whether to use an existing json file or create a new one.
+            If True, an existing gbw-JSON file is used.
         config : dict[str, bool | str | list[str | int]] | None, default: None
-            Determine contents of the gbw-JSON file. Does nothing if the JSON file is reused and not re-created
+            Determine contents of the gbw-JSON file. Does nothing if the JSON file is reused and not re-created.
 
         Returns
         -------
