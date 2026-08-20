@@ -51,7 +51,7 @@ def run_exmp039(working_dir: Path | None = Path("RUN")) -> Output:
 
     # > Read the images of the minimum energy path (MEP) and their energies
     print("Printing the energies along the minimal energy pathway.")
-    mep_file = output.get_file("_MEP_trj.xyz")
+    mep_file = working_dir / f"{calc.basename}_MEP_trj.xyz"
     structures = Structure.from_trj_xyz(mep_file)
     properties_list = Properties.from_trj_xyz(mep_file, mode="neb")
 
