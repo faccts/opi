@@ -4,7 +4,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
-from opi.execution.text_stream import StreamTargetSpec, open_text_stream_fanout, pump_text_stream
+from opi.execution.text_stream import StreamTargetSpec, open_text_stream_fanout, pump_text_stream, pump_in_text
+from opi.execution.text_stream import (
+    StreamTargetSpec,
+    open_text_stream_fanout,
+    pump_in_text,
+    pump_text_stream,
+)
 
 
 @dataclass(frozen=True)

@@ -270,3 +270,41 @@ def pump_text_stream(
             stream.close()
         except Exception:
             pass
+
+
+def pump_in_text(
+    text: str,
+    target: IO[str],
+    errors: list[Exception],
+) -> None:
+    """
+    Pumps the input from `text` in one batch to the `target`, usually the processes' stdin.
+
+    Intended to be feed input to stdin without deadlocking
+    Any errors that occur during this process are accumulated in the `errors` list.
+
+    Parameters
+    ----------
+    text : text
+        Input stream from a subprocess's stdout or stderr.
+    target : IO[str]
+        Target fanout to dispatch lines from the input stream.
+    errors : list[Exception]
+        Error accumulation list, any errors that occur on write are
+        captured and appended to the list.
+    """
+    try:
+        target.write(text)
+        target.flush()
+    except BrokenPipeError:
+        # > child exited early; normal, not an error
+        pass
+    except Exception as exc:
+        # > Exceptions are raised as part of an ExceptionGroup
+        # > at the end of `run_subprocess_with_fanout()`
+        errors.append(exc)
+    finally:
+        try:
+            target.close()
+        except Exception:
+            pass
