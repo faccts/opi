@@ -91,6 +91,28 @@ class OrcaMmRunner(BaseRunner):
     _orca_ff_suffix = ".ORCAFF.prms"
 
     @staticmethod
+    def _assert_files_exist(*files: Path) -> None:
+        """
+        Validate that all supplied paths point to existing files.
+
+        Parameters
+        ----------
+        *files : Path
+            Input file paths to validate.
+
+        Raises
+        ------
+        FileNotFoundError
+            If one or more paths do not point to existing files.
+        """
+        missing_files = [path for path in files if not path.is_file()]
+        if not missing_files:
+            return
+
+        formatted_files = ", ".join(f"'{path}'" for path in missing_files)
+        raise FileNotFoundError(f"Input file(s) do not exist: {formatted_files}.")
+
+    @staticmethod
     @contextmanager
     def _expect_output_files(*expected_outputs: Path) -> Iterator[None]:
         """
@@ -183,6 +205,62 @@ class OrcaMmRunner(BaseRunner):
 
         return result
 
+    def _run_orca_mm_and_expect(
+        self,
+        command: OrcaMmCommand,
+        args: Sequence[str],
+        expected_outputs: Path | Sequence[Path],
+        *,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
+        timeout: float | None = None,
+        raise_on_error: bool = True,
+    ) -> RunResult:
+        """
+        Execute an `orca_mm` command and verify that its expected outputs were generated.
+
+        Parameters
+        ----------
+        command : OrcaMmCommand
+            `orca_mm` subcommand to execute.
+        args : Sequence[str]
+            Command-line arguments passed to the subcommand.
+        expected_outputs : Path | Sequence[Path]
+            Output file path or paths that must exist after successful execution.
+        stdout : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDOUT to.
+        stderr : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDERR to.
+        timeout : float | None, default: None
+            Optional timeout in seconds to wait for the process to complete.
+        raise_on_error : bool, default: True
+            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
+
+        Returns
+        -------
+        RunResult
+            Completed `orca_mm` run result.
+
+        Raises
+        ------
+        OrcaMmError
+            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
+        FileNotFoundError
+            If one or more expected output files do not exist after execution.
+        """
+        if isinstance(expected_outputs, Path):
+            expected_outputs = (expected_outputs,)
+
+        with self._expect_output_files(*expected_outputs):
+            return self.run_orca_mm(
+                command,
+                args,
+                stdout=stdout,
+                stderr=stderr,
+                timeout=timeout,
+                raise_on_error=raise_on_error,
+            )
+
     def run_convff(
         self,
         ffinput: ForcefieldType,
@@ -219,12 +297,23 @@ class OrcaMmRunner(BaseRunner):
         -------
         Path
             Path to generated ORCA forcefield file (`*.ORCAFF.prms`).
+
+        Raises
+        ------
+        ValueError
+            If no forcefield input files are supplied.
+        FileNotFoundError
+            If an input file is missing or the expected output is not generated.
+        OrcaMmError
+            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
         # > `convff` requires at least one source forcefield file.
         ff_files = tuple(ff_files)
 
         if len(ff_files) == 0:
             raise ValueError("Must supply at least 1 forcefield file.")
+
+        self._assert_files_exist(*ff_files)
 
         # > Derive the output path generated from the first forcefield file.
         # > `orca_mm -convff` replaces its ending with `.ORCAFF.prms`.
@@ -244,16 +333,16 @@ class OrcaMmRunner(BaseRunner):
         # > Assemble the format option followed by the forcefield input paths.
         arguments = [f"-{ffinput}"] + [str(f) for f in ff_files]
 
-        # Execute the command and verify that it generated the expected forcefield.
-        with self._expect_output_files(expected_output):
-            self.run_orca_mm(
-                "convff",
-                arguments,
-                stdout=stdout,
-                stderr=stderr,
-                raise_on_error=raise_on_error,
-                timeout=timeout,
-            )
+        # > Execute the command and verify that it generated the expected forcefield.
+        self._run_orca_mm_and_expect(
+            "convff",
+            arguments,
+            expected_output,
+            stdout=stdout,
+            stderr=stderr,
+            raise_on_error=raise_on_error,
+            timeout=timeout,
+        )
 
         return expected_output
 
@@ -288,7 +377,18 @@ class OrcaMmRunner(BaseRunner):
         -------
         list[Path]
             Paths to generated split forcefield files.
+
+        Raises
+        ------
+        ValueError
+            If no split points are supplied or an atom index is not positive.
+        FileNotFoundError
+            If the input file is missing or an expected output is not generated.
+        OrcaMmError
+            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
+        self._assert_files_exist(orcaff_file)
+
         # > Normalize the split points before validating and passing them to `orca_mm`.
         sorted_atoms = list(sorted(atoms))
 
@@ -308,15 +408,15 @@ class OrcaMmRunner(BaseRunner):
         arguments = [f"{orcaff_file}"] + [str(atom) for atom in sorted_atoms]
 
         # > Execute the command and verify that every split forcefield was generated.
-        with self._expect_output_files(*expected_outputs):
-            self.run_orca_mm(
-                "splitff",
-                arguments,
-                stdout=stdout,
-                stderr=stderr,
-                raise_on_error=raise_on_error,
-                timeout=timeout,
-            )
+        self._run_orca_mm_and_expect(
+            "splitff",
+            arguments,
+            expected_outputs,
+            stdout=stdout,
+            stderr=stderr,
+            raise_on_error=raise_on_error,
+            timeout=timeout,
+        )
 
         return expected_outputs
 
@@ -348,10 +448,21 @@ class OrcaMmRunner(BaseRunner):
         -------
         Path
             Path to merged ORCA forcefield file.
+
+        Raises
+        ------
+        ValueError
+            If fewer than two forcefield files are supplied.
+        FileNotFoundError
+            If an input file is missing or the expected output is not generated.
+        OrcaMmError
+            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
         # > A merge requires at least two source forcefields.
         if len(orcaff_files) < 2:
             raise ValueError("Must provide at least 2 orca ff files to merge")
+
+        self._assert_files_exist(*orcaff_files)
 
         # > `orca_mm` derives the merged output name from the first input file.
         expected_output = _add_infix_to_path(orcaff_files[0], "_merged", self._orca_ff_suffix)
@@ -360,15 +471,15 @@ class OrcaMmRunner(BaseRunner):
         arguments = [str(f) for f in orcaff_files]
 
         # > Execute the command and verify that the merged forcefield was generated.
-        with self._expect_output_files(expected_output):
-            self.run_orca_mm(
-                "mergeff",
-                arguments,
-                stdout=stdout,
-                stderr=stderr,
-                raise_on_error=raise_on_error,
-                timeout=timeout,
-            )
+        self._run_orca_mm_and_expect(
+            "mergeff",
+            arguments,
+            expected_output,
+            stdout=stdout,
+            stderr=stderr,
+            raise_on_error=raise_on_error,
+            timeout=timeout,
+        )
 
         return expected_output
 
@@ -404,7 +515,18 @@ class OrcaMmRunner(BaseRunner):
         -------
         Path
             Path to repeated ORCA forcefield file.
+
+        Raises
+        ------
+        ValueError
+            If `repeat` is not positive.
+        FileNotFoundError
+            If the input file is missing or the expected output is not generated.
+        OrcaMmError
+            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
+        self._assert_files_exist(orcaff_file)
+
         # > Validate `repeat` is a positive integer.
         if repeat < 1:
             raise ValueError("'repeat' must be a positive integer")
@@ -416,15 +538,15 @@ class OrcaMmRunner(BaseRunner):
         arguments = [f"{orcaff_file}", str(repeat)]
 
         # > Execute the command and verify that the repeated forcefield was generated.
-        with self._expect_output_files(expected_output):
-            self.run_orca_mm(
-                "repeatff",
-                arguments,
-                stdout=stdout,
-                stderr=stderr,
-                raise_on_error=raise_on_error,
-                timeout=timeout,
-            )
+        self._run_orca_mm_and_expect(
+            "repeatff",
+            arguments,
+            expected_output,
+            stdout=stdout,
+            stderr=stderr,
+            raise_on_error=raise_on_error,
+            timeout=timeout,
+        )
 
         return expected_output
 
@@ -459,7 +581,18 @@ class OrcaMmRunner(BaseRunner):
         -------
         list[Path]
             Paths to generated split PDB files.
+
+        Raises
+        ------
+        ValueError
+            If no split points are supplied or an atom index is not positive.
+        FileNotFoundError
+            If the input file is missing or an expected output is not generated.
+        OrcaMmError
+            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
+        self._assert_files_exist(pdb_file)
+
         # > Normalize the split points before validating and passing them to `orca_mm`.
         sorted_atoms = list(sorted(atoms))
 
@@ -479,15 +612,15 @@ class OrcaMmRunner(BaseRunner):
         arguments = [f"{pdb_file}"] + [str(atom) for atom in sorted_atoms]
 
         # > Execute the command and verify that every split PDB was generated.
-        with self._expect_output_files(*expected_outputs):
-            self.run_orca_mm(
-                "splitpdb",
-                arguments,
-                stdout=stdout,
-                stderr=stderr,
-                raise_on_error=raise_on_error,
-                timeout=timeout,
-            )
+        self._run_orca_mm_and_expect(
+            "splitpdb",
+            arguments,
+            expected_outputs,
+            stdout=stdout,
+            stderr=stderr,
+            raise_on_error=raise_on_error,
+            timeout=timeout,
+        )
 
         return expected_outputs
 
@@ -519,10 +652,21 @@ class OrcaMmRunner(BaseRunner):
         -------
         Path
             Path to merged PDB file.
+
+        Raises
+        ------
+        ValueError
+            If fewer than two PDB files are supplied.
+        FileNotFoundError
+            If an input file is missing or the expected output is not generated.
+        OrcaMmError
+            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
         # > A merge requires at least two source PDB files.
         if len(pdb_files) < 2:
-            raise ValueError("Must provide at least 2 orca ff files to merge")
+            raise ValueError("Must provide at least 2 PDB files to merge")
+
+        self._assert_files_exist(*pdb_files)
 
         # > `orca_mm` derives the merged output name from the first input file.
         expected_output = _add_infix_to_path(pdb_files[0], "_merged", ".pdb")
@@ -531,15 +675,15 @@ class OrcaMmRunner(BaseRunner):
         arguments = [str(f) for f in pdb_files]
 
         # > Execute the command and verify that the merged PDB was generated.
-        with self._expect_output_files(expected_output):
-            self.run_orca_mm(
-                "mergepdb",
-                arguments,
-                stdout=stdout,
-                stderr=stderr,
-                raise_on_error=raise_on_error,
-                timeout=timeout,
-            )
+        self._run_orca_mm_and_expect(
+            "mergepdb",
+            arguments,
+            expected_output,
+            stdout=stdout,
+            stderr=stderr,
+            raise_on_error=raise_on_error,
+            timeout=timeout,
+        )
 
         return expected_output
 
@@ -587,7 +731,18 @@ class OrcaMmRunner(BaseRunner):
         -------
         Path
             Path to generated ORCA forcefield file (`*.ORCAFF.prms`).
+
+        Raises
+        ------
+        ValueError
+            If `multiplicity` is not positive.
+        FileNotFoundError
+            If the input file is missing or the expected output is not generated.
+        OrcaMmError
+            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
+        self._assert_files_exist(structure_file)
+
         # > Derive the forcefield path generated from the input structure filename.
         expected_output = structure_file.with_suffix(self._orca_ff_suffix)
 
@@ -616,15 +771,15 @@ class OrcaMmRunner(BaseRunner):
                 arguments.extend(("-CEL", str(element), f"{float(oxidation_state):.1f}"))
 
         # > Execute the command and verify that the forcefield was generated.
-        with self._expect_output_files(expected_output):
-            self.run_orca_mm(
-                "makeff",
-                arguments,
-                stdout=stdout,
-                stderr=stderr,
-                raise_on_error=raise_on_error,
-                timeout=timeout,
-            )
+        self._run_orca_mm_and_expect(
+            "makeff",
+            arguments,
+            expected_output,
+            stdout=stdout,
+            stderr=stderr,
+            raise_on_error=raise_on_error,
+            timeout=timeout,
+        )
 
         return expected_output
 
@@ -657,20 +812,29 @@ class OrcaMmRunner(BaseRunner):
         -------
         Path
             Path to generated `*.H_DIST.prms` file.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the input file is missing or the expected output is not generated.
+        OrcaMmError
+            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
+        self._assert_files_exist(structure_file)
+
         # > Derive the hydrogen-distance parameter path from the input structure filename.
         expected_output = structure_file.with_suffix(".H_DIST.prms")
 
         # > Execute the command with the structure path and verify its generated output.
         arguments = [str(structure_file)]
-        with self._expect_output_files(expected_output):
-            self.run_orca_mm(
-                "getHDist",
-                arguments,
-                stdout=stdout,
-                stderr=stderr,
-                raise_on_error=raise_on_error,
-                timeout=timeout,
-            )
+        self._run_orca_mm_and_expect(
+            "getHDist",
+            arguments,
+            expected_output,
+            stdout=stdout,
+            stderr=stderr,
+            raise_on_error=raise_on_error,
+            timeout=timeout,
+        )
 
         return expected_output
