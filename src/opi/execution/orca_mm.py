@@ -40,7 +40,7 @@ ChargeOption = Literal[
 
 def _add_infix_to_path(path: Path, infix: str, suffix: str) -> Path:
     """
-    Adds `infix` to the `path` whilst preserving the given `suffix`.
+    Return a path with `infix` inserted while preserving the given `suffix`.
 
     Parameters
     ----------
@@ -58,10 +58,11 @@ def _add_infix_to_path(path: Path, infix: str, suffix: str) -> Path:
 
     Examples
     --------
-    >>> path = Path.cwd() / "system.ORCAFF.prms"
-    >>> suffix = ".ORCAFF.prms
-    >>> _replace_infix(path, "_merged", suffix)
-    Path("system_merged.ORCAFF.prms")
+    >>> path = Path("system.ORCAFF.prms")
+    >>> _add_infix_to_path(path, "_merged", ".ORCAFF.prms") == Path(
+    ...     "system_merged.ORCAFF.prms"
+    ... )
+    True
     """
 
     return path.parent / f"{path.name.removesuffix(suffix)}{infix}{suffix}"
@@ -81,6 +82,10 @@ class OrcaMmRunner(BaseRunner):
     - `run_mergepdb` (`orca_mm -mergepdb`)
     - `run_makeff` (`orca_mm -makeff`)
     - `run_get_h_dist` (`orca_mm -getHDist`)
+
+    Each command-specific method follows the same execution pattern: validate its
+    command options, derive the expected output paths, assemble the command-line
+    arguments, execute `orca_mm`, and verify that the expected files were generated.
     """
 
     _orca_ff_suffix = ".ORCAFF.prms"
@@ -95,6 +100,11 @@ class OrcaMmRunner(BaseRunner):
         ----------
         *expected_outputs : Path
             Output files that must exist after the wrapped command has finished successfully.
+
+        Raises
+        ------
+        FileNotFoundError
+            If one or more expected output files do not exist after execution.
         """
         try:
             yield
@@ -150,12 +160,14 @@ class OrcaMmRunner(BaseRunner):
             If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
 
+        # > Capture STDERR when it may be needed to construct an `OrcaMmError`.
         if raise_on_error:
             stderr = concatentate_stream_targets(
                 stderr,
-                subprocess.PIPE,  # > Ensure that we capture stderr to check for errors
+                subprocess.PIPE,
             )
 
+        # > Delegate binary execution and stream handling to `BaseRunner`.
         result = self.run(
             OrcaBinary.ORCA_MM,
             (f"-{command}", *args),
@@ -165,6 +177,7 @@ class OrcaMmRunner(BaseRunner):
             timeout=timeout,
         )
 
+        # > Raise `OrcaMmError` on unsuccessful `orca_mm` execution.
         if raise_on_error and not result.returncode_ok():
             raise OrcaMmError(command, args, result.stderr)
 
@@ -207,26 +220,31 @@ class OrcaMmRunner(BaseRunner):
         Path
             Path to generated ORCA forcefield file (`*.ORCAFF.prms`).
         """
-        ff_files = list(ff_files)
+        # > `convff` requires at least one source forcefield file.
+        ff_files = tuple(ff_files)
 
         if len(ff_files) == 0:
             raise ValueError("Must supply at least 1 forcefield file.")
 
-        # `orca_mm -convff` will generate a file with the same stem as the first file but the suffix replaced by '.ORCAFF.prms'.
-        # For example:
-        # - `orca_mm -convff -CHARMM 1C1E.psf par_all36_prot.prm toppar_water_ions_namd.str` -> `1C1E.ORCAFF.prms`
-        # - `orca_mm -convff -AMBER complex.prmtop` -> `complex.ORCAFF.prms`
-        # - `orca_mm -convff -OPENMM complex.xml` -> `complex.ORCAFF.prms`
+        # > Derive the output path generated from the first forcefield file.
+        # > `orca_mm -convff` replaces its ending with `.ORCAFF.prms`.
+        # > For example:
+        # > - `orca_mm -convff -CHARMM 1C1E.psf par_all36_prot.prm toppar_water_ions_namd.str` -> `1C1E.ORCAFF.prms`
+        # > - `orca_mm -convff -AMBER complex.prmtop` -> `complex.ORCAFF.prms`
+        # > - `orca_mm -convff -OPENMM complex.xml` -> `complex.ORCAFF.prms`
         expected_output = ff_files[0].with_suffix(self._orca_ff_suffix)
 
-        # If the expected forcefield file already exists and `force` is not specified, we skip running `orca_mm`
+        # > Reuse an existing forcefield unless the caller explicitly requests regeneration using `force`.
         if expected_output.is_file() and not force:
             return expected_output
 
-        # Make sure that the forcefield file does not exist so that we can ensure that `orca_mm` succeeds.
+        # > Remove stale output so the post-run existence check validates this execution.
         expected_output.unlink(missing_ok=True)
 
+        # > Assemble the format option followed by the forcefield input paths.
         arguments = [f"-{ffinput}"] + [str(f) for f in ff_files]
+
+        # Execute the command and verify that it generated the expected forcefield.
         with self._expect_output_files(expected_output):
             self.run_orca_mm(
                 "convff",
@@ -271,6 +289,7 @@ class OrcaMmRunner(BaseRunner):
         list[Path]
             Paths to generated split forcefield files.
         """
+        # > Normalize the split points before validating and passing them to `orca_mm`.
         sorted_atoms = list(sorted(atoms))
 
         if len(sorted_atoms) == 0:
@@ -279,12 +298,16 @@ class OrcaMmRunner(BaseRunner):
         if any(atom < 1 for atom in sorted_atoms):
             raise ValueError("All atoms must be positive integers.")
 
+        # > A split at N atom indices produces N + 1 forcefield files.
         expected_outputs = [
             _add_infix_to_path(orcaff_file, f"_split{split + 1}", self._orca_ff_suffix)
             for split in range(len(sorted_atoms) + 1)
         ]
 
+        # > Assemble the source forcefield path followed by the ordered split points.
         arguments = [f"{orcaff_file}"] + [str(atom) for atom in sorted_atoms]
+
+        # > Execute the command and verify that every split forcefield was generated.
         with self._expect_output_files(*expected_outputs):
             self.run_orca_mm(
                 "splitff",
@@ -326,12 +349,17 @@ class OrcaMmRunner(BaseRunner):
         Path
             Path to merged ORCA forcefield file.
         """
+        # > A merge requires at least two source forcefields.
         if len(orcaff_files) < 2:
             raise ValueError("Must provide at least 2 orca ff files to merge")
 
+        # > `orca_mm` derives the merged output name from the first input file.
         expected_output = _add_infix_to_path(orcaff_files[0], "_merged", self._orca_ff_suffix)
 
+        # > Assemble the forcefield paths in the order supplied by the caller.
         arguments = [str(f) for f in orcaff_files]
+
+        # > Execute the command and verify that the merged forcefield was generated.
         with self._expect_output_files(expected_output):
             self.run_orca_mm(
                 "mergeff",
@@ -377,12 +405,17 @@ class OrcaMmRunner(BaseRunner):
         Path
             Path to repeated ORCA forcefield file.
         """
+        # > Validate `repeat` is a positive integer.
         if repeat < 1:
             raise ValueError("'repeat' must be a positive integer")
 
+        # > `orca_mm` includes the repeat count in the generated filename.
         expected_output = _add_infix_to_path(orcaff_file, f"_repeat{repeat}", self._orca_ff_suffix)
 
+        # > Assemble the source forcefield path and requested repeat count.
         arguments = [f"{orcaff_file}", str(repeat)]
+
+        # > Execute the command and verify that the repeated forcefield was generated.
         with self._expect_output_files(expected_output):
             self.run_orca_mm(
                 "repeatff",
@@ -427,6 +460,7 @@ class OrcaMmRunner(BaseRunner):
         list[Path]
             Paths to generated split PDB files.
         """
+        # > Normalize the split points before validating and passing them to `orca_mm`.
         sorted_atoms = list(sorted(atoms))
 
         if len(sorted_atoms) == 0:
@@ -435,12 +469,16 @@ class OrcaMmRunner(BaseRunner):
         if any(atom < 1 for atom in sorted_atoms):
             raise ValueError("All atoms must be positive integers.")
 
+        # > A split at N atom indices produces N + 1 PDB files.
         expected_outputs = [
             _add_infix_to_path(pdb_file, f"_split{split + 1}", ".pdb")
             for split in range(len(sorted_atoms) + 1)
         ]
 
+        # > Assemble the source PDB path followed by the ordered split points.
         arguments = [f"{pdb_file}"] + [str(atom) for atom in sorted_atoms]
+
+        # > Execute the command and verify that every split PDB was generated.
         with self._expect_output_files(*expected_outputs):
             self.run_orca_mm(
                 "splitpdb",
@@ -482,12 +520,17 @@ class OrcaMmRunner(BaseRunner):
         Path
             Path to merged PDB file.
         """
+        # > A merge requires at least two source PDB files.
         if len(pdb_files) < 2:
             raise ValueError("Must provide at least 2 orca ff files to merge")
 
+        # > `orca_mm` derives the merged output name from the first input file.
         expected_output = _add_infix_to_path(pdb_files[0], "_merged", ".pdb")
 
+        # > Assemble the PDB paths in the order supplied by the caller.
         arguments = [str(f) for f in pdb_files]
+
+        # > Execute the command and verify that the merged PDB was generated.
         with self._expect_output_files(expected_output):
             self.run_orca_mm(
                 "mergepdb",
@@ -545,10 +588,13 @@ class OrcaMmRunner(BaseRunner):
         Path
             Path to generated ORCA forcefield file (`*.ORCAFF.prms`).
         """
+        # > Derive the forcefield path generated from the input structure filename.
         expected_output = structure_file.with_suffix(self._orca_ff_suffix)
 
+        # > Start the command with the mandatory structure path.
         arguments = [str(structure_file)]
 
+        # > Add the optional molecular charge and spin multiplicity.
         if charge is not None:
             arguments.extend(("-C", str(charge)))
 
@@ -557,16 +603,19 @@ class OrcaMmRunner(BaseRunner):
                 raise ValueError("Multiplicity must be a positive integer")
             arguments.extend(("-M", str(multiplicity)))
 
+        # > Add the optional process count and charge-calculation mode.
         if nproc is not None:
             arguments.extend(("-nproc", str(nproc)))
 
         if charge_option is not None:
             arguments.append(f"-{charge_option}")
 
+        # > Add one element-specific oxidation-state option per mapping entry.
         if oxidation_states is not None:
             for element, oxidation_state in oxidation_states.items():
                 arguments.extend(("-CEL", str(element), f"{float(oxidation_state):.1f}"))
 
+        # > Execute the command and verify that the forcefield was generated.
         with self._expect_output_files(expected_output):
             self.run_orca_mm(
                 "makeff",
@@ -609,8 +658,10 @@ class OrcaMmRunner(BaseRunner):
         Path
             Path to generated `*.H_DIST.prms` file.
         """
+        # > Derive the hydrogen-distance parameter path from the input structure filename.
         expected_output = structure_file.with_suffix(".H_DIST.prms")
 
+        # > Execute the command with the structure path and verify its generated output.
         arguments = [str(structure_file)]
         with self._expect_output_files(expected_output):
             self.run_orca_mm(
