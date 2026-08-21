@@ -16,22 +16,46 @@ from opi.output.grepper.patterns import (
 )
 
 
-def get_error_messages(file_name: Path) -> list[str]:
-    """Return all errors from the output files until a critical error is found."""
+def get_error_messages(file_name: Path, err_file_name: Path | None = None) -> list[str]:
+    """
+    Return all errors from the output files until a critical error is found.
+
+    Parameters
+    ----------
+    file_name : Path
+        Path to the ORCA ".out" file.
+    err_file_name : Path | None, default: None
+        Path to the ORCA ".err" file. Patterns of messages that ORCA and its helper programs
+        write to stderr are only checked if this file is given and exists.
+    """
     hits: list[str] = []
     for pattern in ERROR_PATTERNS:
-        msg = pattern.extract(file_name)
+        if pattern.stderr:
+            if err_file_name is None or not err_file_name.is_file():
+                continue
+            msg = pattern.extract(err_file_name)
+        else:
+            msg = pattern.extract(file_name)
         if msg:
             hits.append(msg)
             if pattern.critical:
                 break
-    return hits if hits else []
+    return hits
 
 
-def get_error_message(file_name: Path) -> str:
-    """Return the most important extracted error message."""
-    messages = get_error_messages(file_name)
-    return next(iter(messages or []), "")
+def get_error_message(file_name: Path, err_file_name: Path | None = None) -> str:
+    """
+    Return the most important extracted error message.
+
+    Parameters
+    ----------
+    file_name : Path
+        Path to the ORCA ".out" file.
+    err_file_name : Path | None, default: None
+        Path to the ORCA ".err" file.
+    """
+    messages = get_error_messages(file_name, err_file_name)
+    return next(iter(messages), "")
 
 
 def has_string_in_file(file_name: Path, search_for: str, /, *, strict: bool = True) -> bool:
