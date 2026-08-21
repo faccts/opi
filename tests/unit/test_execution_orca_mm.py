@@ -1,4 +1,5 @@
 import subprocess
+from pathlib import Path
 from typing import Protocol, Sequence
 from unittest.mock import Mock
 
@@ -13,6 +14,8 @@ This module contains tests for `OrcaMmRunner` command execution such as:
 - Returning successful execution results
 - Raising `OrcaMmError` after unsuccessful execution
 - Passing command arguments and stream targets to `BaseRunner.run`
+- Rejecting missing input files
+- Verifying that expected output files are generated
 
 ORCA discovery and binary execution are mocked so that these tests do not
 depend on external ORCA or Open MPI installations or subprocess execution.
@@ -91,3 +94,34 @@ def test_run_orca_mm_raises_on_nonzero_returncode(
 
     with pytest.raises(OrcaMmError, match="orca_mm failed"):
         runner.run_orca_mm("convff", ["-amber", "test.prm"])
+
+
+@pytest.mark.unit
+def test_command_rejects_missing_input_file(
+    orca_mm_runner_factory: RunnerFactory,
+    tmp_path: Path,
+) -> None:
+    """Test that command helpers reject missing input files before execution."""
+    runner, mock_run = orca_mm_runner_factory()
+    missing_input = tmp_path / "missing.xyz"
+
+    with pytest.raises(FileNotFoundError, match="Input file.*missing.xyz"):
+        runner.run_get_h_dist(missing_input)
+
+    mock_run.assert_not_called()
+
+
+@pytest.mark.unit
+def test_command_raises_when_expected_output_is_missing(
+    orca_mm_runner_factory: RunnerFactory,
+    tmp_path: Path,
+) -> None:
+    """Test that command helpers verify their expected outputs after execution."""
+    runner, mock_run = orca_mm_runner_factory()
+    structure_file = tmp_path / "structure.xyz"
+    structure_file.touch()
+
+    with pytest.raises(FileNotFoundError, match="Expected output file.*H_DIST.prms"):
+        runner.run_get_h_dist(structure_file)
+
+    mock_run.assert_called_once()
