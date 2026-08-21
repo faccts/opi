@@ -42,6 +42,9 @@ def _add_infix_to_path(path: Path, infix: str, suffix: str) -> Path:
     """
     Return a path with `infix` inserted while preserving the given `suffix`.
 
+    Unlike `Path.suffix`, `suffix` is treated as a literal ending and may contain
+    multiple dot-separated components, such as `.ORCAFF.prms`.
+
     Parameters
     ----------
     path : Path
