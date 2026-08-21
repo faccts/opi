@@ -8,6 +8,7 @@ def test_nelectrons(water_structure: Structure):
     """Test to check if `structure.nelectrons` is correct."""
     assert water_structure.nelectrons == 10
 
+
 @pytest.mark.unit
 def test_nelectron_ghost(water_structure: Structure, test_ghost_h_atom: GhostAtom):
     """Test to check if `structure.nelectrons` is unchanged by adding ghost atoms."""
