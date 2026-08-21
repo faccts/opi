@@ -11,15 +11,15 @@ ChargeOption:
     Helper type for supported charge calculation options used by `-makeff`.
 """
 
+import subprocess
 from contextlib import contextmanager
 from pathlib import Path
-import tempfile
 from typing import Iterable, Iterator, Literal, Sequence
 
 from opi.exceptions import OrcaMmError
-from opi.execution.base import BaseRunner
+from opi.execution.base import BaseRunner, RunResult
+from opi.execution.text_stream import StreamTargetSpec, concatentate_stream_targets
 from opi.lib.orca_binary import OrcaBinary
-
 
 OrcaMmCommand = Literal[
     "convff", "splitff", "mergeff", "repeatff", "splitpdb", "mergepdb", "makeff", "getHDist"
@@ -111,12 +111,14 @@ class OrcaMmRunner(BaseRunner):
     def run_orca_mm(
         self,
         command: OrcaMmCommand,
-        arguments: Sequence[str],
+        args: Sequence[str],
         *,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
+        cwd: Path | None = None,
+        timeout: float | None = None,
         raise_on_error: bool = True,
-        silent: bool = True,
-        timeout: int = -1,
-    ):
+    ) -> RunResult:
         """
         Execute `orca_mm` with the provided subcommand and arguments.
 
@@ -124,31 +126,49 @@ class OrcaMmRunner(BaseRunner):
         ----------
         command : OrcaMmCommand
             `orca_mm` subcommand to execute.
-        arguments : Sequence[str]
+        args : Sequence[str]
             Command-line arguments passed to the subcommand.
+        stdout : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDOUT to.
+        stderr : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDERR to.
+        cwd : Path | None, default: None
+            Working directory for execution. Overrides `self.working_dir` when provided.
+        timeout : float | None, by default None
+            Optional timeout in seconds to wait for the process to complete.
         raise_on_error : bool, default: True
-            Raise `OrcaMmException` if `orca_mm` writes anything to STDERR.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
-        timeout : int, default: -1
-            Optional timeout in seconds to wait for process to complete.
+            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
+
+        Returns
+        -------
+        RunResult
+            Completed `orca_mm` run result.
 
         Raises
         ------
-        OrcaMmException
-            If `raise_on_error` is set and `orca_mm` reports an error.
+        OrcaMmError
+            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            path = Path(tmp_dir) / "stderr.txt"
-            self.run(
-                OrcaBinary.ORCA_MM,
-                [f"-{command}"] + list(arguments),
-                stderr=path,
-                silent=silent,
-                timeout=timeout,
+
+        if raise_on_error:
+            stderr = concatentate_stream_targets(
+                stderr,
+                subprocess.PIPE,  # > Ensure that we capture stderr to check for errors
             )
-            if raise_on_error and path.exists() and (error := path.read_text()):
-                raise OrcaMmError(command, arguments, error)
+
+        result = self.run(
+            OrcaBinary.ORCA_MM,
+            (f"-{command}", *args),
+            stdout=stdout,
+            stderr=stderr,
+            cwd=cwd,
+            timeout=timeout,
+        )
+
+        if raise_on_error and not result.returncode_ok():
+            raise OrcaMmError(command, args, result.stderr)
+
+        return result
 
     def run_convff(
         self,
@@ -156,9 +176,10 @@ class OrcaMmRunner(BaseRunner):
         ff_files: Iterable[Path],
         *,
         force: bool = False,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
+        timeout: float | None = None,
         raise_on_error: bool = True,
-        silent: bool = True,
-        timeout: int = -1,
     ) -> Path:
         """
         Executes the `orca_mm` binary with the `-convff` flag and passes in the
@@ -172,12 +193,14 @@ class OrcaMmRunner(BaseRunner):
             Input forcefield file(s) to convert.
         force : bool, default: False
             Overwrite existing output file if present.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmException` if `orca_mm` reports an error.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
-        timeout : int, default: -1
+        stdout : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDOUT to.
+        stderr : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDERR to.
+        timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
+        raise_on_error : bool, default: True
+            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -206,7 +229,12 @@ class OrcaMmRunner(BaseRunner):
         arguments = [f"-{ffinput}"] + [str(f) for f in ff_files]
         with self._expect_output_files(expected_output):
             self.run_orca_mm(
-                "convff", arguments, raise_on_error=raise_on_error, silent=silent, timeout=timeout
+                "convff",
+                arguments,
+                stdout=stdout,
+                stderr=stderr,
+                raise_on_error=raise_on_error,
+                timeout=timeout,
             )
 
         return expected_output
@@ -215,9 +243,10 @@ class OrcaMmRunner(BaseRunner):
         self,
         orcaff_file: Path,
         *atoms: int,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
+        timeout: float | None = None,
         raise_on_error: bool = True,
-        silent: bool = True,
-        timeout: int = -1,
     ) -> list[Path]:
         """
         Execute `orca_mm -splitff` and split an ORCA forcefield file at selected atom indices.
@@ -228,12 +257,14 @@ class OrcaMmRunner(BaseRunner):
             Path to ORCA forcefield file (`*.ORCAFF.prms`) that will be split.
         *atoms : int
             1-based atom indices used as split points.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmException` if `orca_mm` reports an error.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
-        timeout : int, default: -1
+        stdout : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDOUT to.
+        stderr : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDERR to.
+        timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
+        raise_on_error : bool, default: True
+            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -256,7 +287,12 @@ class OrcaMmRunner(BaseRunner):
         arguments = [f"{orcaff_file}"] + [str(atom) for atom in sorted_atoms]
         with self._expect_output_files(*expected_outputs):
             self.run_orca_mm(
-                "splitff", arguments, raise_on_error=raise_on_error, silent=silent, timeout=timeout
+                "splitff",
+                arguments,
+                stdout=stdout,
+                stderr=stderr,
+                raise_on_error=raise_on_error,
+                timeout=timeout,
             )
 
         return expected_outputs
@@ -264,9 +300,10 @@ class OrcaMmRunner(BaseRunner):
     def run_mergeff(
         self,
         *orcaff_files: Path,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
+        timeout: float | None = None,
         raise_on_error: bool = True,
-        silent: bool = True,
-        timeout: int = -1,
     ) -> Path:
         """
         Execute `orca_mm -mergeff` to merge multiple ORCA forcefield files.
@@ -275,12 +312,14 @@ class OrcaMmRunner(BaseRunner):
         ----------
         *orcaff_files : Path
             ORCA forcefield files (`*.ORCAFF.prms`) to merge.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmException` if `orca_mm` reports an error.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
-        timeout : int, default: -1
+        stdout : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDOUT to.
+        stderr : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDERR to.
+        timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
+        raise_on_error : bool, default: True
+            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -295,7 +334,12 @@ class OrcaMmRunner(BaseRunner):
         arguments = [str(f) for f in orcaff_files]
         with self._expect_output_files(expected_output):
             self.run_orca_mm(
-                "mergeff", arguments, raise_on_error=raise_on_error, silent=silent, timeout=timeout
+                "mergeff",
+                arguments,
+                stdout=stdout,
+                stderr=stderr,
+                raise_on_error=raise_on_error,
+                timeout=timeout,
             )
 
         return expected_output
@@ -305,9 +349,10 @@ class OrcaMmRunner(BaseRunner):
         orcaff_file: Path,
         repeat: int,
         *,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
+        timeout: float | None = None,
         raise_on_error: bool = True,
-        silent: bool = True,
-        timeout: int = -1,
     ) -> Path:
         """
         Execute `orca_mm -repeatff` to repeat a forcefield topology a fixed number of times.
@@ -318,12 +363,14 @@ class OrcaMmRunner(BaseRunner):
             ORCA forcefield file (`*.ORCAFF.prms`) to repeat.
         repeat : int
             Number of repetitions. Must be a positive integer.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmException` if `orca_mm` reports an error.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
-        timeout : int, default: -1
+        stdout : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDOUT to.
+        stderr : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDERR to.
+        timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
+        raise_on_error : bool, default: True
+            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -340,8 +387,9 @@ class OrcaMmRunner(BaseRunner):
             self.run_orca_mm(
                 "repeatff",
                 arguments,
+                stdout=stdout,
+                stderr=stderr,
                 raise_on_error=raise_on_error,
-                silent=silent,
                 timeout=timeout,
             )
 
@@ -351,9 +399,10 @@ class OrcaMmRunner(BaseRunner):
         self,
         pdb_file: Path,
         *atoms: int,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
+        timeout: float | None = None,
         raise_on_error: bool = True,
-        silent: bool = True,
-        timeout: int = -1,
     ) -> list[Path]:
         """
         Execute `orca_mm -splitpdb` and split a PDB structure at selected atom indices.
@@ -364,12 +413,14 @@ class OrcaMmRunner(BaseRunner):
             Path to PDB file that will be split.
         *atoms : int
             1-based atom indices used as split points.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmException` if `orca_mm` reports an error.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
-        timeout : int, default: -1
+        stdout : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDOUT to.
+        stderr : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDERR to.
+        timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
+        raise_on_error : bool, default: True
+            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -392,7 +443,12 @@ class OrcaMmRunner(BaseRunner):
         arguments = [f"{pdb_file}"] + [str(atom) for atom in sorted_atoms]
         with self._expect_output_files(*expected_outputs):
             self.run_orca_mm(
-                "splitpdb", arguments, raise_on_error=raise_on_error, silent=silent, timeout=timeout
+                "splitpdb",
+                arguments,
+                stdout=stdout,
+                stderr=stderr,
+                raise_on_error=raise_on_error,
+                timeout=timeout,
             )
 
         return expected_outputs
@@ -400,9 +456,10 @@ class OrcaMmRunner(BaseRunner):
     def run_mergepdb(
         self,
         *pdb_files: Path,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
+        timeout: float | None = None,
         raise_on_error: bool = True,
-        silent: bool = True,
-        timeout: int = -1,
     ) -> Path:
         """
         Execute `orca_mm -mergepdb` to merge multiple PDB files.
@@ -411,12 +468,14 @@ class OrcaMmRunner(BaseRunner):
         ----------
         *pdb_files : Path
             PDB files to merge.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmException` if `orca_mm` reports an error.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
-        timeout : int, default: -1
+        stdout : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDOUT to.
+        stderr : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDERR to.
+        timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
+        raise_on_error : bool, default: True
+            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -431,7 +490,12 @@ class OrcaMmRunner(BaseRunner):
         arguments = [str(f) for f in pdb_files]
         with self._expect_output_files(expected_output):
             self.run_orca_mm(
-                "mergepdb", arguments, raise_on_error=raise_on_error, silent=silent, timeout=timeout
+                "mergepdb",
+                arguments,
+                stdout=stdout,
+                stderr=stderr,
+                raise_on_error=raise_on_error,
+                timeout=timeout,
             )
 
         return expected_output
@@ -445,9 +509,10 @@ class OrcaMmRunner(BaseRunner):
         nproc: int | None = None,
         charge_option: ChargeOption | None = None,
         oxidation_states: dict[str, float] | None = None,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
+        timeout: float | None = None,
         raise_on_error: bool = True,
-        silent: bool = True,
-        timeout: int = -1,
     ) -> Path:
         """
         Execute `orca_mm -makeff` to generate an ORCA forcefield file from a structure file.
@@ -466,12 +531,14 @@ class OrcaMmRunner(BaseRunner):
             Charge-calculation mode for forcefield generation.
         oxidation_states : dict[str, float] | None, default: None
             Optional element-to-oxidation-state mapping passed via repeated `-CEL` flags.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmException` if `orca_mm` reports an error.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
-        timeout : int, default: -1
+        stdout : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDOUT to.
+        stderr : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDERR to.
+        timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
+        raise_on_error : bool, default: True
+            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -502,7 +569,12 @@ class OrcaMmRunner(BaseRunner):
 
         with self._expect_output_files(expected_output):
             self.run_orca_mm(
-                "makeff", arguments, raise_on_error=raise_on_error, silent=silent, timeout=timeout
+                "makeff",
+                arguments,
+                stdout=stdout,
+                stderr=stderr,
+                raise_on_error=raise_on_error,
+                timeout=timeout,
             )
 
         return expected_output
@@ -511,9 +583,10 @@ class OrcaMmRunner(BaseRunner):
         self,
         structure_file: Path,
         *,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
+        timeout: float | None = None,
         raise_on_error: bool = True,
-        silent: bool = True,
-        timeout: int = -1,
     ) -> Path:
         """
         Execute `orca_mm -getHDist` to generate hydrogen-distance parameters from a structure.
@@ -522,12 +595,14 @@ class OrcaMmRunner(BaseRunner):
         ----------
         structure_file : Path
             Input structure file for hydrogen-distance analysis.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmException` if `orca_mm` reports an error.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
-        timeout : int, default: -1
+        stdout : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDOUT to.
+        stderr : StreamTargetSpec, default: ()
+            One or more target streams to pipe the subprocess STDERR to.
+        timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
+        raise_on_error : bool, default: True
+            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -539,7 +614,12 @@ class OrcaMmRunner(BaseRunner):
         arguments = [str(structure_file)]
         with self._expect_output_files(expected_output):
             self.run_orca_mm(
-                "getHDist", arguments, raise_on_error=raise_on_error, silent=silent, timeout=timeout
+                "getHDist",
+                arguments,
+                stdout=stdout,
+                stderr=stderr,
+                raise_on_error=raise_on_error,
+                timeout=timeout,
             )
 
         return expected_output

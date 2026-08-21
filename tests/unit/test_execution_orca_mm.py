@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from opi.execution.orca_mm import OrcaMmException, OrcaMmRunner
+from opi.execution.orca_mm import OrcaMmError, OrcaMmRunner
 
 
 def _set_fake_orca_path(self, orca_path: Path | None = None) -> None:
@@ -46,5 +46,5 @@ def test_run_orca_mm_raises_when_stderr_contains_output(monkeypatch: pytest.Monk
 
     monkeypatch.setattr(runner, "run", fake_run)
 
-    with pytest.raises(OrcaMmException, match="orca_mm failed"):
+    with pytest.raises(OrcaMmError, match="orca_mm failed"):
         runner.run_orca_mm("convff", ["-amber", "test.prm"])
