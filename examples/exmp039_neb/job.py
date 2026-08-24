@@ -55,11 +55,16 @@ def run_exmp039(working_dir: Path | None = Path("RUN")) -> Output:
     structures = Structure.from_trj_xyz(mep_file)
     properties_list = Properties.from_trj_xyz(mep_file, mode="neb")
 
+    # > One can also read the _MEP.allxyz file instead
+    mep_file = output.get_file("_MEP.allxyz")
+    structures = Structure.from_trj_xyz(mep_file,comment_symbols=">")
+    properties_list = Properties.from_trj_xyz(mep_file, mode="neb", comment_symbols=">")
+
     # > Print the MEP relative to its first image
     energy_first = properties_list[0].energy_total
     for image, (structure, properties) in enumerate(zip(structures, properties_list)):
         energy_relative = (properties.energy_total - energy_first) * AU_TO_KCAL
-        print(f"IMAGE {image}: {properties.energy_total} Eh ({energy_relative:.2f} kcal/mol)")
+        print(f"IMAGE {image+1}: {properties.energy_total} Eh ({energy_relative:.2f} kcal/mol)")
 
     return output
 

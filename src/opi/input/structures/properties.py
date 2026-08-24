@@ -272,25 +272,28 @@ class Properties:
             natoms = int(line.split()[0])
         except (ValueError, IndexError) as err:
             raise ValueError(
-                f"Line {xyz_lines.line_number}: Could not read number of atoms at the beginning of XYZ data"
+                f"Line {xyz_lines.line_number}: Could not read number of atoms at the beginning of XYZ data."
             ) from err
 
         # > Comment line
         line = xyz_lines.readline()
         if not line:
             raise ValueError(
-                f"Line {xyz_lines.line_number}: Comment line is not present in XYZ data"
+                f"Line {xyz_lines.line_number}: Comment line is not present in XYZ data."
             )
 
         # > Analyse comment line
-        properties = mode_functions[mode](line)
+        try:
+            properties = mode_functions[mode](line)
+        except ValueError as err:
+            raise ValueError(f"Line {xyz_lines.line_number}: {err}")
 
         # > Skip the remaining structure
         for iline in range(natoms):
             line = xyz_lines.readline()
             # > empty lines are not allowed
             if not line:
-                raise ValueError(f"Line {xyz_lines.line_number}: Incomplete XYZ file buffer")
+                raise ValueError(f"Line {xyz_lines.line_number}: Incomplete XYZ file buffer.")
 
         return properties
 
