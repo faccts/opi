@@ -38,6 +38,7 @@
 - Add `Block` to allow for creation of arbitrary blocks. (#276)
 - Add functionality to fetch, search or remove a block using the ORCA name of the block. (#276)
 - Added `Output.neb_converged()` and `mode="neb"` for `Properties` to check NEB convergence and read the MEP energies (#285)
+- Added `GbwResults.get_structure()`, `GbwResults.from_gbw_file()`, and `Output.get_structure_from_gbw()` to obtain a `Structure` from a gbw file or gbw JSON (#280).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
