@@ -106,6 +106,41 @@ CI-safe.
 
 ------------------------------------------------------------------------
 
+## Notebook tests (requires ORCA and network access)
+
+`test_notebook.py` executes every notebook in `docs/contents/notebooks/`
+through `jupyter nbconvert`, one parametrized test per notebook:
+
+    uv run nox -s notebook_tests
+
+That session syncs the extra `notebooks` dependency group, which supplies
+`nbconvert`, `ipykernel` and — because the notebooks install their own
+extra dependencies with `!{sys.executable} -m pip install ...` and
+uv-created environments have no `pip` — `pip` itself.
+
+A single notebook can be run by its test id:
+
+    uv run nox -s notebook_tests -- -k how_to_opi
+
+Notebooks that cannot run unattended are skipped by default (`extopt`,
+`ir_spectrum`, `ml_properties`, `opencosmors`); override the list with
+`OPI_NOTEBOOKS_SKIP="a,b,c"`. `OPI_NOTEBOOK_CELL_TIMEOUT` (per cell) and
+`OPI_NOTEBOOK_TIMEOUT` (per notebook) bound the runtime.
+
+Two options support unattended runs:
+
+-   `--notebook-summary=PATH`\
+    Write a JSON summary of the run to `PATH`, atomically, with per-notebook
+    status, duration and error information.
+
+-   `--notebook-artifacts-dir=DIR`\
+    Copy the working directory of each **failed** notebook into `DIR`, so
+    the ORCA input/output files survive for a post-mortem.
+
+See `scripts/slurm/README.md` for the weekly unattended cluster run.
+
+------------------------------------------------------------------------
+
 ## Test markers
 
 The following pytest markers are used:
@@ -138,6 +173,14 @@ The following pytest markers are used:
 -   `out_files`\
     Tests related to exporting/updating the plain-text `.out` fixture
     using `--update-out-files`
+
+-   `notebooks`\
+    Tests that execute the documentation notebooks from
+    `docs/contents/notebooks/`. These require **ORCA**, network access (the
+    notebooks install their own extra dependencies at runtime) and take hours.
+    Run them with `uv run nox -s notebook_tests`, which syncs the extra
+    `notebooks` dependency group. See `scripts/slurm/README.md` for the weekly
+    unattended run.
 
 Markers can be combined using standard pytest syntax, for example:
 

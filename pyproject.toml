@@ -113,6 +113,15 @@ docs = [
     "nbformat>=5.10.4,<6",
     "sphinx-autoapi>=3.6.0,<4",
 ]
+notebooks = [
+    "ipykernel>=6.29,<8",
+    "nbclient>=0.10,<1",
+    "nbconvert>=7.16.6,<8",
+    "nbformat>=5.10.4,<6",
+    # > The notebooks themselves run `!{sys.executable} -m pip install ...`.
+    # > uv-created environments have no pip, so it has to be an explicit dependency.
+    "pip>=25",
+]
 
 
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -161,7 +170,8 @@ include = [
     "pyproject.toml",
     "src/**/*.py",
     "tests/**/*.py",
-    "examples/**/*.py"
+    "examples/**/*.py",
+    "scripts/**/*.py"
 ]
 # > Default max line-length: 100 chars
 line-length = 100

@@ -62,6 +62,20 @@ def tests(session):
     session.run("pytest", *session.posargs)
 
 @nox.session(default=False)
+def notebook_tests(session):
+    session.run_install(
+        "uv",
+        "sync",
+        "--group",
+        "tests",
+        "--group",
+        "notebooks",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    # > `-p no:randomly` keeps the notebook order stable so the summary file stays diffable.
+    session.run("pytest", "-m", "notebooks", "-p", "no:randomly", *session.posargs)
+
+@nox.session(default=False)
 def json_gen(session):
     session.run_install(
         "uv",
