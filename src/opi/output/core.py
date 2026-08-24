@@ -1520,6 +1520,36 @@ class Output:
             structure.multiplicity = mult
         return structure
 
+    def get_structure_from_gbw(self, *, index: int = 0) -> Structure | None:
+        """
+        Returns the structure stored in a gbw file as `Structure` object.
+        Silently returns None if no structure is available.
+
+        In contrast to `get_structure()`, which reads the geometry from the property JSON, this
+        getter uses the gbw JSON. It therefore offers no fragment IDs and no `.out` file fallback,
+        but it does distinguish ghost atoms from real ones.
+
+        Parameters
+        ----------
+        index : int, default: 0
+            Index (>= 0) of the gbw file in `self.results_gbw`. The default 0 refers to the main
+            gbw file.
+
+        Returns
+        ----------
+        structure: Structure | None
+            Structure generated from the gbw data or None if no structure is available.
+        """
+        results_gbw = self._safe_get("results_gbw", index)
+        if results_gbw is None:
+            return None
+
+        try:
+            return cast(GbwResults, results_gbw).get_structure()
+        except ValueError:
+            # > `GbwResults.get_structure()` raises on malformed atom data
+            return None
+
     def _get_cartesians(
         self, index: int, /
     ) -> list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None:
