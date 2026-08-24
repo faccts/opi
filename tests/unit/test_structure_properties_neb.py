@@ -1,6 +1,7 @@
 import pytest
 
 from opi.input.structures import Properties
+from opi.input.structures.properties import RGX_NEB_ENERGY, RGX_NEB_IMAGE
 
 """
 This module contains tests for reading `Properties` from the comment line of NEB XYZ files.
@@ -54,3 +55,33 @@ def test_neb_from_trj_xyz_block_allxyz():
     properties = Properties.from_trj_xyz_block(ALLXYZ_BLOCK, mode="neb", comment_symbols=">")
     assert [prop.structure_id for prop in properties] == [1, 2]
     assert [prop.energy_total for prop in properties] == [-7.336370651022, -7.334880224742]
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize(
+    "line",
+    [
+        # > Atom count line
+        "3",
+        # > ".allxyz" structure separator
+        ">",
+        # > Coordinate lines: the element symbol must not be taken for the "E" or "Image" token
+        "O         -3.56626        1.77639        0.00000",
+        "Ne        -3.56626        1.77639        0.00000",
+        "Es        -3.56626        1.77639        0.00000",
+        # > GOAT and DOCKER comment lines, which are handled by the other modes
+        "  -7.336370651022",
+        "1  -7.336370651022     0.00",
+        # > NEB comment line without an energy behind the "E" token
+        "Coordinates from ORCA-job job_MEP E",
+    ],
+)
+def test_neb_regexes_do_not_match_other_lines(line: str):
+    """Test that the NEB regexes do not match anything outside a NEB comment line.
+
+    Both matches are used as truthiness checks in `Properties.neb_energies`, so a spurious match
+    would silently yield a wrong energy or image number instead of raising or leaving it unset.
+    """
+    assert RGX_NEB_ENERGY.search(line) is None
+    assert RGX_NEB_IMAGE.search(line) is None
