@@ -7,7 +7,9 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from opi.execution.base import BaseRunner
+from opi.execution.text_stream import StreamTargetSpec, concatentate_stream_targets
 from opi.lib.orca_binary import OrcaBinary
+from opi.utils.misc import delete_empty_file
 
 
 class Runner(BaseRunner):
@@ -19,10 +21,17 @@ class Runner(BaseRunner):
     """
 
     def run_orca(
-        self, inpfile: Path, /, *extra_args: str, silent: bool = True, timeout: int = -1
+        self,
+        inpfile: Path,
+        /,
+        *extra_args: str,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
+        timeout: int = -1,
     ) -> None:
         """
         Execute ORCA's main binary and pass the path to the main input file as well as extra arguments.
+        By default, STDOUT and STDERR are dumped into `<basename>.out` and `<basename>.err`, respectively.
 
         Parameters
         ----------
@@ -30,8 +39,6 @@ class Runner(BaseRunner):
             Path to ORCA's main input file.
         *extra_args: str
             Additional arguments passed to ORCA.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
         timeout : int, default: -1
             Optional timeout in seconds to wait for process to complete.
         """
@@ -49,15 +56,21 @@ class Runner(BaseRunner):
             # > All extra arguments are passed as second argument to ORCA.
             arguments += list(extra_args)
 
-        # Run the Orca calculation
-        self.run(
-            OrcaBinary.ORCA,
-            arguments,
-            stdout=outfile,
-            stderr=errfile,
-            silent=silent,
-            timeout=timeout,
-        )
+        try:
+            # Run the Orca calculation
+            self.run(
+                OrcaBinary.ORCA,
+                arguments,
+                stdout=concatentate_stream_targets(stdout, outfile),
+                stderr=concatentate_stream_targets(stderr, errfile),
+                timeout=timeout,
+            )
+        finally:
+            # > Delete empty STDOUT and STDERR dumps
+            if outfile:
+                delete_empty_file(outfile)
+            if errfile:
+                delete_empty_file(errfile)
 
     def run_orca_plot(
         self,
@@ -65,12 +78,16 @@ class Runner(BaseRunner):
         stdin_list: list[str],
         /,
         *extra_args: str,
-        silent: bool = True,
+        stdout: StreamTargetSpec = (),
+        stderr: StreamTargetSpec = (),
         timeout: int = -1,
     ) -> None:
         """
-        Executes the orca_plot binary in the interactive mode and passes the gbw path, an input string, and extra
-        arguments to the binary. Note that currently only the interactive mode (orca_plot (gbw) -i) is supported.
+        Executes the orca_plot binary in the interactive mode and passes the gbw path,
+        an input string, and extra arguments to the binary.
+        Note that currently only the interactive mode (orca_plot (gbw) -i) is supported.
+        By default, STDOUT and STDERR are dumped into
+        `<basename>.plot.out` and `<basename>.plot.err`, respectively.
 
         Parameters
         ----------
@@ -80,8 +97,6 @@ class Runner(BaseRunner):
             Input string handed to stdin of orca_plot.
         *extra_args: str
             Additional arguments passed to orca_plot.
-        silent : bool, default: True
-            Capture and discard STDOUT and STDERR.
         timeout : int, default: -1
             Optional timeout in seconds to wait for process to complete.
 
@@ -98,7 +113,7 @@ class Runner(BaseRunner):
         if not stdin_list:
             raise ValueError("stdin_list is required but was empty or not provided.")
 
-        # Sets the output and error file from the gbwfile.
+        # > Sets the output and error file from the gbwfile.
         outfile = gbwfile.with_suffix(".plot.out")
         errfile = gbwfile.with_suffix(".plot.err")
 
@@ -113,16 +128,22 @@ class Runner(BaseRunner):
         # > Generate stdin string from stdin list
         stdin_str = "\n".join(stdin_list) + "\n"
 
-        # Run orca_plot
-        self.run(
-            OrcaBinary.ORCA_PLOT,
-            arguments,
-            stdin_str=stdin_str,
-            stdout=outfile,
-            stderr=errfile,
-            silent=silent,
-            timeout=timeout,
-        )
+        try:
+            # > Run orca_plot
+            self.run(
+                OrcaBinary.ORCA_PLOT,
+                arguments,
+                stdin=stdin_str,
+                stdout=concatentate_stream_targets(stdout, outfile),
+                stderr=concatentate_stream_targets(stderr, errfile),
+                timeout=timeout,
+            )
+        finally:
+            # > Delete empty STDOUT and STDERR dumps
+            if outfile:
+                delete_empty_file(outfile)
+            if errfile:
+                delete_empty_file(errfile)
 
     def run_orca_2json(
         self, args: Sequence[str] = (), /, *, working_dir: Path | None = None

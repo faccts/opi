@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from opi.execution.core import Runner
+from opi.execution.text_stream import StreamTargetSpec
 from opi.input.blocks.block_output import BlockOutput
 from opi.input.core import Input
 from opi.input.structures.structure import Structure
@@ -273,7 +274,9 @@ class Calculator:
         """Create a `Runner` object passing on `self.working_dir`."""
         return Runner(working_dir=self.working_dir)
 
-    def run(self, *, timeout: int = -1) -> bool:
+    def run(
+        self, *, stdout: StreamTargetSpec = (), stderr: StreamTargetSpec = (), timeout: int = -1
+    ) -> bool:
         """
         Execute ORCA calculation.
 
@@ -290,7 +293,7 @@ class Calculator:
         """
         runner = self._create_runner()
         assert self.inpfile
-        runner.run_orca(self.inpfile, timeout=timeout)
+        runner.run_orca(self.inpfile, stdout=stdout, stderr=stderr, timeout=timeout)
         output = self.get_output()
         return output.terminated_normally()
 
