@@ -40,6 +40,7 @@ from opi.output.models.base.strict_types import (
 )
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.gbw.properties.mo import MO
+from opi.output.models.json.property.properties.calc_time import CalculationTiming
 from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
 from opi.output.models.json.property.properties.energy import Energy
 from opi.output.models.json.property.properties.energy_list import EnergyList
@@ -1306,6 +1307,22 @@ class Output:
 
         return nbf
 
+    def get_timings(self) -> CalculationTiming | None:
+        """
+        Get the timings (in seconds) of the individual calculation steps and their total.
+
+        Returns
+        -------
+        timings : CalculationTiming | None
+            Timings of the calculation or None if the output contains none.
+        """
+        timings = self._safe_get("results_properties", "calculation_timings")
+
+        if timings is not None:
+            timings = cast(CalculationTiming, timings)
+
+        return timings
+
     def get_final_energy(
         self, *, index: int = -1, fallback: bool = True
     ) -> StrictFiniteFloat | None:
@@ -1502,6 +1519,36 @@ class Output:
         if mult is not None:
             structure.multiplicity = mult
         return structure
+
+    def get_structure_from_gbw(self, *, index: int = 0) -> Structure | None:
+        """
+        Returns the structure stored in a gbw file as `Structure` object.
+        Silently returns None if no structure is available.
+
+        In contrast to `get_structure()`, which reads the geometry from the property JSON, this
+        getter uses the gbw JSON. It therefore offers no fragment IDs and no `.out` file fallback,
+        but it does distinguish ghost atoms from real ones.
+
+        Parameters
+        ----------
+        index : int, default: 0
+            Index (>= 0) of the gbw file in `self.results_gbw`. The default 0 refers to the main
+            gbw file.
+
+        Returns
+        ----------
+        structure: Structure | None
+            Structure generated from the gbw data or None if no structure is available.
+        """
+        results_gbw = self._safe_get("results_gbw", index)
+        if results_gbw is None:
+            return None
+
+        try:
+            return cast(GbwResults, results_gbw).get_structure()
+        except ValueError:
+            # > `GbwResults.get_structure()` raises on malformed atom data
+            return None
 
     def _get_cartesians(
         self, index: int, /
