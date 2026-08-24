@@ -41,6 +41,7 @@ from opi.output.models.base.strict_types import (
 )
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.gbw.properties.mo import MO
+from opi.output.models.json.property.properties.calc_time import CalculationTiming
 from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
 from opi.output.models.json.property.properties.energy import Energy
 from opi.output.models.json.property.properties.energy_list import EnergyList
@@ -1319,6 +1320,22 @@ class Output:
             nbf = cast(StrictNonNegativeInt, nbf)
 
         return nbf
+
+    def get_timings(self) -> CalculationTiming | None:
+        """
+        Get the timings (in seconds) of the individual calculation steps and their total.
+
+        Returns
+        -------
+        timings : CalculationTiming | None
+            Timings of the calculation or None if the output contains none.
+        """
+        timings = self._safe_get("results_properties", "calculation_timings")
+
+        if timings is not None:
+            timings = cast(CalculationTiming, timings)
+
+        return timings
 
     def get_final_energy(
         self, *, index: int = -1, fallback: bool = True
