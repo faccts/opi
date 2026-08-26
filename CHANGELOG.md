@@ -60,6 +60,8 @@
 - Added `OrcaBinary.ORCA_MM`. (#224)
 - Added `OpiError`, `OpiExecutionError`, and `OrcaMmError`. (#224)
 - Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
+- Added `Output.get_absorption_spectrum()` which returns the calculated electronic absorption (UV/Vis) spectrum (#XXX).
+- Added a tutorial notebook on the calculation of a UV/Vis spectrum (#XXX).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
@@ -87,6 +89,8 @@
 - Fixed `BlockIce()` requiring `integrals` to be set. (#218)
 - The pydantic output fields `EfgTensor.nuc`, `SpinSpinCoupling.pairsinfo` and `Tensor.nuc` now accept zero as valid output values (#305).
 - Allow direct initialization of `Scan` input object from the class instead of producing malformed input (#308).
+- Fixed `TdDft.xy` (`X+Y`), which failed validation for full TD-DFT (RPA) runs because the amplitudes are a list of rows, and added the previously unmodelled `X-Y` amplitudes as `TdDft.x_minus_y` (#XXX).
+- Added the missing `energy`, `irrep`, `multiplicity` and `tda` fields to `TdDft` (#XXX).
 
 ## [2.0.0] - 2026-02-10
 

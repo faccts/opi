@@ -3,6 +3,7 @@ import pytest
 from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
 from opi.output.models.json.property.properties.polarizability import Polarizability
 from opi.output.models.json.property.properties.quadrupole_moment import QuadrupoleMoment
+from opi.output.models.json.property.properties.spectrum import Spectrum
 
 """
 Unit tests for Output electric property getters 
@@ -11,6 +12,7 @@ This module contains tests for the getters of electric properties such as:
 - Dipole Moments
 - Quadrupole Moments
 - Polarizability
+- Absorption spectra
 """
 
 
@@ -111,3 +113,23 @@ def test_get_polarizability_returns_list_of_correct_length(
     """Test of Output.get_polarizability() returns list of correct length."""
     output_object = output_object_factory(task)
     assert len(output_object.get_polarizability()) == length
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["uvvis"])
+def test_get_absorption_spectrum_returns_spectra(output_object_factory, task: str):
+    """Test if `Output.get_absorption_spectrum()` returns the `Spectrum` of both representations."""
+    output_object = output_object_factory(task)
+    spectra = output_object.get_absorption_spectrum()
+    assert [spectrum.representation for spectrum in spectra] == ["Length", "Velocity"]
+    for spectrum in spectra:
+        assert isinstance(spectrum, Spectrum)
+        assert len(spectrum.excitationenergies) == spectrum.ntrans
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_absorption_spectrum_returns_none(empty_output_object):
+    """Test if `Output.get_absorption_spectrum()` returns None when expected."""
+    assert not empty_output_object.get_absorption_spectrum()

@@ -65,6 +65,7 @@ from opi.output.models.json.property.properties.population_analysis import (
 )
 from opi.output.models.json.property.properties.quadrupole_moment import QuadrupoleMoment
 from opi.output.models.json.property.properties.roci_en import RoCisEnergy
+from opi.output.models.json.property.properties.spectrum import Spectrum
 from opi.output.models.json.property.properties.van_der_waals_correction import (
     VdwCorrection,
 )
@@ -2279,6 +2280,34 @@ class Output:
             pol = cast(list[Polarizability], pol)
 
         return pol
+
+    def get_absorption_spectrum(self, *, index: int = -1) -> list[Spectrum] | None:
+        """
+        Easy access to the electronic absorption (UV/Vis) spectrum from the properties results.
+        Requires a calculation of electronic excitations (e.g. TD-DFT, CIS, ROCIS or EOM-CCSD).
+        ORCA usually reports the spectrum for the electric dipole operator in both the length and
+        the velocity representation, hence one entry per representation is returned.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the spectrum should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        absorption_spectrum : list[Spectrum] | None
+            Returns the spectra or None if there is none in the output for the requested index.
+        """
+
+        absorption_spectrum = self._safe_get(
+            "results_properties", "geometries", index, "absorption_spectrum"
+        )
+
+        if absorption_spectrum is not None:
+            absorption_spectrum = cast(list[Spectrum], absorption_spectrum)
+
+        return absorption_spectrum
 
     def get_s2(
         self, *, index: int = -1
