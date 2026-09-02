@@ -9,7 +9,7 @@ from opi.input.arbitrary_string import (
     ArbitraryString,
     ArbitraryStringPos,
 )
-from opi.input.blocks.base import Block
+from opi.input.blocks.base import BlockABC
 from opi.input.simple_keywords.base import SimpleKeyword
 
 __all__ = ("Input",)
@@ -24,8 +24,8 @@ class Input:
     _simple_keywords | simple_keywords: list[SimpleKeyword]
         List of simple keywords to be put into the ORCA input.
         Access to this attribute should be done through the respective `add_simple_keywords/remove_.../clear_...` methods.
-    _blocks | blocks: dict[type[Block], Block]
-        Dict of blocks to be put into the ORCA input.
+    _blocks | blocks: dict[str, BlockABC]
+        Dict of blocks to be put into the ORCA input, keyed as described in `Input._block_name()`.
         Access to this attribute should be done through the respective `add_blocks/remove_.../clear_...` methods.
     _arbitrary_strings | arbitrary_strings: list[ArbitraryString]
         List of arbitrary string to be put into the ORCA input.
@@ -45,7 +45,7 @@ class Input:
         # // Simple Keywords
         self._simple_keywords: list[SimpleKeyword] = []
         # // Block options
-        self._blocks: dict[type[Block], Block] = {}
+        self._blocks: dict[str, BlockABC] = {}
         # // Arbitrary strings
         self._arbitrary_strings: list[ArbitraryString] = []
 
@@ -78,15 +78,15 @@ class Input:
         )
 
     @property
-    def blocks(self) -> dict[type[Block], Block] | None:
+    def blocks(self) -> dict[str, BlockABC] | None:
         return self._blocks
 
     @blocks.setter
-    def blocks(self, value: dict[type[Block], Block] | None) -> None:
+    def blocks(self, value: dict[str, BlockABC] | None) -> None:
         """
         Parameters
         ----------
-        value : dict[type[Block] | Block] | None
+        value : dict[str, BlockABC] | None
         """
         raise AttributeError(
             "blocks is private, use the add_blocks/get_blocks function for access."
@@ -114,12 +114,25 @@ class Input:
     @ncores.setter
     def ncores(self, value: int | None) -> None:
         """
+        Setter for the ncores property. Value given must be a non-negative integer.
+
         Parameters
         ----------
         value : int | None
+
+        Raises
+        ------
+        TypeError
+            If the given value is not an integer.
+
+        ValueError
+            If the given value is negative.
         """
-        if value is not None and value < 0:
-            raise ValueError(f"{self.__class__.__name__}.ncores must be a positive integer.")
+        if value is not None:
+            if not isinstance(value, int):
+                raise TypeError(f"{self.__class__.__name__}.ncores must be an integer.")
+            elif value < 0:
+                raise ValueError(f"{self.__class__.__name__}.ncores must be a positive integer.")
         # << END OF IF
         self._ncores = value
 
@@ -130,12 +143,25 @@ class Input:
     @memory.setter
     def memory(self, value: int | None) -> None:
         """
+        Setter for the memory property. Value given must be a non-negative integer.
+
         Parameters
         ----------
         value : int | None
+
+        Raises
+        ------
+        TypeError
+            If the given value is not an integer.
+
+        ValueError
+            If the given value is negative.
         """
-        if value is not None and value < 0:
-            raise ValueError(f"{self.__class__.__name__}.memory must be a positive integer.")
+        if value is not None:
+            if not isinstance(value, int):
+                raise TypeError(f"{self.__class__.__name__}.memory must be an integer.")
+            elif value < 0:
+                raise ValueError(f"{self.__class__.__name__}.memory must be a positive integer.")
         # << END OF IF
         self._memory = value
 
@@ -294,6 +320,9 @@ class Input:
 
         The keywords are stored in the class attribute `_simple_keywords`.
 
+        Keywords are compared case-insensitively, so a keyword that only differs in case from an
+        already added one counts as a duplicate. The spelling of the first occurrence is kept.
+
         Parameters
         ----------
         *keywords : str | SimpleKeyword
@@ -362,7 +391,7 @@ class Input:
         for keyword in keywords:
             # > Convert string to simple keyword.
             if isinstance(keyword, str):
-                simple_keyword = SimpleKeyword(keyword.lower())
+                simple_keyword = SimpleKeyword(keyword)
             else:
                 simple_keyword = keyword
 
@@ -391,7 +420,7 @@ class Input:
         if not self._simple_keywords:
             return False
         if isinstance(keyword, str):
-            return SimpleKeyword(keyword.lower()) in self._simple_keywords
+            return SimpleKeyword(keyword) in self._simple_keywords
         else:
             return keyword in self._simple_keywords
 
@@ -432,7 +461,7 @@ class Input:
             If the simple keyword exists, or it was created, it is returned, else None is returned.
         """
         if isinstance(keyword, str):
-            simple_keyword: SimpleKeyword = SimpleKeyword(keyword.lower())
+            simple_keyword: SimpleKeyword = SimpleKeyword(keyword)
         else:
             simple_keyword = keyword
 
@@ -510,60 +539,137 @@ class Input:
     # ----------------------------------------------------------------------
     # > BLOCKS
     # ----------------------------------------------------------------------
+    @staticmethod
+    def _block_name(block: BlockABC | type[BlockABC] | str, /) -> str:
+        """
+        Determine the name under which a block is stored in `Input._blocks`.
+
+        A block is identified by the name of the ORCA block it models. Hence `%scf` cannot be
+        added twice, not even through a subclass of `BlockScf` or through a `Block`, while
+        blocks that are named at runtime stay separate per name.
+        Names are normalized with `BlockABC.normalize_name()`, so that a block can be looked up by
+        the same spellings it can be created with.
+
+        Parameters
+        ----------
+        block : BlockABC | type[BlockABC] | str
+            A block, a block class or the name of an ORCA block.
+
+        Returns
+        -------
+        str
+            The normalized name of the block within `Input._blocks`.
+
+        Raises
+        ------
+        TypeError
+            If `block` is neither a `BlockABC`, a subclass of `BlockABC` nor a string.
+        ValueError
+            If `block` is a class that does not define an ORCA block name, as such a class does
+            not identify a single block. This is the case for the abstract `BlockABC` and for
+            classes that are named at runtime, like `Block`.
+        AttributeError
+            If `block` is an instance of a subclass that defines no ORCA block name at all,
+            see `BlockABC.name`.
+        """
+        if isinstance(block, str):
+            name = block
+        # > Every class is an instance of `type`, so the subclass check is required: without it,
+        # > any other class would reach `get_block_name()` and fail with an `AttributeError`.
+        elif isinstance(block, type) and issubclass(block, BlockABC):
+            block_name = block.get_block_name()
+            if block_name is None:
+                # > `get_block_name()` is None for `BlockABC` itself, which is abstract, and for
+                # > classes like `Block`, whose instances are named individually.
+                raise ValueError(
+                    f"'{block.__name__}' does not define the name of an ORCA block: "
+                    "pass a block instance or a block name instead."
+                )
+            name = block_name
+        elif isinstance(block, BlockABC):
+            name = block.name
+        else:
+            # > Classes are reported as themselves, as `type()` of a class is only its metaclass.
+            got = block if isinstance(block, type) else type(block)
+            raise TypeError(f"Expected a block, a block class or a block name, got {got}")
+
+        return BlockABC.normalize_name(name)
+
     def add_blocks(
         self,
-        *blocks: Block,
+        *blocks: BlockABC,
         strict: bool = False,
         overwrite: bool = False,
     ) -> None:
         """
-        Add one or more blocks to the Calculator's `blocks` attribute.
+        Add one or more blocks to the Calculator's `blocks` attribute. If the block exists in `Input._blocks` already,
+        the existing block will be merged with the new block, with the values from new block taking precedence.
 
         Parameters
         ----------
-        *blocks : Block
+        *blocks : BlockABC
             One or more blocks to add
         strict : bool, default: False
             If True, raise a ValueError if a block has already been added.
-            If False (default), does nothing if a block has already been added.
+            If False (default), does not raise an error and instead merges the blocks.
         overwrite : bool, default: False
-            If True, blocks that are already present will be overwritten (strict is ignored)
-            If False (default), existing blocks are not overwritten
+            If True, blocks that are already present will be overwritten completely, replacing the existing block.
+            If False (default), existing blocks are not overwritten and instead merged
+
+        Raises
+        ------
+        TypeError
+            If one of the `blocks` is not an instance of `BlockABC`. Block classes are rejected as
+            well, as only an instance carries the options of a block.
+        ValueError
+            If `strict` is True and one or more of the specified blocks are already present.
 
         Example
         -------
         ::
 
          >>c = Calculator(basename = input)
-         >>b = Block(d3s6=0.64,d3a1=0.3065)
+         >>b = BlockMethod(d3s6=0.64,d3a1=0.3065)
          >>c.input.add_blocks(b)
 
         Variables without assigned value will be assigned default value (usually None)
         """
         for block in blocks:
-            if type(block) not in self._blocks:
-                self._blocks[type(block)] = block
+            if not isinstance(block, BlockABC):
+                # > Classes are reported as themselves, as `type()` of a class is only its metaclass.
+                got = block if isinstance(block, type) else type(block)
+                raise TypeError(f"Expected an instance of a block, got {got}")
+            name = self._block_name(block)
+            if name not in self._blocks:
+                self._blocks[name] = block
             elif overwrite:
-                self._blocks[type(block)] = block
+                self._blocks[name] = block
             elif strict:
                 raise ValueError(f"Strict: Block for {block.name} has already been added")
+            else:
+                existing_block = self._blocks[name]
+                self._blocks[name] = existing_block | block
 
-    def remove_blocks(self, *blocks: Block, strict: bool = False) -> None:
+    def remove_blocks(self, *blocks: BlockABC | type[BlockABC] | str, strict: bool = False) -> None:
         """
-        Remove one or more blocks from the Calculator's `blocks` attribute.
+        Remove one or more blocks from the Calculator's `blocks` attribute. If the block to be removed is arbitrary and has been initialized through `Block`,
+        pass its name or instance instead.
 
         Parameters
         ----------
-        *blocks : Block
-            One or more blocks to remove.
+        *blocks : BlockABC | type[BlockABC] | str
+            One or more blocks to remove, given as block, block class or block name.
         strict : bool, default: False
             If True, raise a ValueError if block was not found in the Calculator.
             If False (default), silently ignore blocks that are not present.
 
         Raises
         -------
+        TypeError
+            If one of the `blocks` is neither a `BlockABC`, a subclass of `BlockABC` nor a string.
         ValueError
-            If `strict` is True and one or more of the specified blocks are not present.
+            If `strict` is True and one or more of the specified blocks are not present, or if one
+            of the `blocks` is a class that is named at runtime, see `Input._block_name()`.
         """
         if not self._blocks:
             if strict:
@@ -572,116 +678,144 @@ class Input:
                 return
 
         for block in blocks:
-            t_block = type(block)
-            if t_block in self._blocks:
-                self._blocks.pop(t_block)
+            name = self._block_name(block)
+            if name in self._blocks:
+                self._blocks.pop(name)
             elif strict:
-                raise ValueError(
-                    f"Strict: Block '{block.name}' does not exist so it cannot be removed."
-                )
+                raise ValueError(f"Strict: Block '{name}' does not exist so it cannot be removed.")
 
-    def _has_block(self, block: Block | type[Block], /) -> bool:
+    def _has_block(self, block: BlockABC | type[BlockABC] | str, /) -> bool:
         """
         Check whether a block has been added to the Calculator.
 
         Parameters
         ----------
-        block : Block | type[Block]
-            The block or block type to check
+        block : BlockABC | type[BlockABC] | str
+            The block, block class or block name to check
 
         Returns
         -------
         bool
             True if the block is present in the Calculator, False otherwise.
+
+        Raises
+        ------
+        TypeError
+            If `block` is neither a `BlockABC`, a subclass of `BlockABC` nor a string.
+        ValueError
+            If `block` is a class that is named at runtime, see `Input._block_name()`.
         """
-        if not self._blocks:
-            return False
+        return self._block_name(block) in self._blocks
 
-        if isinstance(block, Block):
-            block_type = type(block)
-        else:
-            block_type = block
-
-        if self._blocks:
-            return block_type in self._blocks
-        else:
-            return False
-
-    def has_blocks(self, *blocks: Block) -> tuple[bool, ...]:
+    def has_blocks(self, *blocks: BlockABC | type[BlockABC] | str) -> tuple[bool, ...]:
         """
-        Check whether one or more blocks have been added to the Calculator.
+        Check whether one or more blocks have been added to the Calculator. If the block to be removed is arbitrary and has been initialized through `Block`,
+        pass its name or instance instead.
 
         Parameters
         ----------
-        *blocks : Block
-            One or more blocks to check.
+        *blocks : BlockABC | type[BlockABC] | str
+            One or more blocks to check, given as block, block class or block name.
 
         Returns
         -------
         tuple[bool, ...]
             A tuple of bools which are True if the block are present in the Calculator, False otherwise.
+
+        Raises
+        ------
+        TypeError
+            If one of the `blocks` is neither a `BlockABC`, a subclass of `BlockABC` nor a string.
+        ValueError
+            If one of the `blocks` is a class that is named at runtime, see `Input._block_name()`.
         """
         return tuple(self._has_block(block) for block in blocks)
 
-    def _get_block(self, block: type[Block], /, *, create_missing: bool = False) -> Block | None:
+    def get_block(
+        self, block: type[BlockABC] | str, /, *, create_missing: bool = False
+    ) -> BlockABC | None:
         """
         Retrieve a block that has been added to the Calculator.
 
         Parameters
         ----------
-        block : type[Block]
-            The block to retrieve
+        block : type[BlockABC] | str
+            The block class or block name to retrieve
         create_missing : bool, default: False
             If True and the block is missing, add it and return it.
             If False (default), return None if the block is missing.
 
         Returns
         -------
-        Block | None
+        BlockABC | None
             The requested block if it exists, or if it was created.
-            None if the block is missing and `create_missing` is False.
+            None if the block is missing and `create_missing` is False,
+            or if it is requested by the name of a block that no block class implements.
+
+        Raises
+        ------
+        TypeError
+            If `block` is neither a subclass of `BlockABC` nor a string.
+        ValueError
+            If `block` is a class that is named at runtime, see `Input._block_name()`.
         """
-        if self._blocks:
-            if block in self._blocks:
-                return self._blocks[block]
-            elif create_missing:
-                created_block = block()
-                self.add_blocks(created_block)
-                return created_block
-            else:
-                return None
-        elif create_missing:
-            created_block = block()
-            self.add_blocks(created_block)
-            return created_block
-        else:
+        name = self._block_name(block)
+        if name in self._blocks:
+            return self._blocks[name]
+
+        if not create_missing:
             return None
 
+        # > A name is only creatable if a block class implements it. Arbitrary blocks are never
+        # > registered, so they cannot be created from their name alone.
+        block_class = BlockABC.get_block_class(name) if isinstance(block, str) else block
+        if block_class is None:
+            return None
+
+        created_block = block_class()
+        self.add_blocks(created_block)
+        return created_block
+
     def get_blocks(
-        self, *blocks: type[Block], create_missing: bool = False
-    ) -> dict[type[Block], Block]:
+        self, *blocks: type[BlockABC] | str, create_missing: bool = False
+    ) -> dict[str, BlockABC]:
         """
         Retrieve one or more blocks that have been added to the Calculator.
 
         Parameters
         ----------
-        *blocks : type[Block]
-            One or more block to retrieve.
+        *blocks : type[BlockABC] | str
+            One or more blocks to retrieve, given as block class or block name.
         create_missing : bool, default: False
             If True and a block is missing, add it and return it.
             If False (default), missing blocks will be skipped.
 
         Returns
         -------
-        dict[type[Block], Block]
-            A Dictionary with the requested Blocks if they existed or were generated.
+        dict[str, BlockABC]
+            A Dictionary with the requested Blocks if they existed or were generated,
+            keyed by the name of the ORCA block they model.
+
+        Raises
+        ------
+        TypeError
+            If one of the `blocks` is neither a subclass of `BlockABC` nor a string.
+        ValueError
+            If one of the `blocks` is a class that is named at runtime, see `Input._block_name()`.
+
+        Example
+        -------
+        ::
+
+         >>c.input.get_blocks(BlockScf)
+         {'scf': BlockScf(...)}
         """
-        blocks_to_return = {}
+        blocks_to_return: dict[str, BlockABC] = {}
         for block in blocks:
-            block_to_return = self._get_block(block, create_missing=create_missing)
+            block_to_return = self.get_block(block, create_missing=create_missing)
             # > check if block was found/created
             if block_to_return:
-                blocks_to_return[block] = block_to_return
+                blocks_to_return[self._block_name(block)] = block_to_return
         return blocks_to_return
 
     def clear_blocks(self, *, strict: bool = False) -> None:
@@ -711,23 +845,26 @@ class Input:
     # > ARBITRARY STRINGS
     # ----------------------------------------------------------------------
     def add_arbitrary_string(
-        self, string: str, /, *, pos: ArbitraryStringPos | str | None = None
+        self, string: str | ArbitraryString, /, *, pos: ArbitraryStringPos | str | None = None
     ) -> None:
         """
         Add an arbitrary string.
 
         Parameters
         ----------
-        string : str
+        string : str | ArbitraryString
             Arbitrary string to be added
         pos : ArbitraryStringPos | str | None, default: None
             Coordinates of the arbitrary string within the input file.
             For details look into the `ArbitraryStringPos` class.
         """
+        if isinstance(string, ArbitraryString):
+            arb_string = string
+        else:
+            arb_string = ArbitraryString(string=string)
+            if pos is not None:
+                arb_string.pos = ArbitraryStringPos(pos)
 
-        arb_string = ArbitraryString(string=string)
-        if pos is not None:
-            arb_string.pos = ArbitraryStringPos(pos)
         self._arbitrary_strings.append(arb_string)
 
     def remove_arbitrary_string(
@@ -776,3 +913,72 @@ class Input:
                 raise ValueError("No arbitrary strings added.")
         else:
             self._arbitrary_strings.clear()
+
+    # ----------------------------------------------------------------------
+    # > INPUT MERGE LOGIC
+    # ----------------------------------------------------------------------
+
+    def __or__(self, other: "Input") -> "Input":
+        """
+        Merges two instances of `Input` into a new `Input`. Neither operand is modified.
+
+        Every component of the input is merged on its own terms:
+            - Simple keywords are concatenated, those of `self` first, dropping duplicates. The
+              order is preserved: the first occurrence of a keyword determines its position.
+            - Blocks are merged per ORCA block they model, through `Input.add_blocks()`. The values of `other` take precedence.
+              Every block is copied on the way in, so that the merged input shares no block
+              instance with either operand.
+            - Arbitrary strings are concatenated, those of `self` first, keeping duplicates.
+            - `ncores`, `memory` and `moinp` are taken from `other` if set, otherwise from `self`.
+              An `ncores` or `memory` of `0` counts as unset here.
+
+        If `other` is not an `Input`, `NotImplemented` is returned, so that Python fails the `|`
+        operation with a `TypeError`.
+
+        Parameters
+        ----------
+        other : Input
+            Instance of `Input` to be merged into `self`
+
+        Returns
+        -------
+        Input
+            New instance of `Input` with the simple keywords, blocks, arbitrary strings and
+            special input variables of `self` and `other`.
+        """
+        if not isinstance(other, Input):
+            return NotImplemented
+
+        # > Systematically handle all components of an Input object.
+        new_input = Input()
+
+        # > First simple keywords will be handled by concatenating the two lists of simple keywords,
+        # > those of `self` first. `add_simple_keywords()` drops duplicates, so the first occurrence
+        # > of a keyword determines its position.
+        new_input.add_simple_keywords(
+            *(self.simple_keywords if self.simple_keywords else []),
+            *(other.simple_keywords if other.simple_keywords else []),
+        )
+
+        # > Next the blocks will be handled, since the Block already implements merge logic, the blocks will be iteratively merged based on name of block
+        # > Since add_blocks() already handles the merge case, we need only to iteratively add all the blocks in self followed by those in other
+        for blocks in (self.blocks, other.blocks):
+            for block in (blocks or {}).values():
+                new_input.add_blocks(block.model_copy(deep=True))
+
+        # > Next the arbitrary strings will be handled, here the list of strings will simply be merged.
+        new_arbit_strings_list = (self.arbitrary_strings if self.arbitrary_strings else []) + (
+            other.arbitrary_strings if other.arbitrary_strings else []
+        )
+        for arbit_string in new_arbit_strings_list:
+            new_input.add_arbitrary_string(arbit_string)
+
+        # > Finally the various special variables will be handled by giving precedence to the other Input object
+
+        new_input.ncores = other.ncores if other.ncores else self.ncores
+
+        new_input.memory = other.memory if other.memory else self.memory
+
+        new_input.moinp = other.moinp if other.moinp else self.moinp
+
+        return new_input

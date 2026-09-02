@@ -8,6 +8,7 @@ from opi.core import Calculator
 from opi.input.simple_keywords import Dft, Scf, Task
 from opi.input.structures import Structure
 from opi.output.core import Output
+from opi.output.models.json.gbw.gbw_results import GbwResults
 
 
 def run_exmp003(
@@ -32,6 +33,7 @@ def run_exmp003(
     output = calc.get_output()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
+        print(output.error_message())
         sys.exit(1)
     # << END OF IF
 
@@ -77,6 +79,18 @@ def run_exmp003(
     # > Now we print the final structure as xyz file
     optimized = output.get_structure()
     print(optimized.to_xyz_block())
+
+    # > The final structure is also stored in the gbw file, so it can be obtained from there
+    # > instead of from the property JSON.
+    from_gbw = output.get_structure_from_gbw()
+    print("RMSD between the structure from the property JSON and from the gbw JSON")
+    print(optimized.rmsd(from_gbw))
+
+    # > This also works with nothing but the gbw file at hand, i.e. without an `Output` object.
+    # > The gbw file is converted to JSON with `orca_2json` on the fly.
+    standalone = GbwResults.from_gbw_file(working_dir / "job.gbw").get_structure()
+    print("STRUCTURE FROM GBW FILE")
+    print(standalone.to_xyz_block())
 
     # > Now we print the last gradient calculated which is for
     # > the structure one step before the final structure

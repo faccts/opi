@@ -2,13 +2,13 @@ from typing import Literal
 
 from pydantic import field_validator
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputFilePath
 
 __all__ = ("BlockDocker",)
 
 
-class BlockDocker(Block):
+class BlockDocker(BlockABC):
     """Class to model %docker block in ORCA"""
 
     _name: str = "docker"

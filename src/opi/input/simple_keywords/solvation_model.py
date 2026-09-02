@@ -12,8 +12,8 @@ class SolvationModelAndSolvent(SimpleKeyword):
         super().__init__(model)
 
     def __call__(self, solvent: Solvent, /) -> SimpleKeyword:
-        if not isinstance(solvent, Solvent):
-            raise TypeError(f"Solvent '{solvent}' is not of Solvent type!")
+        if not isinstance(solvent, Solvent | str):
+            raise TypeError(f"Solvent '{solvent}' is not of valid type!")
         return SimpleKeyword(f"{self.keyword}({solvent})")
 
 

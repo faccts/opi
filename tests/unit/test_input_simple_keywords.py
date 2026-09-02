@@ -135,3 +135,56 @@ def test_has_simple_keyword(calc: Calculator, keywords_tuple: tuple):
     """Test `Input.has_simple_keywords()` with different combinations of keywords and expected values."""
     keyword, result = keywords_tuple
     assert calc.input.has_simple_keywords(*keyword) == result
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize(
+    "left,right",
+    [
+        pytest.param("TightSCF", "tightscf", id="mixed_vs_lower"),
+        pytest.param("PBE", "pbe", id="upper_vs_lower"),
+        pytest.param("Def2-SVP", "DEF2-svp", id="mixed_vs_mixed"),
+    ],
+)
+def test_simple_keyword_eq_is_case_insensitive(left: str, right: str):
+    """Test that two `SimpleKeyword` objects that only differ in case compare equal and hash
+    equally, matching `SimpleKeyword.format_orca()`, which lowercases the keyword."""
+    assert SimpleKeyword(left) == SimpleKeyword(right)
+    assert hash(SimpleKeyword(left)) == hash(SimpleKeyword(right))
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_add_simple_keywords_drops_case_insensitive_duplicate(empty_calc: Calculator):
+    """Test `Input.add_simple_keywords()`: a keyword that only differs in case from an already
+    added one is a duplicate and is dropped, keeping the spelling of the first occurrence."""
+    empty_calc.input.add_simple_keywords("TightSCF")
+    empty_calc.input.add_simple_keywords("tightscf", "TIGHTSCF")
+
+    assert empty_calc.input.simple_keywords == [SimpleKeyword("TightSCF")]
+    assert empty_calc.input.simple_keywords[0].keyword == "TightSCF"
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_add_simple_keywords_strict_raises_on_case_insensitive_duplicate(
+    empty_calc: Calculator,
+):
+    """Test `Input.add_simple_keywords()` with `strict=True`: a keyword that only differs in case
+    from an already added one raises a `ValueError`."""
+    empty_calc.input.add_simple_keywords("TightSCF")
+
+    with pytest.raises(ValueError):
+        empty_calc.input.add_simple_keywords("tightscf", strict=True)
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_remove_simple_keywords_is_case_insensitive(empty_calc: Calculator):
+    """Test `Input.remove_simple_keywords()`: a keyword added in mixed case can be removed
+    through any other case spelling."""
+    empty_calc.input.add_simple_keywords("TightSCF")
+    empty_calc.input.remove_simple_keywords("TIGHTSCF")
+
+    assert empty_calc.input.simple_keywords == []

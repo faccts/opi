@@ -1,8 +1,9 @@
-from typing import Any, Callable, Literal, Union
+from collections.abc import Callable
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.simple_keywords import Solvent
 
 __all__ = ("AtomRadii", "Radius", "BlockCpcm")
@@ -47,7 +48,7 @@ class Radius(BaseModel):
         return f"[{self.n}] {str(self.value)}"
 
 
-class BlockCpcm(Block):
+class BlockCpcm(BlockABC):
     """Class to model %cpcm block in ORCA"""
 
     _name: str = "cpcm"
@@ -128,7 +129,7 @@ class BlockCpcm(Block):
     smdsolvent: Solvent | None = None
 
     def format_orca(self) -> str:
-        special_handlers: dict[str, Callable[[Any], Union[str, None]]] = {
+        special_handlers: dict[str, Callable[[Any], str | None]] = {
             "aftercoord": lambda v: None,  # Skip this field
             "radii": lambda v: f"    radii{str(v)}",
             "radius": lambda v: f"    radius{str(v)}",

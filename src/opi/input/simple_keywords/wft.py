@@ -6,7 +6,14 @@ from opi.input.simple_keywords.base import (
 __all__ = ("Wft",)
 
 
-class Wft(SimpleKeywordBox):
+class DLPNOcc(SimpleKeywordBox):
+    DLPNO_CCSD = SimpleKeyword("dlpno-ccsd")
+    """SimpleKeyword: WFT Methods."""
+    DLPNO_CCSD_T = SimpleKeyword("dlpno-ccsd(t)")
+    """SimpleKeyword: WFT Methods."""
+
+
+class Wft(DLPNOcc):
     """Enum to store all simple keywords of type Wft."""
 
     HF = SimpleKeyword("hf")
@@ -41,8 +48,7 @@ class Wft(SimpleKeywordBox):
     """SimpleKeyword: WFT Methods."""
     CCSD_F12 = SimpleKeyword("ccsd-f12")
     """SimpleKeyword: WFT Methods."""
-    DLPNO_CCSD = SimpleKeyword("dlpno-ccsd")
-    """SimpleKeyword: WFT Methods."""
+
     DLPNO_CCSD_F12 = SimpleKeyword("dlpno-ccsd-f12")
     """SimpleKeyword: WFT Methods."""
     DLPNO_CCSD_F12D = SimpleKeyword("dlpno-ccsd-f12d")
@@ -50,8 +56,6 @@ class Wft(SimpleKeywordBox):
     CCSD_T = SimpleKeyword("ccsd(t)")
     """SimpleKeyword: WFT Methods."""
     CCSD_T_F12 = SimpleKeyword("ccsd(t)-f12")
-    """SimpleKeyword: WFT Methods."""
-    DLPNO_CCSD_T = SimpleKeyword("dlpno-ccsd(t)")
     """SimpleKeyword: WFT Methods."""
     DLPNO_CCSD_T1 = SimpleKeyword("dlpno-ccsd(t1)")
     """SimpleKeyword: WFT Methods."""

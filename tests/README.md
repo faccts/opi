@@ -68,6 +68,28 @@ calculations change.
 
 ------------------------------------------------------------------------
 
+## Updating the plain-text `.out` fixture (requires ORCA)
+
+Some unit tests for the `Grepper` fallback rely on a minimal plain-text
+ORCA output file committed at:
+
+    tests/fixtures/job_fallback.out
+
+This file is generated from `test_exmp003_opt` by extracting only the
+blocks relevant to the `Grepper` (charge, multiplicity, Cartesian
+coordinates, final single-point energy, Cartesian gradient). All
+system-specific information (file paths, hostnames, timings) is
+discarded automatically.
+
+To regenerate this fixture, run:
+
+    uv run nox -s out_gen
+
+This step is only needed when the ORCA output format for these blocks
+changes.
+
+------------------------------------------------------------------------
+
 ## Output-side unit tests
 
 Output tests verify OPI's parsing and API behavior without running ORCA.
@@ -112,6 +134,10 @@ The following pytest markers are used:
 -   `json_files`\
     Tests related to exporting/updating JSON files using
     `--update-json-files`
+
+-   `out_files`\
+    Tests related to exporting/updating the plain-text `.out` fixture
+    using `--update-out-files`
 
 Markers can be combined using standard pytest syntax, for example:
 

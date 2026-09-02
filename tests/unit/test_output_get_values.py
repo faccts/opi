@@ -1,6 +1,7 @@
 import pytest
 
 from opi.output.core import Output
+from opi.output.models.json.property.properties.calc_time import CalculationTiming
 
 """
 Unit tests for Output system property getters. 
@@ -52,6 +53,34 @@ def test_get_mult_nonexistent(empty_output_object: Output):
 
 @pytest.mark.unit
 @pytest.mark.output
+def test_get_charge_fallback(output_no_json):
+    """Test that `get_charge()` falls back to grepping the .out file when no JSON is present."""
+    assert output_no_json.get_charge() == 0
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_charge_no_fallback(output_no_json):
+    """Test that `get_charge(fallback=False)` returns None when no JSON is present."""
+    assert output_no_json.get_charge(fallback=False) is None
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_mult_fallback(output_no_json):
+    """Test that `get_mult()` falls back to grepping the .out file when no JSON is present."""
+    assert output_no_json.get_mult() == 1
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_mult_no_fallback(output_no_json):
+    """Test that `get_mult(fallback=False)` returns None when no JSON is present."""
+    assert output_no_json.get_mult(fallback=False) is None
+
+
+@pytest.mark.unit
+@pytest.mark.output
 @pytest.mark.parametrize(
     "task, expected_values",
     [("opt", 8), ("roci", 11)],
@@ -93,3 +122,23 @@ def test_get_nelectrons_nonexistent(empty_output_object: Output):
 def test_get_nbf_nonexistent(empty_output_object: Output):
     """Test to check if `Output.get_nbf()` returns None when expected."""
     assert not empty_output_object.get_nbf()
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_timings(output_object_factory):
+    """Test to check if `Output.get_timings()` returns the expected timings."""
+    output_object = output_object_factory("opt")
+    timings = output_object.get_timings()
+    # > Check that the timings are non-negative
+    assert timings.scf >= 0.0
+    assert timings.sum >= 0.0
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_timings_negative_clamped():
+    """Test that negative timings reported by ORCA are clamped to zero instead of raising."""
+    timings = CalculationTiming.model_validate({"scf": -1.0e-6, "sum": 1.0})
+    assert timings.scf == 0.0
+    assert timings.sum == pytest.approx(1.0)

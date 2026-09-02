@@ -39,7 +39,7 @@ python3 job.py
 - exmp016_autoci: Use AUTO-CI to run CISD/def2-SVP single-point
 - exmp017_roci: Perform a ROCIS calculation
 - exmp018_cipsi: Perform a ICE-CI calculation
-- exmp019_engrad: Perfrom an energy & gradient calculation with r²SCAN-3c
+- exmp019_engrad: Perform an energy & gradient calculation with r²SCAN-3c
 - exmp020_smd: Run a r²SCAN-3c+SMD(Water) calculation
 - exmp021_basis: Run a BP86/def2-SVP energy calculation with additional diffuse function for oxygen
 - exmp022_scf_block: Run a PBE0/def2-SVP energy calculation and rotate the initial SCF guess
@@ -59,7 +59,7 @@ python3 job.py
 - exmp036_solvator: Run ORCAs autosolvation workflow (solvator)
 - exmp037_s2: Get the S² expectation value from an unrestricted calculation
 - exmp038_integrals: Get integrals from a calculation
-- exmp039_neb: Perfrom a transition state search with NEB
+- exmp039_neb: Perform a transition state search with NEB
 - exmp040_xzyfraglib: Assign fragments with external fragment library (frag_lib.xyz)
 - exmp041_graph: How to print overview of the available results in output
 - exmp042_element: Access cardinal numbers of a structure
@@ -74,4 +74,13 @@ python3 job.py
 - exmp051_libxc: Shows modification of DFT LibXC parameters via the method block
 - exmp052_densities: Perform UHF calculation and obtain density and spin-density in AO-basis
 - exmp053_opencosmors: Run OpenCOSMO-RS task 
-
+- exmp054_fcidump: Run a CASSCF calculation and export the active integrals in an FCIDUMP file
+- exmp055_gfnff_fallback: Perform a GFN-FF optimization and retrieve the energy, gradient, and structure.
+- exmp056_optts_freq: Perform a GFN2-xTB transition-state optimisation and frequency calculation, retrieve imaginary frequencies.
+- exmp057_to_ase: Convert an optimized Structure into an ASE Atoms object
+- exmp058_opencosmors: Run OpenCOSMO-RS task
+- exmp059_singlepoint_simpletask: B3LYP/def2-SVP single-point with CPCM(water) using the `SinglePointTask` functionality
+- exmp060_goat_simpletask: GFN2-xTB GOAT conformer search using the `GoatTask` functionality
+- exmp061_freq_simpletask: TPSS/def2-SVP frequency calculation using the `FreqTask` functionality
+- exmp062_opt_simpletask: B3LYP/def2-SVP geometry optimization with CPCM(water) using the `OptTask` functionality
+- exmp063_engrad_simpletask: r²SCAN-3c energy & gradient calculation using the `EngradTask` functionality

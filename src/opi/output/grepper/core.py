@@ -1,7 +1,7 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from re import IGNORECASE, Pattern, RegexFlag, compile, escape, split
-from typing import Any, Callable
+from typing import Any
 
 from opi.output.grepper.pre_condition import (
     ConditionStatus,

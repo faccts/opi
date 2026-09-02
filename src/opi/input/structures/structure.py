@@ -1,8 +1,9 @@
+import copy
 import re
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
+from typing import TYPE_CHECKING, Any, cast
 from warnings import warn
 
 import numpy as np
@@ -19,7 +20,15 @@ from opi.input.structures.atom import (
     PointCharge,
 )
 from opi.input.structures.coordinates import Coordinates
-from opi.utils.element import Element
+from opi.utils.ase import requires_ase
+from opi.utils.element import ATOMIC_MASSES_FROM_ELEMENT, Element
+from opi.utils.molbar import MolBarMode, call_molbar, requires_molbar
+from opi.utils.rotconst import (
+    PrincipalMoments,
+    RotationalConstants,
+    RotorType,
+    moment_to_mhz,
+)
 from opi.utils.tracking_text_io import TrackingTextIO
 
 __all__ = ("Structure",)
@@ -100,6 +109,22 @@ class Structure:
         self._atoms = list(value)
 
     @property
+    def real_atoms(self) -> list[Atom]:
+        """
+        Return only real `Atom` instances, excluding `GhostAtom`, `PointCharge`,
+        and `EmbeddingPotential`. Note that `GhostAtom` is a subclass of `Atom`,
+        so `type(a) is Atom` is used rather than `isinstance`.
+        """
+        return [a for a in self.atoms if type(a) is Atom]
+
+    @property
+    def real_atom_indices(self) -> list[int]:
+        """
+        Return the indices of real `Atom` instances as provided by `real_atoms`.
+        """
+        return [i for i, a in enumerate(self.atoms) if type(a) is Atom]
+
+    @property
     def charge(self) -> int:
         return self._charge
 
@@ -144,9 +169,8 @@ class Structure:
             Returns the number of electrons for the structure. Can be negative!
         """
         nelectrons = 0
-        for atom in self.atoms:
-            if isinstance(atom, Atom):
-                nelectrons += atom.element.atomic_number
+        for atom in self.real_atoms:
+            nelectrons += atom.element.atomic_number
         nelectrons -= self.charge
         return nelectrons
 
@@ -214,6 +238,22 @@ class Structure:
         # data from structure2 will be concatenated to end of data for structure1
         new_atoms = structure1.atoms + structure2.atoms
         return Structure(atoms=new_atoms)
+
+    def centered_structure(self) -> "Structure":
+        """
+        Return a new `Structure` centered at its centroid.
+        Only `Atom` instances contribute to the centroid calculation;
+        `GhostAtom`, `PointCharge`, and `EmbeddingPotential` are ignored.
+
+        Returns
+        -------
+        Structure
+            New `Structure` with centered coordinates.
+        """
+        new_structure = copy.deepcopy(self)
+        centroid = new_structure.get_coordinates(only_atoms=self.real_atom_indices).mean(axis=0)
+        new_structure.set_coordinates(new_structure.get_coordinates() - centroid)
+        return new_structure
 
     def format_orca(self) -> str:
         """
@@ -335,6 +375,73 @@ class Structure:
         Molecule: new Molecule object
         """
         return Structure(atoms=[self.atoms[i] for i in indexes])
+
+    def get_coordinates(
+        self,
+        only_atoms: Sequence[int] = (),
+    ) -> npt.NDArray[np.float64]:
+        """
+        Return the coordinates of atoms as a numpy array.
+
+        Parameters
+        ----------
+        only_atoms : Sequence[int], default: ()
+            Indices of atoms in `self.atoms` to include. If empty, all
+            atoms are included.
+
+        Returns
+        -------
+        npt.NDArray[np.float64], shape (N, 3)
+            Coordinates in the same order as the selected atoms.
+
+            The `dtype` is explicitly set to `float64` to guarantee the return type
+            regardless of how coordinates are stored internally.
+        """
+        atom_list = [self.atoms[i] for i in only_atoms] if only_atoms else self.atoms
+        return np.array([a.coordinates.coordinates for a in atom_list], dtype=np.float64)
+
+    def get_coordinates_at_centroid(
+        self,
+        only_atoms: Sequence[int] = (),
+    ) -> npt.NDArray[np.float64]:
+        """
+        Return coordinates translated to the centroid.
+
+        Parameters
+        ----------
+        only_atoms : Sequence[int], default: ()
+            Indices of atoms in `self.atoms` to include. If empty, all
+            atoms are included.
+
+        Returns
+        -------
+        npt.NDArray[np.float64], shape (N, 3)
+            Centroid-translated coordinates in the same order as the selected atoms.
+        """
+        coords = self.get_coordinates(only_atoms=only_atoms)
+        return coords - np.mean(coords, axis=0, dtype=np.float64)
+
+    def set_coordinates(self, coords: npt.NDArray[np.float64]) -> None:
+        """
+        Update the coordinates of all atoms in-place.
+
+        Parameters
+        ----------
+        coords : npt.NDArray[np.float64], shape (N, 3)
+            New coordinates for all atoms in the same order as `self.atoms`.
+
+        Raises
+        ------
+        ValueError
+            If *coords* shape does not match the number of atoms.
+        """
+        coords = np.asarray(coords, dtype=np.float64)
+        if coords.shape != (len(self.atoms), 3):
+            raise ValueError(
+                f"coords shape {coords.shape} does not match expected ({len(self.atoms)}, 3)"
+            )
+        for atom, new_coord in zip(self.atoms, coords):
+            atom.coordinates = new_coord
 
     def update_coordinates(self, array: npt.NDArray[np.float64]) -> None:
         """
@@ -872,6 +979,16 @@ class Structure:
         Function to generate Structure from `Atoms` object from the Atomic Simulation Environment (ASE).
         Since ORCA and OPI do not support structures with periodic boundary conditions these are ignored.
 
+        Charge and multiplicity are resolved in this order, independently of each other:
+
+        1. the *charge* and *multiplicity* arguments, if given;
+        2. ASE's per-atom `initial_charges` / `initial_magnetic_moments` arrays, if they
+           have been set. The charge is their sum, the multiplicity is the rounded
+           absolute total magnetization plus one;
+        3. the molecular metadata in `Atoms.info` under the keys `"charge"` and
+           `"spin"`, which is where `to_ase` stores them;
+        4. a neutral closed-shell default, i.e. `charge=0` and `multiplicity=1`.
+
         Parameters
         ----------
         ase_atoms : AseAtoms
@@ -950,19 +1067,79 @@ class Structure:
                 )
             )
 
-        # > Get charge if not supplied
+        # > Get charge if not supplied. ASE's per-atom `initial_charges` array takes
+        # > precedence, as it is what ASE calculators actually consume. Only if that
+        # > array was never set do we fall back to the molecular metadata in
+        # > `Atoms.info`, which is where `to_ase` stores the charge, and finally to a
+        # > neutral default. ASE creates the array lazily, so membership in
+        # > `Atoms.arrays` distinguishes "never set" from "explicitly set to zero".
         if charge is None:
-            charges = ase_atoms.get_initial_charges()
-            charge = int(round(np.sum(charges)))
+            if "initial_charges" in ase_atoms.arrays:
+                charges = ase_atoms.get_initial_charges()
+                charge = int(round(np.sum(charges)))
+            else:
+                charge = int(ase_atoms.info.get("charge", 0))
 
-        # > Get magnetic moment if no multiplicity supplied
+        # > Get magnetic moment if no multiplicity supplied. Same precedence as for the
+        # > charge above; note that ASE stores the moments under the key `initial_magmoms`.
         if multiplicity is None:
-            magmoms = ase_atoms.get_initial_magnetic_moments()
-            total_magnetization = np.sum(magmoms)
-            spin = int(round(abs(total_magnetization)))
-            multiplicity = spin + 1
+            if "initial_magmoms" in ase_atoms.arrays:
+                magmoms = ase_atoms.get_initial_magnetic_moments()
+                total_magnetization = np.sum(magmoms)
+                spin = int(round(abs(total_magnetization)))
+                multiplicity = spin + 1
+            else:
+                multiplicity = int(ase_atoms.info.get("spin", 1))
 
         return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)
+
+    @requires_ase
+    def to_ase(self) -> "AseAtoms":
+        """
+        Convert this `Structure` into an `Atoms` object of the Atomic Simulation Environment (ASE).
+
+        Only real `Atom` entries are converted; `EmbeddingPotential`, `GhostAtom`,
+        and `PointCharge` instances are silently skipped.
+
+        Coordinates are passed through unchanged: `Structure` stores Cartesian
+        coordinates in Ångström, which is also the unit ASE expects.
+
+        Charge and multiplicity are transported via `Atoms.info` under the keys
+        `"charge"` and `"spin"`. They are deliberately not written to ASE's
+        per-atom `initial_charges` and `initial_magnetic_moments` arrays, because OPI
+        has no per-atom partitioning of these molecular quantities.
+
+        Returns
+        -------
+        AseAtoms
+            ASE `Atoms` object holding the elements and coordinates of all real atoms,
+            with `charge` and `spin` stored in `Atoms.info`.
+
+        Raises
+        ------
+        ImportError
+            If ASE is not installed.
+        ValueError
+            If this structure contains no real atoms.
+        """
+        if not self.real_atoms:
+            raise ValueError(
+                f"{self.__class__.__name__}: structure contains no real atoms; "
+                "cannot build ASE Atoms object."
+            )
+
+        elements = [atom.element for atom in self.real_atoms]
+        coordinates = self.get_coordinates(only_atoms=self.real_atom_indices)
+
+        # > Convert OPI-native types to the plain types ASE understands.
+        element_symbols: list[str] = [Element(e).value for e in elements]
+        coords = np.asarray(coordinates, dtype=np.float64)
+
+        return AseAtoms(
+            symbols=element_symbols,
+            positions=coords,
+            info={"charge": self.charge, "spin": self.multiplicity},
+        )
 
     @classmethod
     def from_lists(
@@ -1009,6 +1186,391 @@ class Structure:
             atoms.append(Atom(element=element, coordinates=coords))
 
         return cls(atoms=atoms, charge=charge, multiplicity=multiplicity)
+
+    # ------------------------------------------------------------------ #
+    #  MOLBAR                                                            #
+    # ------------------------------------------------------------------ #
+
+    @requires_molbar
+    def calculate_molbar(
+        self,
+        *,
+        mode: "MolBarMode | str" = MolBarMode.MB,
+    ) -> str:
+        """
+        Compute the MolBar barcode string for this `Structure`.
+
+        MolBar (Molecular Barcode) was introduced by van Staalduinen and
+        Bannwarth as a chemical identifier that overcomes limitations of
+        SMILES and InChI for inorganic molecules and non-central stereochemistry
+        (e.g. axial and planar chirality). It combines the conventional
+        atomistic description with a fragment-based approach: fragment 3D
+        structures are normalised with a specialised force field and
+        characterised by physically inspired matrices derived solely from
+        atomic positions.
+
+        The resulting permutation-invariant representation
+        is built from the eigenvalue spectra of these matrices, encoding both
+        bonding and stereochemistry. See the original publication for details:
+
+        <https://doi.org/10.1039/d4dd00208c>
+
+        Only real `Atom` entries are passed to MolBar; `EmbeddingPotential`,
+        `GhostAtom`, and `PointCharge` instances are silently skipped. Note
+        that `GhostAtom` is a subclass of `Atom`, so an exact type check is
+        used rather than `isinstance`.
+
+        The total charge is taken from `charge`.
+
+        MolBar is an optional dependency of OPI and can be installed with::
+
+            pip install molbar
+
+        Parameters
+        ----------
+        mode : MolBarMode | str, default MolBarMode.MB
+            MolBar calculation mode. Accepts a `MolBarMode` member or a
+            plain string (case-insensitive). `"mb"` computes the full barcode;
+            `"topo"` computes only the topology part.
+
+        Returns
+        -------
+        str
+            The MolBar barcode string.
+
+        Raises
+        ------
+        ImportError
+            If MolBar is not installed.
+        ValueError
+            If *mode* is not a valid `MolBarMode` value.
+        ValueError
+            If this structure contains no real atoms.
+
+        See Also
+        --------
+        calculate_molbar_data : Returns the barcode together with the full MolBar data dictionary.
+        """
+        return cast(
+            str,
+            self._get_molbar_from_coordinates(self._validate_molbar_mode(mode), return_data=False),
+        )
+
+    @requires_molbar
+    def calculate_molbar_data(
+        self,
+        *,
+        mode: "MolBarMode | str" = MolBarMode.MB,
+    ) -> "tuple[str, dict[str, Any]]":
+        """
+        Compute the MolBar barcode string and full data dictionary for this
+        `Structure`.
+
+        Behaves identically to `calculate_molbar` regarding MolBar installation,
+        atom filtering, and mode selection — see `calculate_molbar` for details.
+
+        The data dictionary contains the following top-level keys:
+
+        `"molbar"`
+            The barcode string, identical to the `calculate_molbar` return value.
+        `"atoms"`
+            Per-atom information after MolBar's internal geometry normalisation,
+            including `"atomic_numbers"`, `"positions"` (Å), and
+            `"partial_charges"`.
+        `"bonds"`
+            Detected bond graph: `"bond_indices"` (pairs) and `"bond_orders"`.
+        `"fragments"`
+            List of disconnected fragments found in the structure.
+        `"topo"`
+            Topology-only barcode (the first component of the full barcode).
+
+        See the MolBar documentation for an authoritative and up-to-date description of every key.
+
+        Parameters
+        ----------
+        mode : MolBarMode | str, default MolBarMode.MB
+            MolBar calculation mode. See `calculate_molbar` for details.
+
+        Returns
+        -------
+        tuple[str, dict[str, Any]]
+            A two-element tuple of the MolBar barcode string and the full
+            MolBar data dictionary.
+
+        Raises
+        ------
+        ImportError
+            If MolBar is not installed.
+        ValueError
+            If *mode* is not a valid `MolBarMode` value.
+        ValueError
+            If this structure contains no real atoms.
+
+        See Also
+        --------
+        calculate_molbar : Returns only the barcode string.
+        """
+        return cast(
+            "tuple[str, dict[str, Any]]",
+            self._get_molbar_from_coordinates(self._validate_molbar_mode(mode), return_data=True),
+        )
+
+    # ------------------------------------------------------------------ #
+    #  RMSD                                                              #
+    # ------------------------------------------------------------------ #
+
+    def rmsd(
+        self,
+        other: "Structure",
+        /,
+        only_atoms: Sequence[int] = (),
+        *,
+        ignore_hs: bool = False,
+    ) -> float:
+        """
+        Compute RMSD between this structure and *other* (no rotational alignment).
+
+        Both structures are translated to their centroid before comparison.
+        Neither `self` nor *other* is modified; all coordinate operations are
+        performed on temporary arrays.
+
+        Parameters
+        ----------
+        other : Structure
+            Structure to compare against.
+        only_atoms : Sequence[int], default: ()
+            Atom indices to include. If non-empty, `ignore_hs` is ignored.
+        ignore_hs : bool, default: False
+            Exclude hydrogen atoms from the RMSD computation.
+
+        Returns
+        -------
+        float
+            RMSD in Ångström.
+
+        Raises
+        ------
+        ValueError
+            If the filtered atom sets differ in size or element order.
+        """
+        indices1 = self._filtered_atoms(only_atoms, ignore_hs)
+        indices2 = other._filtered_atoms(only_atoms, ignore_hs)
+        self._validate_rmsd_compatibility(
+            cast(list[Atom], [self.atoms[i] for i in indices1]),
+            cast(list[Atom], [other.atoms[i] for i in indices2]),
+        )
+        coords1 = self.get_coordinates_at_centroid(only_atoms=indices1)
+        coords2 = other.get_coordinates_at_centroid(only_atoms=indices2)
+
+        return self._rmsd_coords(coords1, coords2)
+
+    def rmsd_kabsch(
+        self,
+        other: "Structure",
+        /,
+        only_atoms: Sequence[int] = (),
+        *,
+        ignore_hs: bool = False,
+    ) -> float:
+        """
+        Compute RMSD between this structure and *other* using the Kabsch algorithm.
+
+        Translates both structures to their centroid, then finds the optimal
+        rotation matrix via SVD before computing RMSD.
+        Neither `self` nor *other* is modified; all coordinate operations are
+        performed on temporary arrays.
+
+        Parameters
+        ----------
+        other : Structure
+            Structure to compare against.
+        only_atoms : Sequence[int], default: ()
+            Atom indices to include. If non-empty, `ignore_hs` is ignored.
+        ignore_hs : bool, default: False
+            Exclude hydrogen atoms from the RMSD computation.
+
+        Returns
+        -------
+        float
+            RMSD in Ångström after optimal rotational alignment.
+
+        Raises
+        ------
+        ValueError
+            If the filtered atom sets differ in size or element order.
+        """
+        indices1 = self._filtered_atoms(only_atoms, ignore_hs)
+        indices2 = other._filtered_atoms(only_atoms, ignore_hs)
+        self._validate_rmsd_compatibility(
+            cast(list[Atom], [self.atoms[i] for i in indices1]),
+            cast(list[Atom], [other.atoms[i] for i in indices2]),
+        )
+
+        # Getting centered coordinates
+        coords1 = self.get_coordinates_at_centroid(only_atoms=indices1)
+        coords2 = other.get_coordinates_at_centroid(only_atoms=indices2)
+
+        # Kabsch algorithm: find optimal rotation matrix via SVD
+        # <https://doi.org/10.1107/S0567739476001873>
+
+        # ------------------------------------------------------------------
+        # Build covariance matrix
+        # ------------------------------------------------------------------
+        # H = A^T B
+        # This matrix captures how coordinates from B (coords2) map onto A (coords1)
+        H = coords1.T @ coords2
+
+        # ------------------------------------------------------------------
+        # Singular Value Decomposition (SVD)
+        # ------------------------------------------------------------------
+        # H = U S V^T
+        # This decomposes the transformation into rotations + scaling
+        U, _, Vt = np.linalg.svd(H)
+
+        # ------------------------------------------------------------------
+        # Optimal rotation matrix
+        # ------------------------------------------------------------------
+        # R = V U^T
+        # Reflection correction: ensure det(R) = +1
+        d = np.linalg.det(Vt.T @ U.T)
+        D = np.diag([1.0, 1.0, d])
+
+        R = Vt.T @ D @ U.T
+
+        return self._rmsd_coords(coords1, coords2 @ R)
+
+    # ------------------------------------------------------------------ #
+    #  Moment of inertia                                                   #
+    # ------------------------------------------------------------------ #
+
+    def calc_moments_of_inertia(
+        self,
+        elem_masses: dict[str | Element, float] | None = None,
+    ) -> PrincipalMoments | None:
+        """
+        Compute the principal axes and moments of inertia for this structure.
+
+        Only `Atom` instances contribute; `GhostAtom`, `PointCharge`,
+        and `EmbeddingPotential` atoms are silently ignored. Note that
+        `GhostAtom` is a subclass of `Atom`, so an exact type check
+        (`type(a) is Atom`) is used rather than `isinstance`.
+
+        Parameters
+        ----------
+        elem_masses : dict[str | Element, float] | None, default: None
+            Per-element mass overrides keyed by element symbol string or
+            `Element` instance (e.g. `{"C": 13.003}`). If `None`, default
+            atomic masses are used.
+
+        Mass priority
+        -------------
+        atom.mass > elem_masses > default (ATOMIC_MASSES_FROM_ELEMENT)
+
+        Returns
+        -------
+        PrincipalMoments | None
+            Principal axes and moments of inertia in amu·Å², sorted ascending.
+            Returns `None` if no `Atom` instances are present or all masses are zero.
+        """
+        atom_indices = [i for i, a in enumerate(self.atoms) if type(a) is Atom]
+        if not atom_indices:
+            return None
+        coords = self.get_coordinates(only_atoms=atom_indices)
+
+        masses = self._resolve_masses(elem_masses)
+
+        # --- Filter out zero-mass atoms before computing the inertia tensor ---
+        # This handles atoms explicitly assigned a mass of 0.0 via elem_masses
+        mask = masses > 0.0
+        if not np.any(mask):
+            return None
+        masses = masses[mask]
+        coords = coords[mask]
+
+        total_mass = float(masses.sum())
+        com = (masses[:, None] * coords).sum(axis=0) / total_mass
+        coords -= com
+
+        inertia = np.zeros((3, 3), dtype=np.float64)
+        for m, r in zip(masses, coords):
+            inertia += m * (np.dot(r, r) * np.eye(3) - np.outer(r, r))
+
+        moments_raw, axes = np.linalg.eigh(inertia)  # ascending order guaranteed
+        # Clamp to zero: floating point arithmetic can produce very small
+        # negative eigenvalues (e.g. -1e-15) for moments that are physically
+        # zero, due to numerical noise in the inertia tensor.
+        moments_raw = np.maximum(moments_raw, 0.0)
+
+        return PrincipalMoments(
+            Ia=float(moments_raw[0]),
+            Ib=float(moments_raw[1]),
+            Ic=float(moments_raw[2]),
+            axes=axes,
+        )
+
+    def calc_rotor_type(
+        self,
+        moments: PrincipalMoments | None = None,
+        **mass_kwargs: Any,
+    ) -> RotorType | None:
+        """
+        Classify the molecular rotor type.
+
+        Parameters
+        ----------
+        moments : PrincipalMoments | None, default: None
+            Pre-computed principal moments (amu·Å², ascending). When
+            `None` the moments are computed via
+            :meth:`calc_moments_of_inertia()` using *mass_kwargs*.
+        **mass_kwargs
+            Forwarded to :meth:`calc_moments_of_inertia()` when `moments` is
+            `None` (i.e. `elem_masses`).
+
+        Returns
+        -------
+        RotorType | None
+            `None` if the structure has no real atoms or all masses vanish.
+        """
+        if moments is None:
+            moments = self.calc_moments_of_inertia(**mass_kwargs)
+            if moments is None:
+                return None
+        return moments.rotor_type()
+
+    def calc_rotational_constants(
+        self,
+        elem_masses: dict[str | Element, float] | None = None,
+    ) -> RotationalConstants | None:
+        """
+        Compute rotational constants for this structure.
+
+        Only `Atom` instances contribute; `GhostAtom`, `PointCharge`,
+        and `EmbeddingPotential` atoms are silently ignored.
+
+        Mass priority
+        -------------
+        atom.mass > elem_masses > default (ATOMIC_MASSES_FROM_ELEMENT)
+
+        Parameters
+        ----------
+        elem_masses : dict[str | Element, float] | None, default: None
+            Per-element mass overrides keyed by element symbol string or
+            `Element` instance (e.g. `{"C": 13.003}`). Only applied to atoms
+            that do not have a mass set directly via `atom.mass`. If `None`,
+            masses fall back to default atomic masses.
+
+        Returns
+        -------
+        RotationalConstants | None
+            `None` if no `Atom` instances are present or all masses are zero.
+        """
+        pm = self.calc_moments_of_inertia(elem_masses=elem_masses)
+        if pm is None:
+            return None
+        A = moment_to_mhz(pm.Ia)
+        B = moment_to_mhz(pm.Ib)
+        C = moment_to_mhz(pm.Ic)
+        return RotationalConstants(A=A, B=B, C=C)
 
     @classmethod
     def _iter_xyz_structures(
@@ -1066,3 +1628,180 @@ class Structure:
             n_struc += 1
             if n_struc_limit and n_struc >= n_struc_limit:
                 break
+
+    # ------------------------------------------------------------------ #
+    #  MOLBAR                                                            #
+    # ------------------------------------------------------------------ #
+
+    def _get_molbar_from_coordinates(
+        self,
+        mode: MolBarMode,
+        return_data: bool,
+    ) -> "str | tuple[str, dict[str, Any]]":
+        """
+        Shared implementation for `calculate_molbar` and `calculate_molbar_data`.
+
+        Collects elements and coordinates from `real_atoms` via
+        `get_coordinates`, and delegates to `call_molbar`.
+
+        Parameters
+        ----------
+        mode : MolBarMode
+            Already-validated calculation mode.
+        return_data : bool
+            If `True` returns `tuple[str, dict[str, Any]]`; if `False` returns `str`.
+
+        Returns
+        -------
+        str | tuple[str, dict[str, Any]]
+            Either the barcode string or the barcode string together with the
+            full MolBar data dictionary, depending on *return_data*.
+
+        Raises
+        ------
+        ValueError
+            If this structure contains no real atoms.
+        """
+        if not self.real_atoms:
+            raise ValueError(
+                f"{self.__class__.__name__}: structure contains no real atoms; "
+                "cannot build MolBar input."
+            )
+
+        # > Only real Atom instances are passed to MolBar; EmbeddingPotential,
+        # > GhostAtom, and PointCharge entries are excluded via real_atoms.
+        # > Note that GhostAtom is a subclass of Atom, so type(a) is Atom is
+        # > used rather than isinstance inside the real_atoms property.
+
+        # > OPI-native types (Element instances, NumPy array) are passed as-is;
+        # > `call_molbar` handles the conversion to MolBar's expected format.
+        return call_molbar(
+            elements=[atom.element for atom in self.real_atoms],
+            coordinates=self.get_coordinates(only_atoms=self.real_atom_indices),
+            total_charge=self.charge,
+            mode=mode,
+            return_data=return_data,
+        )
+
+    def _validate_molbar_mode(self, mode: "MolBarMode | str") -> MolBarMode:
+        """
+        Validate and normalise a MolBar calculation mode.
+
+        Parameters
+        ----------
+        mode : MolBarMode | str
+            Calculation mode to validate.
+
+        Returns
+        -------
+        MolBarMode
+            The validated and normalised mode.
+
+        Raises
+        ------
+        ValueError
+            If *mode* is not a valid `MolBarMode` value.
+        """
+        # > Normalise and validate mode (case-insensitive via StringEnum._missing_)
+        try:
+            return MolBarMode(mode)
+        except ValueError:
+            raise ValueError(
+                f"Invalid mode {mode!r}. Must be one of {[m.value for m in MolBarMode]}"
+            )
+
+    def _filtered_atoms(
+        self,
+        only_atoms: Sequence[int],
+        ignore_hs: bool,
+    ) -> list[int]:
+        """
+        Return indices of real `Atom` instances after applying `only_atoms`
+        and `ignore_hs` filters.
+
+        The final `type(a) is Atom` check ensures that explicitly indexed atoms
+        (via `only_atoms`) cannot introduce `GhostAtom`, `PointCharge`, or
+        `EmbeddingPotential` instances into the returned list. Note that `GhostAtom`
+        is a subclass of `Atom`, so `isinstance` is intentionally avoided here.
+        """
+        if only_atoms:
+            candidates = list(only_atoms)
+        elif ignore_hs:
+            candidates = [
+                i for i, a in enumerate(self.atoms) if type(a) is Atom and a.element != Element.H
+            ]
+        else:
+            candidates = [i for i, a in enumerate(self.atoms) if type(a) is Atom]
+        return [i for i in candidates if type(self.atoms[i]) is Atom]
+
+    @staticmethod
+    def _validate_rmsd_compatibility(atoms1: list[Atom], atoms2: list[Atom]) -> None:
+        """
+        Raise `ValueError` if `atoms1` and `atoms2` differ in count or element order.
+        """
+        if len(atoms1) != len(atoms2):
+            raise ValueError(
+                f"Structures have different number of atoms: {len(atoms1)} vs {len(atoms2)}"
+            )
+        for i, (a, b) in enumerate(zip(atoms1, atoms2), start=1):
+            if a.element != b.element:
+                raise ValueError(f"Atom mismatch at position {i}: {a.element!r} != {b.element!r}")
+
+    @staticmethod
+    def _rmsd_coords(
+        coords1: npt.NDArray[np.float64],
+        coords2: npt.NDArray[np.float64],
+    ) -> float:
+        """
+        Compute RMSD between two aligned (N, 3) coordinate arrays.
+        """
+        diff = coords1 - coords2
+        return float(np.sqrt(np.sum(diff**2) / len(coords1)))
+
+    def _resolve_masses(
+        self,
+        elem_masses: dict[str | Element, float] | None = None,
+    ) -> npt.NDArray[np.float64]:
+        """
+        Resolve masses for all real `Atom` instances without mutating any atom.
+
+        Parameters
+        ----------
+        elem_masses : dict[str | Element, float] | None, default: None
+            Per-element mass overrides keyed by element symbol string or
+            `Element` instance (e.g. `{"C": 13.003}`). If `None`, default
+            atomic masses are used.
+
+        Mass priority
+        -------------
+        atom.mass > elem_masses > default (ATOMIC_MASSES_FROM_ELEMENT)
+
+        Returns
+        -------
+        npt.NDArray[np.float64], shape (N,)
+            Masses in amu in the same order as `self.real_atoms`.
+        """
+        elem_masses = elem_masses or {}
+        # Normalise keys to Element for consistent lookup
+        normalised: dict[Element, float] = {}
+        for k, v in elem_masses.items():
+            normalised[Element(k) if isinstance(k, str) else k] = v
+
+        masses_list: list[float] = []
+        for atom in self.real_atoms:
+            if atom.mass is not None:
+                # Mass set directly on the atom is the most specific → highest priority
+                m = atom.mass
+            elif atom.element in normalised:
+                # Per-element override is next
+                m = normalised[atom.element]
+            elif atom.element in ATOMIC_MASSES_FROM_ELEMENT:
+                # Fall back to default atomic masses
+                m = ATOMIC_MASSES_FROM_ELEMENT[atom.element]
+            else:
+                raise ValueError(
+                    f"Unknown element '{atom.element.value}': no mass available. "
+                    "Provide a mass via `elem_masses` or set `atom.mass` directly."
+                )
+            masses_list.append(m)
+        return np.array(masses_list, dtype=np.float64)

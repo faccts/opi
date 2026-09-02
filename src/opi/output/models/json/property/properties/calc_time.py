@@ -1,3 +1,7 @@
+from typing import Any
+
+from pydantic import field_validator
+
 from opi.output.models.base.get_item import GetItem
 from opi.output.models.base.strict_types import (
     StrictNonNegativeFloat,
@@ -36,3 +40,16 @@ class CalculationTiming(GetItem):
     scf: StrictNonNegativeFloat | None = None
     scfgrad: StrictNonNegativeFloat | None = None
     sum: StrictNonNegativeFloat | None = None
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _clamp_negative_timings(cls, value: Any) -> Any:
+        """
+        Clamp negative timings to zero.
+
+        ORCA can report slightly negative timings due to timer resolution, which would
+        otherwise fail the non-negative validation of the fields.
+        """
+        if isinstance(value, float) and value < 0:
+            return 0.0
+        return value
