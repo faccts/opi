@@ -1,25 +1,16 @@
 """
 Module that contains `BaseRunner` class which facilitates the execution of ORCA binaries.
-
-Attributes
-----------
-RunnerType:
-    Helper variable for type annotation.
-P:
-    ParamSpec helper variable.
-R:
-    Helper variable for type annotation.
 """
 
 import os
 import shutil
 import subprocess
 import warnings
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Concatenate, Final, ParamSpec, TypeVar, cast
+from typing import Final, cast
 
 from opi import ORCA_MINIMAL_VERSION
 from opi.execution.run import run_subprocess_with_fanout
@@ -28,53 +19,6 @@ from opi.lib.orca_binary import OrcaBinary
 from opi.utils.config import get_config
 from opi.utils.misc import add_to_env, check_minimal_version, resolve_binary_name
 from opi.utils.orca_version import OrcaVersion
-
-RunnerType = TypeVar("RunnerType", bound="BaseRunner")
-P = ParamSpec("P")
-R = TypeVar("R")
-
-
-def _orca_environment(
-    runner: Callable[Concatenate[RunnerType, P], R], /
-) -> Callable[Concatenate[RunnerType, P], R]:
-    """
-    Wrapper that temporarily modifies environment, to ensure that the correct ORCA and OpenMPI installation are found.
-    Resets environment upon exiting.
-
-    Parameters
-    ----------
-    runner : Callable[Concatenate[RunnerType, P], R]
-        Function that is to be wrapped.
-    """
-
-    def wrapper(self: RunnerType, /, *args: Any, **kwargs: Any) -> R:
-        org_env = os.environ.copy()
-        try:
-            # //////////////////////////////
-            # > SETUP ENVIRONMENT
-            # //////////////////////////////
-
-            # > Updating necessary environmental variables.
-            add_to_env("PATH", str(self._orca_bin_folder), prepend=True)
-            add_to_env("LD_LIBRARY_PATH", str(self._orca_lib_folder), prepend=True)
-
-            # > Setting Open MPI path
-            if self._open_mpi_path:
-                add_to_env("PATH", str(self._open_mpi_path / "bin"), prepend=True)
-                add_to_env("LD_LIBRARY_PATH", str(self._open_mpi_path / "lib"), prepend=True)
-
-            # //////////////////////////////
-            # > Call Runner
-            # //////////////////////////////
-            return runner(self, *args, **kwargs)
-        finally:
-            # > Clearing and updating the dict in-place, prevent breaking any references to dict.
-            os.environ.clear()
-            os.environ.update(org_env)
-
-    # << END OF INNER FUNC
-
-    return wrapper
 
 
 class _Unset(Enum):
@@ -168,7 +112,32 @@ class BaseRunner:
             # > Completely resolving path
             self._working_dir = value.expanduser().resolve()
 
-    @_orca_environment
+    def _build_env(self) -> dict[str, str]:
+        """
+        Build the environment for the ORCA subprocess, ensuring that the correct ORCA and
+        Open MPI installation are found.
+
+        The environment of the current process is copied and left untouched
+
+        Returns
+        -------
+        dict[str, str]
+            Environment to be passed to the ORCA subprocess.
+        """
+
+        env = os.environ.copy()
+
+        # > Setting ORCA path
+        add_to_env("PATH", str(self._orca_bin_folder), prepend=True, env=env)
+        add_to_env("LD_LIBRARY_PATH", str(self._orca_lib_folder), prepend=True, env=env)
+
+        # > Setting Open MPI path
+        if self._open_mpi_path:
+            add_to_env("PATH", str(self._open_mpi_path / "bin"), prepend=True, env=env)
+            add_to_env("LD_LIBRARY_PATH", str(self._open_mpi_path / "lib"), prepend=True, env=env)
+
+        return env
+
     def run(
         self,
         binary: OrcaBinary,
@@ -296,6 +265,7 @@ class BaseRunner:
             stderr=stderr,
             timeout=timeout_value,
             cwd=cwd,
+            env=self._build_env(),
         )
 
         return RunResult(
