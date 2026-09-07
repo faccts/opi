@@ -62,6 +62,7 @@
 - Fixed `Structure.nelectrons` for structures containing ghost atoms (#268).
 - Fixed `_orca_environment()` which now makes changes to `os.environ` in-place without breaking any reference to that dict (#279).
 - Negative calculation timings occasionally reported by ORCA are now clamped to zero instead of raising a `ValidationError` (#284).
+- Made OPI runner thread safe by copying the env for each run (#293).
 
 ## [2.0.0] - 2026-02-10
 
