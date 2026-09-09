@@ -18,3 +18,4 @@ class OrcaBinary(StrEnum):
     ORCA_PLOT = "orca_plot"
     ORCA_PLTVIB = "orca_pltvib"
     ORCA_VIB = "orca_vib"
+    ORCA_MM = "orca_mm"
