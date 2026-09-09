@@ -2,7 +2,7 @@ from typing import Any, Literal, Self
 
 from pydantic import BaseModel, field_validator
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputFilePath, NumList
 
 __all__ = ("DIIS", "Shift", "Damp", "SOSCF", "Trah", "Stab", "Rotate", "BlockScf")
@@ -219,7 +219,7 @@ class Rotate(BaseModel):
         return "{" + ", ".join(str(val) for val in self.rotate if val is not None) + "} end"
 
 
-class BlockScf(Block):
+class BlockScf(BlockABC):
     """Class to model %scf block in ORCA"""
 
     _name: str = "scf"
@@ -493,7 +493,7 @@ class BlockScf(Block):
 
     def format_orca(self) -> str:
         """
-        Method to convert instance of Block into a formatted string for the ORCA input file.
+        Method to convert instance of BlockABC into a formatted string for the ORCA input file.
 
         Returns
         -------

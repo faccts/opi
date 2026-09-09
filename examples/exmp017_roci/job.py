@@ -52,9 +52,21 @@ def run_exmp017(
     output = calc.get_output()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
+        print(output.error_message())
         sys.exit(1)
     # << END OF IF
 
     # > Parse JSON files
     output.parse()
+
+    # > Print S2 values
+    if s2_result := output.get_s2():
+        s2, ideal_s2 = s2_result
+        print(f"expectation S2: {s2}, ideal S**2: {ideal_s2}")
+    else:
+        print(f"Could not retrieve multiplicitiy from ORCA calculation: {output.get_outfile()}")
     return output
+
+
+if __name__ == "__main__":
+    run_exmp017()

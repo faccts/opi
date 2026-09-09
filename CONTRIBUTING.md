@@ -47,3 +47,6 @@ After submitting the pull request, you will be asked in the PR thread to sign
 a [CLA](CLA.md) with your GitHub account.  
 We will review the code as soon as possible, provide feedback, and  
 you will then be able to merge the code.
+
+External pull requests that receive no updates within 60 days of the last review  
+will be marked as stale.

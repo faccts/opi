@@ -39,6 +39,7 @@ def run_exmp022(
     output = calc.get_output()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
+        print(output.error_message())
         sys.exit(1)
     # << END OF IF
 

@@ -36,6 +36,7 @@ def run_exmp038(
     output = calc.get_output()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
+        print(output.error_message())
         sys.exit(1)
     # << END OF IF
 
@@ -53,6 +54,12 @@ def run_exmp038(
     print(output.get_int_overlap(recreate_json=True))
     print("Printing Hcore integrals")
     print(output.get_int_hcore(recreate_json=True))
+    print("Printing kinetic integrals")
+    print(output.get_int_kinetic(recreate_json=True))
+    print("Printing nuclear attraction integrals")
+    print(output.get_int_nuc_attr(recreate_json=True))
+    print("Printing HMO integrals")
+    print(output.get_int_hmo(recreate_json=True))
     print("Printing F two-electron integrals")
     print(output.get_int_f(recreate_json=True))
     print("Printing Coulomb matrix J")

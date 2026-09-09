@@ -35,3 +35,5 @@ class OutputControl(SimpleKeywordBox):
     """SimpleKeyword: Write no property file."""
     NOPRINTMOS = SimpleKeyword("noprintmos")
     """SimpleKeyword: OutputControl."""
+    POPDISP = SimpleKeyword("popdisp")
+    """SimpleKeyword: Pairwise dispersion correction analysis."""

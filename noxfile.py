@@ -72,6 +72,17 @@ def json_gen(session):
     )
     session.run("pytest","-m json_files","--update-json-files", *session.posargs)
 
+@nox.session(default=False)
+def out_gen(session):
+    session.run_install(
+        "uv",
+        "sync",
+        "--group",
+        "tests",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.run("pytest","-m out_files","--update-out-files", *session.posargs)
+
 # //////////////////////////////////////////
 # ///     STATIC TYPE CHECKING: mypy     ///
 # //////////////////////////////////////////

@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import FilePath, field_validator
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.models.intgroup import IntGroup
 
 __all__ = ("HessList", "BlockFreq")
@@ -17,7 +17,7 @@ class HessList(IntGroup):
         return super().__str__() + " end"
 
 
-class BlockFreq(Block):
+class BlockFreq(BlockABC):
     """Class to model %freq block in ORCA"""
 
     _name: str = "freq"

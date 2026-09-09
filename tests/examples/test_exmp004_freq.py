@@ -27,3 +27,5 @@ def test_exmp004_freq(example_input_file, tmp_path) -> None:
     assert output.get_entropy() > 0
     # Assert positive free energy difference
     assert output.get_free_energy_delta() > 0
+    # Assert structure is a PES minimum (no imaginary frequencies)
+    assert output.is_pes_minimum() is True

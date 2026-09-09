@@ -32,8 +32,16 @@ def run_exmp002(
     output = calc.get_output()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
+        print(output.error_message())
         sys.exit(1)
-    # << END OF IF
+    if not output.scf_converged():
+        print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
+        print(output.error_message())
+        sys.exit(1)
+    if not output.cc_converged():
+        print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
+        print(output.error_message())
+        sys.exit(1)
 
     # > Parse JSON files
     output.parse()

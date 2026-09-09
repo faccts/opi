@@ -25,7 +25,5 @@ class DispersionCorrection(SimpleKeywordBox):
     """SimpleKeyword: D4 - Dispersion correction with three body term and Becke-Johnson damping."""
     NL = SimpleKeyword("nl")
     """SimpleKeyword: Use -NL / -VV10 / -V dispersion correction."""
-    POPDISP = SimpleKeyword("popdisp")
-    """SimpleKeyword: Pairwise dispersion correction analysis."""
     SCNL = SimpleKeyword("scnl")
     """SimpleKeyword: Use self-consistent NL."""

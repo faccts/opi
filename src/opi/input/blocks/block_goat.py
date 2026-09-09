@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import field_validator
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputFilePath
 from opi.models import IntGroup
 
@@ -18,7 +18,7 @@ class AtomList(IntGroup):
         return super().__str__() + " end"
 
 
-class BlockGoat(Block):
+class BlockGoat(BlockABC):
     """Class to model %goat block in ORCA"""
 
     _name: str = "goat"

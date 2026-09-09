@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from opi.execution.core import Runner
+from opi.execution.text_stream import StreamTargetSpec
 from opi.input.blocks.block_output import BlockOutput
 from opi.input.core import Input
 from opi.input.structures.structure import Structure
@@ -39,6 +40,8 @@ class Calculator:
         Can only be disabled after initialization of a `Calculator` (not recommended!).
     _input | input: Input
         Contains all ORCA input parameters except for the primary structural information.
+    version_check: bool, default: True
+        Enable/disable ORCA binary version check as well as version check on the JSON output.
     """
 
     def __init__(
@@ -94,7 +97,10 @@ class Calculator:
         # ----------------------------
         # > BINARY VERSION CHECK
         # ----------------------------
-        if version_check:
+
+        self.version_check: bool = version_check
+
+        if self.version_check:
             # > Raises RuntimeError if version is not compatible or cannot be determined.
             self.check_version()
 
@@ -258,7 +264,7 @@ class Calculator:
 
         thereby telling ORCA to also create respective JSON files automatically.
         """
-        output_block = self.input.get_blocks(BlockOutput, create_missing=True)[BlockOutput]
+        output_block = self.input.get_block(BlockOutput, create_missing=True)
         # > assert correct type of block for mypy
         assert isinstance(output_block, BlockOutput)
         output_block.jsongbwfile = True
@@ -268,7 +274,9 @@ class Calculator:
         """Create a `Runner` object passing on `self.working_dir`."""
         return Runner(working_dir=self.working_dir)
 
-    def run(self, *, timeout: int = -1) -> bool:
+    def run(
+        self, *, stdout: StreamTargetSpec = (), stderr: StreamTargetSpec = (), timeout: int = -1
+    ) -> bool:
         """
         Execute ORCA calculation.
 
@@ -285,7 +293,7 @@ class Calculator:
         """
         runner = self._create_runner()
         assert self.inpfile
-        runner.run_orca(self.inpfile, timeout=timeout)
+        runner.run_orca(self.inpfile, stdout=stdout, stderr=stderr, timeout=timeout)
         output = self.get_output()
         return output.terminated_normally()
 
@@ -304,14 +312,23 @@ class Calculator:
         runner = self._create_runner()
         runner.create_jsons(self.basename, force=force)
 
-    def get_output(self) -> "Output":
+    def get_output(self, *, version_check: bool | None = None) -> "Output":
         """
         Get an instance of `Output` setup for the current job.
         Can be called before execution of job.
+
+        Parameters
+        ----------
+        version_check : bool | None, default=None
+            Whether to perform a version check on the output.
+            If `None`, the value of `self.version_check` is used.
         """
+        vc = self.version_check if version_check is None else version_check
+
         return Output(
             basename=self.basename,
             working_dir=self.working_dir,
+            version_check=vc,
         )
 
     def check_version(self) -> None:

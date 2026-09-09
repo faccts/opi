@@ -1,12 +1,16 @@
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 
 __all__ = ("BlockOutput",)
 
 
-class BlockOutput(Block):
+class BlockOutput(BlockABC):
     """Class to model the %output block in ORCA"""
 
     _name: str = "output"
     # > options
-    jsonpropfile: bool | None = None  # If True, generate JSON property file
-    jsongbwfile: bool | None = None  # If True, generate JSON gbw file
+    jsonpropfile: bool | None = None
+    """If True, generate JSON property file"""
+    jsongbwfile: bool | None = None
+    """If True, generate JSON gbw file."""
+    dumpactints: bool | None = None
+    """Dump the active integrals from a CASSCF calculation in an FCIDUMP file."""

@@ -2,13 +2,13 @@ from typing import Literal
 
 from pydantic import field_validator
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputString, NumList
 
 __all__ = ("BlockMp2",)
 
 
-class BlockMp2(Block):
+class BlockMp2(BlockABC):
     """Class to model %mp2 block in ORCA"""
 
     _name: str = "mp2"

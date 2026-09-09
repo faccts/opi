@@ -38,6 +38,7 @@ def run_exmp004(
     output = calc.get_output()
     if not output.terminated_normally():
         print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
+        print(output.error_message())
         sys.exit(1)
     # << END OF IF
 
@@ -68,6 +69,8 @@ def run_exmp004(
     print(output.get_entropy())
     print("G-E(el)")
     print(output.get_free_energy_delta())
+    print("Is PES minimum")
+    print(output.is_pes_minimum())
     return output
 
 

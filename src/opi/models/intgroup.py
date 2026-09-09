@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Self
 
 from pydantic import BaseModel
@@ -38,13 +39,13 @@ class IntGroup(BaseModel):
         return f"{{ {' '.join(parts)} }}"
 
     @classmethod
-    def init(cls, inp: str | list[int | tuple[int, int]] | list[int]) -> Self:
+    def init(cls, inp: str | Sequence[int | tuple[int, int]]) -> Self:
         """
         Initialize `IntGroup` from a string or list.
 
         Parameters
         ----------
-        inp : str | list[int | tuple[int, int]]
+        inp : str | Sequence[int | tuple[int, int]]
             String format example: "{1 2 3:5 10}" or list of ints/tuples.
             Ranges like '4:10' are converted to (4, 10).
             Curly braces in strings are optional and stripped.
@@ -54,8 +55,8 @@ class IntGroup(BaseModel):
         IntGroup
             An object of `IntGroup`.
         """
-        if isinstance(inp, list):
-            return cls(values=inp)
+        if not isinstance(inp, str):
+            return cls(values=list(inp))
         else:
             # > Removing optional leading and trailing curly braces and redundant whitespaces for streamlined processing.
             cleaned_string = inp.strip().removeprefix("{").removesuffix("}").strip()

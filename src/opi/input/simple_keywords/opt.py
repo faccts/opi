@@ -6,24 +6,27 @@ from opi.input.simple_keywords.base import (
 __all__ = ("Opt",)
 
 
-class Opt(SimpleKeywordBox):
+class OptThreshold(SimpleKeywordBox):
+    CRUDEOPT = SimpleKeyword("crudeopt", alias="crude")
+    """SimpleKeyword: Geometry optimization with thresholds."""
+    LOOSEOPT = SimpleKeyword("looseopt", alias="loose")
+    """SimpleKeyword: Geometry optimization with thresholds."""
+    NORMALOPT = SimpleKeyword("normalopt", alias="normal")
+    """SimpleKeyword: Geometry optimization with thresholds."""
+    SLOPPYOPT = SimpleKeyword("sloppyopt", alias="sloppy")
+    """SimpleKeyword: Geometry optimization with thresholds."""
+    TIGHTOPT = SimpleKeyword("tightopt", alias="tight")
+    """SimpleKeyword: Geometry optimization with thresholds."""
+    VERYTIGHTOPT = SimpleKeyword("verytightopt", alias="verytight")
+    """SimpleKeyword: Geometry optimization with thresholds."""
+
+
+class Opt(OptThreshold):
     """Enum to store all simple keywords of type Opt."""
 
     OPT = SimpleKeyword("opt")
     """SimpleKeyword: Perform a geometry optimization."""
-    CRUDEOPT = SimpleKeyword("crudeopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
     INTERPOPT = SimpleKeyword("interpopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
-    LOOSEOPT = SimpleKeyword("looseopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
-    NORMALOPT = SimpleKeyword("normalopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
-    SLOPPYOPT = SimpleKeyword("sloppyopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
-    TIGHTOPT = SimpleKeyword("tightopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
-    VERYTIGHTOPT = SimpleKeyword("verytightopt")
     """SimpleKeyword: Geometry optimization with thresholds."""
     OPTH = SimpleKeyword("opth")
     """SimpleKeyword: Optimize only hydrogen atoms."""

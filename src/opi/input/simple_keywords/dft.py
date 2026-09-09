@@ -277,8 +277,6 @@ class Dft(SimpleKeywordBox):
     """SimpleKeyword: DFT functional."""
     R2SCAN0 = SimpleKeyword("r2scan0")
     """SimpleKeyword: DFT functional."""
-    R2SCAN0 = SimpleKeyword("r2scan0")
-    """SimpleKeyword: DFT functional."""
     R2SCAN0_2 = SimpleKeyword("r2scan0-2")
     """SimpleKeyword: DFT functional."""
     R2SCAN0_DH = SimpleKeyword("r2scan0-dh")
