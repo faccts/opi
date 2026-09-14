@@ -1760,7 +1760,6 @@ lint = [
 notebooks = [
     { name = "ipykernel" },
     { name = "nbclient" },
-    { name = "nbconvert" },
     { name = "nbformat" },
     { name = "pip" },
 ]
@@ -1820,7 +1819,6 @@ lint = [{ name = "ruff", specifier = ">=0.11.12" }]
 notebooks = [
     { name = "ipykernel", specifier = ">=6.29,<8" },
     { name = "nbclient", specifier = ">=0.10,<1" },
-    { name = "nbconvert", specifier = ">=7.16.6,<8" },
     { name = "nbformat", specifier = ">=5.10.4,<6" },
     { name = "pip", specifier = ">=25" },
 ]

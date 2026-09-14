@@ -62,18 +62,19 @@ def tests(session):
     session.run("pytest", *session.posargs)
 
 @nox.session(default=False)
-def notebook_tests(session):
+def notebooks(session):
+    """
+    Run the documentation notebooks: `nox -s notebooks -- local`, or `-- slurm ...`.
+    """
     session.run_install(
         "uv",
         "sync",
         "--group",
-        "tests",
-        "--group",
         "notebooks",
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
-    # > `-p no:randomly` keeps the notebook order stable so the summary file stays diffable.
-    session.run("pytest", "-m", "notebooks", "-p", "no:randomly", *session.posargs)
+    # > Without arguments, run every notebook here. See `-- --help` for the rest.
+    session.run("python", "scripts/run_notebooks.py", *(session.posargs or ["local"]))
 
 @nox.session(default=False)
 def json_gen(session):

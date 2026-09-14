@@ -171,7 +171,7 @@ include = [
     "src/**/*.py",
     "tests/**/*.py",
     "examples/**/*.py",
-    "scripts/**/*.py"
+    "scripts/**/*.py",
 ]
 # > Default max line-length: 100 chars
 line-length = 100

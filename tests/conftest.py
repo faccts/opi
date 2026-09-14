@@ -5,9 +5,7 @@ To define the location of module containing fixtures, the absolute path to that 
 starting from the main package folder must be given.
 """
 
-import time
 from collections.abc import Generator
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 
@@ -17,14 +15,7 @@ from _pytest.nodes import Item
 from _pytest.reports import TestReport
 from _pytest.runner import CallInfo
 
-from tests.helpers import (
-    NOTEBOOK_RESULTS,
-    NOTEBOOK_RUN_CONFIG,
-    NOTEBOOK_RUN_START,
-    JsonFilesExporter,
-    OutFileExporter,
-    write_notebook_summary,
-)
+from tests.helpers import JsonFilesExporter, OutFileExporter
 
 JSON_DIR = Path(__file__).parent / "json_files"
 
@@ -161,53 +152,6 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         action="store_true",
         default=False,
         help="After out file generator tests pass, extract grepper-relevant blocks from the produced .out file and write to tests/fixtures/job_fallback.out.",
-    )
-    parser.addoption(
-        "--notebook-summary",
-        action="store",
-        default=None,
-        metavar="PATH",
-        help="Write a JSON summary of the notebook run to PATH (atomically overwritten each run).",
-    )
-    parser.addoption(
-        "--notebook-artifacts-dir",
-        action="store",
-        default=None,
-        metavar="DIR",
-        help="Copy the working directory of each FAILED notebook into DIR for post-mortem analysis.",
-    )
-
-
-def pytest_configure(config: pytest.Config) -> None:
-    config.stash[NOTEBOOK_RESULTS] = []
-    config.stash[NOTEBOOK_RUN_START] = (
-        time.monotonic(),
-        datetime.now(timezone.utc).isoformat(timespec="seconds"),
-    )
-
-
-def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
-    """
-    Emit the notebook summary file, if one was requested and notebooks actually ran.
-
-    The `results` guard means a plain `nox -s tests` run never writes a summary, and a
-    run that collected no notebooks cannot clobber a good summary with an empty one.
-    """
-    summary_path = session.config.getoption("--notebook-summary")
-    results = session.config.stash.get(NOTEBOOK_RESULTS, [])
-    run_config = session.config.stash.get(NOTEBOOK_RUN_CONFIG, None)
-    if not summary_path or not results or run_config is None:
-        return
-
-    started_monotonic, started_at = session.config.stash[NOTEBOOK_RUN_START]
-    write_notebook_summary(
-        Path(summary_path),
-        results,
-        rootpath=Path(session.config.rootpath),
-        run_config=run_config,
-        exit_status=exitstatus,
-        started_monotonic=started_monotonic,
-        started_at=started_at,
     )
 
 
