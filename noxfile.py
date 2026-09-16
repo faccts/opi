@@ -64,7 +64,9 @@ def tests(session):
 @nox.session(default=False)
 def notebooks(session):
     """
-    Run the documentation notebooks: `nox -s notebooks -- local`, or `-- slurm ...`.
+    Execute the documentation notebooks: `nox -s notebooks -- how_to_opi`.
+
+    Without arguments, every notebook in `docs/contents/notebooks/` runs.
     """
     session.run_install(
         "uv",
@@ -73,8 +75,24 @@ def notebooks(session):
         "notebooks",
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
-    # > Without arguments, run every notebook here. See `-- --help` for the rest.
-    session.run("python", "scripts/run_notebooks.py", *(session.posargs or ["local"]))
+    session.run("python", "scripts/run_notebooks.py", *session.posargs)
+
+@nox.session(default=False)
+def all_notebooks(session):
+    """
+    Execute every whitelisted documentation notebook: `nox -s all_notebooks`.
+
+    Takes no arguments: this is the full sweep, for a nightly run or a release check.
+    The whitelist lives at the top of `scripts/run_notebooks.py`.
+    """
+    session.run_install(
+        "uv",
+        "sync",
+        "--group",
+        "notebooks",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.run("python", "scripts/run_notebooks.py")
 
 @nox.session(default=False)
 def json_gen(session):

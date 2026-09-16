@@ -109,15 +109,14 @@ CI-safe.
 ## The documentation notebooks
 
 The notebooks in `docs/contents/notebooks/` are **not** pytest tests:
-they require ORCA and network access, install their own dependencies at
-runtime, and take hours. They are executed by their own script, locally
-or as a SLURM job array:
+they require ORCA and network access (for `uv sync`), and take hours. They have their own nox sessions:
 
-    uv run nox -s notebooks -- local
-    uv run nox -s notebooks -- local how_to_opi
+    uv run nox -s notebooks -- --list       # what a sweep would run
+    uv run nox -s notebooks -- how_to_opi   # one notebook, by name or glob
+    uv run nox -s all_notebooks             # the whole whitelist
 
-See `scripts/README.md` for the cluster setup, the output layout and the
-summary format.
+See `scripts/README.md` for the whitelist, the timeouts and the summary
+format.
 
 ------------------------------------------------------------------------
 

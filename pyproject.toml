@@ -121,6 +121,14 @@ notebooks = [
     # > The notebooks themselves run `!{sys.executable} -m pip install ...`.
     # > uv-created environments have no pip, so it has to be an explicit dependency.
     "pip>=25",
+    # > What those cells install, pinned here so that a run never downloads anything that
+    # > is not in uv.lock: `run_notebook.py` sets PIP_NO_INDEX, and the cells find it all
+    # > installed already. A notebook that installs something new must add it here.
+    "matplotlib>=3.10,<4",
+    "numpy>=2.4,<3",
+    "pandas>=3.0,<4",
+    "py3dmol>=2.5,<3",
+    "seaborn>=0.13,<1",
 ]
 
 

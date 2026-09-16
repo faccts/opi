@@ -1,189 +1,105 @@
 # Running the documentation notebooks
 
-`run_notebooks.py` executes the notebooks in `docs/contents/notebooks/` and writes a
-machine-readable summary of what happened. They drive real ORCA calculations and install
-their own third-party dependencies at runtime, so they can never run in GitHub CI — this
-script is how they get exercised anywhere else.
+The notebooks in `docs/contents/notebooks/` are executed as a smoke test: the check is
+that every cell of a notebook runs to the end without raising. Nothing is asserted about
+the numbers that come out, and nothing the notebooks write is kept — each one runs in a
+temporary directory that is removed afterwards.
 
-Every notebook runs
+They are **not** pytest tests. They need ORCA, they need network access (most of them
+`pip install` their own extras at runtime), and a full sweep takes hours.
 
-- in **its own process**, so a crashed kernel costs one notebook, not the run,
-- in **its own scratch directory**, so nothing is written next to the notebook sources,
-- under **its own wall-clock limit**, enforced by killing the whole process group — an
-  ORCA that outlives its notebook cannot keep burning the machine.
+Two scripts do the work, and two nox sessions drive them:
 
-## Setup
-
-The notebooks run in whatever Python environment the script runs in:
-
-```bash
-uv sync --group notebooks
-```
-
-That group carries `nbclient`, `ipykernel`, `nbformat` and — because the notebooks
-themselves run `!{sys.executable} -m pip install ...`, and uv-created environments have no
-`pip` — `pip`.
-
-ORCA is found the way OPI always finds it (`OPI_ORCA`, the config file, `$PATH`). The
-script prints the version it resolved before it starts; `NOT FOUND` there means every
-ORCA notebook is about to fail.
-
-## Locally
-
-```bash
-# every notebook, one at a time
-scripts/run_notebooks.py local
-
-# one notebook, keeping its working directory for inspection
-scripts/run_notebooks.py local how_to_opi --keep all
-
-# a subset, by name or glob
-scripts/run_notebooks.py local 'extrapolate_*' redox
-
-# what would run?
-scripts/run_notebooks.py list
-```
-
-Or through nox, which syncs the dependency group for you:
-
-```bash
-uv run nox -s notebooks -- local how_to_opi
-```
-
-`-j N` runs N notebooks at once. It is off by default for a reason: nearly every notebook
-`pip install`s into the running environment, and concurrent installs into one environment
-corrupt it. Use it only with notebooks you know do not install anything.
-
-## On SLURM
-
-One array task per notebook, submitted from the login node:
-
-```bash
-scripts/run_notebooks.py slurm \
-    --partition normal --account myproject \
-    --time 08:00:00 --cpus-per-task 8 --mem 32G --max-parallel 4
-```
-
-The command returns as soon as the array is queued and prints the run directory. Add
-`--wait` to block and report at the end instead, or check on it later with:
-
-```bash
-scripts/run_notebooks.py report notebook-runs/20260914T101500Z
-```
-
-Notes on the SLURM mode:
-
-- `--time`, `--cpus-per-task` and `--mem` are **per notebook**, not for the suite. Sizing
-  one job for the slowest notebook is exactly what the per-notebook layout avoids.
-- `--max-parallel` throttles the array (`--array=0-N%max`). Keep it low enough that the
-  notebooks are not fighting each other for cores.
-- The tasks inherit your submitting environment (`--export=ALL`), including the active
-  virtualenv, and the job script calls the interpreter you submitted with by absolute
-  path. So the environment you tested with on the login node is the one that runs — as
-  long as it lives on shared storage.
-- For anything the environment cannot carry (`module load`, sourcing a site profile,
-  exporting `OPI_ORCA`), put the shell snippet in a file and pass `--preamble FILE`; it is
-  inserted into the job script verbatim.
-- `--dry-run` writes the job script and prints it without submitting. Use it to check the
-  directives before spending queue time.
-- The generated `<run-dir>/job.sh` is a complete, re-submittable record of the run.
-
-A single notebook of an existing run can always be re-run by hand, on the same node or
-another one:
-
-```bash
-scripts/run_notebooks.py task <run-dir> <index>      # index as in manifest.json
-```
-
-## Output layout
-
-```
-notebook-runs/<RUN_ID>/
-├── manifest.json          what was queued, with what settings, from which commit
-├── job.sh                 the submitted sbatch script (SLURM runs only)
-├── summary.json           the merged result; rewritten by every `report`
-├── results/<name>.json    one result per notebook, written as each finishes
-├── logs/<name>.log        stdout/stderr of each notebook's execution
-├── logs/slurm-%A_%a.out   the array tasks' own output (SLURM runs only)
-├── executed/<name>.ipynb  the executed notebook, always kept — outputs and tracebacks
-└── artifacts/<name>/      the working directory, per --keep (default: failures only)
-```
-
-Per-notebook status is `passed`, `failed` (a cell raised), `timeout` (a cell or the whole
-notebook overran), `error` (something went wrong around the notebook: dead kernel, no
-kernelspec, the supervisor could not do its job), `skipped`, or `missing` (no result file
-— the task has not run yet, or it was killed hard enough to write nothing).
-
-Run status is `completed` when every notebook has a result and `incomplete` otherwise.
-The exit code is 0 only if nothing failed, timed out, errored or went missing.
-
-## Reading the summary
-
-```bash
-S=notebook-runs/<RUN_ID>/summary.json
-
-# everything that did not pass
-jq -r '.notebooks[] | select(.status!="passed" and .status!="skipped")
-       | "\(.name)\t\(.status)\t\(.error.kind): \(.error.message)"' "$S"
-
-# headline numbers and provenance
-jq '{status, totals, orca: .environment.versions.orca, commit: .environment.git.commit}' "$S"
-
-# slowest notebooks
-jq -r '.notebooks | map(select(.duration_s)) | sort_by(-.duration_s)[:5][]
-       | "\(.duration_s)s\t\(.name)"' "$S"
-
-# resubmit just the failures
-scripts/run_notebooks.py slurm $(jq -r '.notebooks[]
-    | select(.status=="failed" or .status=="timeout") | .name' "$S")
-```
-
-## Skipped notebooks
-
-Four notebooks cannot run unattended and are skipped by default:
-
-| Notebook | Why |
+| | |
 |---|---|
-| `extopt`, `ir_spectrum`, `ml_properties` | require external tooling |
-| `opencosmors` | its openCOSMO-RS_py install instruction is in a markdown cell, so the import always fails |
+| `scripts/run_notebook.py` | executes **one** notebook |
+| `scripts/run_notebooks.py` | executes a list of them, one process each, and reports |
+| `nox -s notebooks` | the above, with the notebooks you name |
+| `nox -s all_notebooks` | the full whitelisted sweep, no arguments |
 
-Change the list with `--skip a,b,c` (`--skip ''` skips nothing), or override it for one
-notebook by naming it explicitly: `run_notebooks.py local opencosmors` runs it.
+Both sessions are non-default, so a bare `nox` never starts a notebook run.
 
-## Gotchas
+The scripts find the notebooks through `scripts/notebooks`, a relative symlink to
+`../docs/contents/notebooks`. If the notebooks move, repoint the link rather than
+editing the scripts.
 
-- **The notebooks install into the environment they run in.** 18 of the 19 run
-  `pip install --upgrade`. Do not point this at an environment you care about; use a
-  dedicated one and recreate it (`uv sync`) before each unattended run, which also prunes
-  what the last one left behind.
-- **A red run is not automatically an OPI bug.** The notebooks install unpinned
-  third-party packages, so a new chemprop or numpy release can turn them red with no OPI
-  commit involved. Compare `environment.versions` and `error.kind` across runs before
-  reaching for `git bisect`.
-- **Notebooks need network egress**, both for those installs and for data they fetch at
-  runtime. On a cluster, check this on a *compute* node — it routinely differs from the
-  login node — and set `https_proxy` in the `--preamble` if the site needs one.
-- **Keep the scratch base on node-local disk.** ORCA is I/O heavy. The default is
-  `$SLURM_TMPDIR` if the site sets it, else `$TMPDIR`, else the system temp directory;
-  override with `--scratch-base`.
-- **`chemeleon_orca` is the expensive outlier** — it installs torch and downloads a large
-  checkpoint. It is the first candidate for `--skip` if runtime or egress is a problem.
-- Run one ORCA job of your own inside an allocation before trusting a first cluster run.
-  ORCA spawns its own `mpirun`, so it must be launched directly, never through `srun`.
+## Running them
 
-## A weekly unattended run
+Everything after `--` is passed on to `scripts/run_notebooks.py`:
 
-There is no cron wrapper: the script is the wrapper. A crontab entry on the submit host
-is enough, because a fresh timestamped run directory is created on every invocation and
-`squeue` throttling is the array's job, not a lock file's.
-
-```cron
-SHELL=/bin/bash
-MAILTO=""
-15 3 * * 0 cd /path/to/opi && git pull --ff-only && uv sync --group notebooks && \
-           .venv/bin/python scripts/run_notebooks.py slurm --partition normal \
-           --time 08:00:00 >> $HOME/opi-notebooks-cron.log 2>&1
+```bash
+uv run nox -s notebooks -- --list          # what would run, without running it
+uv run nox -s notebooks -- how_to_opi      # one notebook, by name
+uv run nox -s notebooks -- how_to_opi led  # several, in the order given
+uv run nox -s notebooks -- 'extrapolate_*' # by glob, quoted so the shell keeps out
+uv run nox -s notebooks -- '*'             # every notebook in the directory
+uv run nox -s notebooks                    # the whitelist (same as all_notebooks)
+uv run nox -s all_notebooks                # the whitelist; takes no arguments
 ```
 
-If the site offers `scrontab`, prefer it: the schedule then lives in the scheduler and
-survives submit-host reboots.
+A name is the notebook's stem (`how_to_opi`, not `how_to_opi.ipynb`); a path works too.
+A notebook named on the command line runs whether or not it is whitelisted, so the ones
+commented out below can still be tried by hand.
+
+The session installs the `notebooks` dependency group (`nbclient`, `nbformat`,
+`ipykernel`, and `pip`, which uv-created environments otherwise lack) into `.nox/notebooks`
+and runs the notebooks in it.
+
+That environment is also where the notebooks put their own dependencies. Most of them
+open with a cell along the lines of
+
+```python
+!{sys.executable} -m pip install --upgrade pandas py3Dmol matplotlib
+```
+
+and `sys.executable` is the kernel's interpreter, which is the one running the session --
+so those packages land in `.nox/notebooks/lib/python3.*/site-packages`, next to the group
+above, and never in your own environment. They do not accumulate: the `uv sync` at the
+start of the next session removes whatever is not in the lock file, so each run starts
+from the same place and re-installs what it needs.
+
+## The whitelist
+
+`WHITELIST` at the top of `scripts/run_notebooks.py` is the one place that decides what
+"all of them" means. A notebook that cannot run unattended — one that needs a GPU, a
+licence or more patience than a sweep has — is commented out there, with the reason.
+A whitelisted notebook that no longer exists is an error, not a silent skip.
+
+## Timeouts
+
+A notebook gets 45 minutes of wall clock, and no single cell more than 30 minutes;
+whichever comes first ends it. `run_notebooks.py` waits 120 s beyond the notebook's own
+budget, then stops the runner and kills what it left behind (a kernel, an ORCA).
+
+```bash
+uv run nox -s notebooks -- led --timeout 7200 --cell-timeout 3600
+```
+
+## Reading the result
+
+Cells are printed as they run, and the run ends with one line per notebook:
+
+```
+  OK       how_to_opi   4m 12s
+  FAILED   led          1m 03s
+  KILLED   redox       47m 00s
+  3 notebooks: 1 ok, 1 failed, 1 killed -- 52m 15s total
+```
+
+`FAILED` means a cell raised (the traceback is above, and execution stopped there rather
+than carrying on with broken state); `KILLED` means the notebook outlasted its budget and
+the grace period on top. The exit status is 0 only if every notebook was `OK`, so the nox
+session fails if any did not.
+
+Notebooks run one at a time on purpose: several of them `pip install` into the environment
+they are running in, and concurrent installs into one environment corrupt it.
+
+## Without nox
+
+The scripts are standalone — in an environment that has the `notebooks` group installed:
+
+```bash
+scripts/run_notebooks.py how_to_opi
+scripts/run_notebook.py docs/contents/notebooks/how_to_opi.ipynb
+scripts/run_notebook.py --help
+```
