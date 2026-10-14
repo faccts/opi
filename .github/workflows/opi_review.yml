@@ -1,0 +1,184 @@
+name: PR convention review (opi-review)
+
+# > Runs the `.claude/skills/opi-review` skill once per review round — whenever a review is
+# > requested (or re-requested) on a PR to main or to a branch whose name starts with `feat` —
+# > and keeps its report in a single PR comment.
+# > The first round is a fresh review. Later rounds run `--recheck` against the findings the
+# > previous round left open; once none are left, the next round is a fresh review again.
+# > Open findings are carried between rounds in a hidden state block inside that comment.
+# > The review is read-only: Claude may only run `nox -t pr_check` and git plumbing; reading and
+# > writing the PR comment is done by the surrounding steps.
+
+on:
+  pull_request:
+    # > `**` also matches `/`, so this covers `feat/...` as well as `feat-...`.
+    branches: [ "main", "feat**" ]
+    # > One event per requested reviewer; the concurrency group collapses them into one run.
+    types: [ review_requested ]
+
+concurrency:
+  group: opi-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  opi-review:
+    # > Fork PRs cannot read repository secrets, and draft PRs are not reviewed yet.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    env:
+      CLAUDE_JOB_DIR: ${{ github.workspace }}/../claude-job
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      BASE_REF: ${{ github.base_ref }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
+    steps:
+      - name: Check out PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          # > Full history so the skill can find the merge base with main.
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: git fetch --no-tags origin "$BASE_REF"
+
+      - name: Load previous review round
+        id: prev
+        run: |
+          mkdir -p "$CLAUDE_JOB_DIR/tmp"
+          state_file="$CLAUDE_JOB_DIR/state.json"
+          # > Only trust state written by this workflow's bot account, never a user's comment.
+          comment=$(gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]"
+                            and (.body | contains("<!-- opi-review:state ")))
+                      | {id, body}' | jq -s 'last')
+          comment_id=$(jq -r '.id // empty' <<< "$comment")
+          jq -r '.body // empty' <<< "$comment" \
+            | sed -n 's/.*<!-- opi-review:state \([A-Za-z0-9+/=]*\) -->.*/\1/p' \
+            | base64 -d > "$state_file" 2>/dev/null || true
+          jq -e 'has("round") and has("findings")' "$state_file" > /dev/null 2>&1 \
+            || echo '{"round": 0, "findings": []}' > "$state_file"
+
+          if [ "$(jq '.findings | length' "$state_file")" -gt 0 ]; then
+            mode=recheck
+          else
+            mode=fresh
+          fi
+          echo "comment_id=$comment_id" >> "$GITHUB_OUTPUT"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "state_file=$state_file" >> "$GITHUB_OUTPUT"
+
+          prompt_file="$CLAUDE_JOB_DIR/prompt.md"
+          if [ "$mode" = recheck ]; then
+            {
+              echo "/opi-review --recheck origin/$BASE_REF"
+              echo
+              echo "Prior findings from the previous review round, verbatim, to recheck:"
+              echo
+              jq -r '.findings | to_entries[] | "\(.key + 1). \(.value)"' "$state_file"
+              echo
+              echo "In \`carry_forward\`, return the prior findings above whose verdict is Open,"
+              echo "Partial, or Unverifiable, each verbatim as given here, in the same order."
+            } > "$prompt_file"
+          else
+            {
+              echo "/opi-review origin/$BASE_REF"
+              echo
+              echo "In \`carry_forward\`, return every finding of your report that is caused by"
+              echo "this diff — nox failures in the diff, reading findings, and nits; not"
+              echo "pre-existing ones — one self-contained line each, with its \`path:line\`,"
+              echo "rule code or category, and what is wrong, so a later recheck can verify it."
+            } > "$prompt_file"
+          fi
+          {
+            echo
+            echo "You are running non-interactively in CI for PR #$PR_NUMBER of $REPO. The PR"
+            echo "head is checked out; review exactly the changes in"
+            echo "\`git diff origin/$BASE_REF...HEAD\`. Do not post anything to GitHub yourself."
+            echo "Put the complete report, in GitHub-flavored markdown, in \`report\`; it is"
+            echo "posted verbatim as the PR comment."
+          } >> "$prompt_file"
+          {
+            echo "prompt<<OPI_REVIEW_EOF"
+            cat "$prompt_file"
+            echo "OPI_REVIEW_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Prepare nox environment
+        run: |
+          # > The skill calls `.venv/bin/nox`; only the dev group (nox) is needed there.
+          uv sync --only-group dev
+          # > Build the pr_check session venvs up front so the review does not spend turns on it.
+          .venv/bin/nox -t pr_check --install-only --no-stop-on-first-error
+
+      - name: Run opi-review
+        id: review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: ${{ steps.prev.outputs.prompt }}
+          claude_args: |
+            --max-turns 60
+            --allowedTools "Skill,Task,Agent,Read,Grep,Glob,Bash(.venv/bin/nox -t pr_check:*),Bash(git diff:*),Bash(git show:*),Bash(git log:*),Bash(git status:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git rev-parse:*)"
+            --json-schema '{"type":"object","properties":{"report":{"type":"string","description":"The complete opi-review report in GitHub-flavored markdown."},"carry_forward":{"type":"array","items":{"type":"string"},"description":"Findings to recheck in the next review round, one self-contained line each."}},"required":["report","carry_forward"]}'
+
+      - name: Post review comment
+        if: always() && steps.prev.outcome == 'success'
+        env:
+          STRUCTURED_OUTPUT: ${{ steps.review.outputs.structured_output }}
+          COMMENT_ID: ${{ steps.prev.outputs.comment_id }}
+          MODE: ${{ steps.prev.outputs.mode }}
+          STATE_FILE: ${{ steps.prev.outputs.state_file }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          prev_round=$(jq '.round' "$STATE_FILE")
+          report=$(jq -r '.report // empty' <<< "${STRUCTURED_OUTPUT:-null}" 2>/dev/null || true)
+
+          if [ -n "$report" ]; then
+            round=$((prev_round + 1))
+            state=$(jq -c --argjson round "$round" '{round: $round, findings: .carry_forward}' \
+              <<< "$STRUCTURED_OUTPUT")
+            status="Round $round · $MODE review"
+          else
+            # > The review failed: say so, but keep the previous state so no finding is lost.
+            state=$(jq -c . "$STATE_FILE")
+            report="_opi-review did not produce a report for this round — see the [workflow run]($RUN_URL). Findings from the previous round are kept for the next one._"
+            status="Round $prev_round · review failed"
+          fi
+          open=$(jq '.findings | length' <<< "$state")
+
+          body_file="$RUNNER_TEMP/review.md"
+          {
+            echo "<sub>opi-review · $status · commit ${HEAD_SHA:0:7} · $open finding(s) carried to the next round · automated, read-only · does not review logic</sub>"
+            echo
+            echo "$report"
+            echo
+            echo "<!-- opi-review:state $(base64 -w0 <<< "$state") -->"
+          } > "$body_file"
+
+          # > Keep one comment per PR, updated every round.
+          if [ -n "$COMMENT_ID" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$COMMENT_ID" -F "body=@$body_file" > /dev/null
+          else
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$body_file"
+          fi
