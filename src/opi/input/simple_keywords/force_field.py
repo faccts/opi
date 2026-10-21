@@ -1,5 +1,5 @@
 from opi.input.simple_keywords.base import (
-    SimpleKeyword,
+    ORCAKeyword,
     SimpleKeywordBox,
 )
 
@@ -9,7 +9,7 @@ __all__ = ("ForceField",)
 class ForceField(SimpleKeywordBox):
     """Enum to store all simple keywords of type ForceField."""
 
-    GFN_FF = SimpleKeyword("gfn-ff")
-    """SimpleKeyword: GFN-FF (external) alias is xtb-ff."""
-    MM = SimpleKeyword("mm")
-    """SimpleKeyword: Use external molecular mechanics."""
+    GFN_FF = ORCAKeyword("gfn-ff")
+    """ORCAKeyword: GFN-FF (external) alias is xtb-ff."""
+    MM = ORCAKeyword("mm")
+    """ORCAKeyword: Use external molecular mechanics."""

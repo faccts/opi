@@ -4,6 +4,8 @@
 
 ### Breaking Changes
 - Refactor base `Block` class to `BlockABC` - also cannot be initialized anymore. `Block` is now used to create an arbitrary block.(#276)
+- Rename the class representing a single simple keyword from `SimpleKeyword` to `ORCAKeyword`. `SimpleKeyword` is now the collection of all implemented simple keywords; calling `SimpleKeyword("keyword")` still creates an ad-hoc keyword, but `isinstance(keyword, SimpleKeyword)` is now `False` - use `ORCAKeyword` instead. (#218)
+- Move `POPDISP` from `DispersionCorrection` to `OutputControl`. (#218)
 
 ### Added
 - Improve support for OpenCOSMO-RS (#205)
@@ -42,12 +44,12 @@
 - Added `Output.neb_converged()` and `mode="neb"` for `Properties` to check NEB convergence and read the MEP energies (#285)
 - Add merge logic for two blocks that model the same ORCA block, via `BlockABC.__or__()`: fields and arbitrary options of both blocks are combined, with the right-hand block taking precedence. Merging two blocks that model different ORCA blocks raises a `ValueError`. (#274)
 - Add merge logic for two `Input` objects, via `Input.__or__()`: simple keywords are concatenated without duplicates, keeping their order with those of the left-hand input first, blocks that model the same ORCA block are merged, arbitrary strings are concatenated, and `ncores`, `memory` and `moinp` are taken from the right-hand input if set. The right-hand input takes precedence throughout, blocks are copied into the result, and neither operand is modified. (#288)
+- Added `SimpleKeyword`, which inherits all simple keyword groups except `LibXC`, so that every implemented keyword can be accessed as an attribute (e.g. `SimpleKeyword.TIGHTSCF`) or looked up with `SimpleKeyword.find_keyword()`. (#218)
 - Added `GbwResults.to_gbw_file()` which writes a gbw file from the parsed data by converting it with `orca_2json <json-file> -gbw` (#289).
-- Added `Output.get_final_energy_components()`, which reports the energies of `Output.get_energies()` together with the corrections that ORCA adds on top of the total energy of the electronic structure method: the dispersion correction (`VdW`) and the geometrical counterpoise correction (`gCP`) (#283).
-- Added `Output.get_vdw_correction()`, `Output.get_gcp_correction()`, `Output.get_rocis_energies()` and `Output.get_cipsi_energies()` to access the dispersion correction, the gCP correction and the energies of ROCIS and ICE-CI/CIPSI calculations (#283).
-- Added the missing field `numofroots` to `RoCisEnergy` (#283).
-- Added the `Energy.energy` property as well as `reference_energy` and `correlation_energy` on the correlated energies, which return the energies as plain floats instead of the nested list (#283).
-- Added `EnergyType`, which enumerates and documents the known keys of the dictionaries returned by `Output.get_energies()` and `Output.get_final_energy_components()` (#283).
+- Added `SimpleTask` (`opi.simple_tasks`) for simple validated ORCA workflows, with `SinglePointTask`, `EngradTask`, `OptTask`, `FreqTask` and `GoatTask`. (#218)
+- Added `SimpleKeywordBox.find_keyword()`, `from_string()` and `validate_keyword()` to look up a keyword in a group by name or alias, e.g. `Scf.find_keyword("tight")`. (#218)
+- Split `Scf`, `Opt`, `Dlpno` and `Wft` into subgroups such as `ScfThreshold` and `OptThreshold`. (#218)
+- Added `Solvent.find_keyword()` and `BlockABC.get_subclass_by_name()`. (#218)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
@@ -55,14 +57,14 @@
 - `Input` now stores blocks under the name of the ORCA block they model instead of under their `BlockABC` class. Hence `Input.blocks` and the dictionary returned by `Input.get_blocks()` are keyed by that name, e.g. `calc.input.get_blocks(BlockScf)["scf"]`. (#276)
 - Change `Input.add_blocks()` to merge two block instances of same type by default, instead of being a no-op. (#274)
 - `Input.add_arbitrary_string()` now also accepts an `ArbitraryString` instance next to a plain `str`, so that an arbitrary string can be added together with the position it carries. (#288)
-- `SimpleKeyword` now compares equal case-insensitively, matching `SimpleKeyword.format_orca()`, which lowercases the keyword, and ORCA itself, which ignores the case. Hence keywords that only differ in case count as duplicates of each other in `Input.add_simple_keywords()`, `Input.remove_simple_keywords()`, `Input.has_simple_keyword()` and `Input.get_simple_keyword()`. (#288)
+- `ORCAKeyword` now compares equal case-insensitively, matching `ORCAKeyword.format_orca()`, which lowercases the keyword, and ORCA itself, which ignores the case. Hence keywords that only differ in case count as duplicates of each other in `Input.add_simple_keywords()`, `Input.remove_simple_keywords()`, `Input.has_simple_keywords()` and `Input.get_simple_keywords()`. (#288)
 - The gbw-JSON files redumped by `Output` (`do_redump_jsons`) now use the keys of the original ORCA JSON files instead of the field names of the models (#289).
 
 ### Deprecated
 ### Removed
+- Removed the unused `ORCAKeyword.name` attribute. (#218)
+
 ### Fixed
-- `Output.get_energies()` now numbers repeated energy types as documented (e.g. `SCF`, `SCF_1`, `SCF_2`) instead of compounding the suffixes (`SCF_1_2`) (#283).
-- The docstrings of `Mp2EnergyBase` and `AutoCiEnergy` documented `refenergy` and `correnergy` as plain floats, while ORCA writes them as a nested list holding a single element (#283).
 - The block methods of `Input` now raise a `TypeError` when passed something that is neither a block, a block class nor a block name, instead of failing with an `AttributeError`. `Input.add_blocks()` also rejects block classes, as only an instance carries the options of a block (#276).
 - `BlockABC` can no longer be instantiated, as it is abstract and models no ORCA block. `BlockABC.name` now reports that a block defines no ORCA block name instead of failing on the missing private attribute `_name` (#276).
 - Updated deprecated `typing` types to be compliant with Python >=3.11 guidelines (#216)
@@ -71,6 +73,7 @@
 - Fixed `_orca_environment()` which now makes changes to `os.environ` in-place without breaking any reference to that dict (#279).
 - Negative calculation timings occasionally reported by ORCA are now clamped to zero instead of raising a `ValidationError` (#284).
 - Made OPI runner thread safe by copying the env for each run (#293).
+- Fixed `BlockIce()` requiring `integrals` to be set. (#218)
 
 ## [2.0.0] - 2026-02-10
 
@@ -129,7 +132,7 @@
 #### External Methods
 - Enable use of ExtOPT wrappers. #30 #55
 
-### Fixed 
+### Fixed
 - Fixed the links on the tutorial start page. #2
 - Fix to `fragproc` attribute in `BlockFrag`. #43
 - Fixed bug where `%moinp` block was printed without quotation marks around the path. #50

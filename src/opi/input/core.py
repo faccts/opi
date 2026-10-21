@@ -10,7 +10,7 @@ from opi.input.arbitrary_string import (
     ArbitraryStringPos,
 )
 from opi.input.blocks.base import BlockABC
-from opi.input.simple_keywords.base import SimpleKeyword
+from opi.input.simple_keywords.base import ORCAKeyword
 
 __all__ = ("Input",)
 
@@ -21,7 +21,7 @@ class Input:
 
     Attributes
     ----------
-    _simple_keywords | simple_keywords: list[SimpleKeyword]
+    _simple_keywords | simple_keywords: list[ORCAKeyword]
         List of simple keywords to be put into the ORCA input.
         Access to this attribute should be done through the respective `add_simple_keywords/remove_.../clear_...` methods.
     _blocks | blocks: dict[str, BlockABC]
@@ -43,7 +43,7 @@ class Input:
         # > MEMBER VARIABLES
         # ---------------------------------
         # // Simple Keywords
-        self._simple_keywords: list[SimpleKeyword] = []
+        self._simple_keywords: list[ORCAKeyword] = []
         # // Block options
         self._blocks: dict[str, BlockABC] = {}
         # // Arbitrary strings
@@ -63,15 +63,15 @@ class Input:
     # > PROPERTIES
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     @property
-    def simple_keywords(self) -> "list[SimpleKeyword] | None":
+    def simple_keywords(self) -> "list[ORCAKeyword] | None":
         return self._simple_keywords
 
     @simple_keywords.setter
-    def simple_keywords(self, value: list[SimpleKeyword] | None) -> None:
+    def simple_keywords(self, value: list[ORCAKeyword] | None) -> None:
         """
         Parameters
         ----------
-        value : list[SimpleKeyword] | None
+        value : list[ORCAKeyword] | None
         """
         raise AttributeError(
             "simple_keywords is private, use the add_simple_keywords/get_simple_keywords function for access."
@@ -312,7 +312,7 @@ class Input:
     # ----------------------------------------------------------------------
     def add_simple_keywords(
         self,
-        *keywords: str | SimpleKeyword,
+        *keywords: str | ORCAKeyword,
         strict: bool = False,
     ) -> None:
         """
@@ -325,7 +325,7 @@ class Input:
 
         Parameters
         ----------
-        *keywords : str | SimpleKeyword
+        *keywords : str | ORCAKeyword
             One or more simple keywords to add.
         strict : bool, default: False
             If True, a ValueError is raised if any keyword has already been added.
@@ -349,7 +349,7 @@ class Input:
         for keyword in keywords:
             # > Convert string to simple keyword.
             if isinstance(keyword, str):
-                simple_keyword = SimpleKeyword(keyword)
+                simple_keyword = ORCAKeyword(keyword)
             else:
                 simple_keyword = keyword
 
@@ -361,7 +361,7 @@ class Input:
 
     def remove_simple_keywords(
         self,
-        *keywords: str | SimpleKeyword,
+        *keywords: str | ORCAKeyword,
         strict: bool = False,
     ) -> None:
         """
@@ -369,7 +369,7 @@ class Input:
 
         Parameters
         ----------
-        *keywords : str | SimpleKeyword
+        *keywords : str | ORCAKeyword
             One or more simple keywords to remove.
         strict : bool, default: False
             If True, a ValueError is raised if any of the specified keywords is not present.
@@ -391,7 +391,7 @@ class Input:
         for keyword in keywords:
             # > Convert string to simple keyword.
             if isinstance(keyword, str):
-                simple_keyword = SimpleKeyword(keyword)
+                simple_keyword = ORCAKeyword(keyword)
             else:
                 simple_keyword = keyword
 
@@ -403,13 +403,13 @@ class Input:
                     f"Strict: No simple keyword {simple_keyword} has been added. So it cannot be removed."
                 )
 
-    def _has_simple_keyword(self, keyword: str | SimpleKeyword, /) -> bool:
+    def _has_simple_keyword(self, keyword: str | ORCAKeyword, /) -> bool:
         """
         Check if a keyword has been added to the Calculator
 
         Parameters
         ----------
-        keyword : str | SimpleKeyword
+        keyword : str | ORCAKeyword
             The simple keyword to check
 
         Returns
@@ -420,17 +420,17 @@ class Input:
         if not self._simple_keywords:
             return False
         if isinstance(keyword, str):
-            return SimpleKeyword(keyword) in self._simple_keywords
+            return ORCAKeyword(keyword) in self._simple_keywords
         else:
             return keyword in self._simple_keywords
 
-    def has_simple_keywords(self, *keywords: str | SimpleKeyword) -> tuple[bool, ...]:
+    def has_simple_keywords(self, *keywords: str | ORCAKeyword) -> tuple[bool, ...]:
         """
         Check if one or more simple keywords have been added to the Calculator.
 
         Parameters
         ----------
-        *keywords : str or SimpleKeyword
+        *keywords : str or ORCAKeyword
             One or more simple keywords to check.
 
         Returns
@@ -442,14 +442,14 @@ class Input:
         return tuple(self._has_simple_keyword(keyword) for keyword in keywords)
 
     def _get_simple_keyword(
-        self, keyword: str | SimpleKeyword, /, *, create_missing: bool = False
-    ) -> SimpleKeyword | None:
+        self, keyword: str | ORCAKeyword, /, *, create_missing: bool = False
+    ) -> ORCAKeyword | None:
         """
         Retrieve a simple keyword that has been added to the Calculator.
 
         Parameters
         ----------
-        keyword : str | SimpleKeyword
+        keyword : str | ORCAKeyword
             the simple keyword to retrieve
         create_missing : bool, default = False
             if True, the keyword will be generated if it is missing, and it is requested,
@@ -457,11 +457,11 @@ class Input:
 
         Returns
         -------
-        SimpleKeyword | None
+        ORCAKeyword | None
             If the simple keyword exists, or it was created, it is returned, else None is returned.
         """
         if isinstance(keyword, str):
-            simple_keyword: SimpleKeyword = SimpleKeyword(keyword)
+            simple_keyword: ORCAKeyword = ORCAKeyword(keyword)
         else:
             simple_keyword = keyword
 
@@ -482,15 +482,15 @@ class Input:
 
     def get_simple_keywords(
         self,
-        *keywords: str | SimpleKeyword,
+        *keywords: str | ORCAKeyword,
         create_missing: bool = False,
-    ) -> list[SimpleKeyword]:
+    ) -> list[ORCAKeyword]:
         """
         Retrieve one or more simple keyword that have been added to the Calculator.
 
         Parameters
         ----------
-        keywords : str | SimpleKeyword
+        keywords : str | ORCAKeyword
             One or more simple keywords to retrieve.
         create_missing : bool, default = False
             If True, keywords will be generated if they are missing, and they are requested.
@@ -498,11 +498,11 @@ class Input:
 
         Returns
         -------
-        List[SimpleKeyword]
+        List[ORCAKeyword]
             A list of all requested simple keywords if they exist, or if they were created.
             Empty list if all keywords are missing and `create_missing` is False.
         """
-        keywords_to_return: list[SimpleKeyword] = []
+        keywords_to_return: list[ORCAKeyword] = []
         for keyword in keywords:
             keyword_to_return = self._get_simple_keyword(keyword, create_missing=create_missing)
             # > check if keyword was found/created
