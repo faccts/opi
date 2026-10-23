@@ -8,7 +8,7 @@
 - Move `POPDISP` from `DispersionCorrection` to `OutputControl`. (#218)
 
 ### Added
-- The ORCA version check now accepts pre-release versions (#XXX).
+- The ORCA version check now accepts pre-release versions (#301).
 - Improve support for OpenCOSMO-RS (#205)
 - Add missing pydantic fields for calculation timings (#211)
 - Added `scalmp2c` to `BlockMethod` (#212)
