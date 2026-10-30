@@ -51,8 +51,8 @@
 - Split `Scf`, `Opt`, `Dlpno` and `Wft` into subgroups such as `ScfThreshold` and `OptThreshold`. (#218)
 - Added `Solvent.find_keyword()` and `BlockABC.get_subclass_by_name()`. (#218)
 - Added `Output.get_final_energy_components()` which resolves the final energy contributions. (#290)
-- Added error patterns for impossible multiplicities, overlapping atoms, missing basis sets, coupled-cluster calculations without virtuals or electron pairs, orbitals read in with `moinp` for another geometry, Open MPI failures, and any other error termination of an ORCA module (#XXX).
-- `Output.error_message()` and `Output.error_messages()` now also scan the `.err` file, where the messages of the MPI launcher and of the dynamic linker end up, and `Output.get_errfile()` returns its path (#XXX).
+- Added error patterns for impossible multiplicities, overlapping atoms, missing basis sets, coupled-cluster calculations without virtuals or electron pairs, orbitals read in with `moinp` for another geometry, Open MPI failures, and any other error termination of an ORCA module (#303).
+- `Output.error_message()` and `Output.error_messages()` now also scan the `.err` file, where the messages of the MPI launcher and of the dynamic linker end up, and `Output.get_errfile()` returns its path (#303).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)

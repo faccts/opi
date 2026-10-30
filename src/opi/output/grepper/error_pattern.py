@@ -19,8 +19,9 @@ class ErrorPattern:
         When the error is critical we will stop searching for further errors after finding it.
         Critical errors are errors after which ORCA will abort.
     stderr: bool
-        Search the ".err" file instead of the ".out" file.
-        Messages of the MPI launcher and of the dynamic linker never reach the ORCA output file.
+        Search the ".err" file before the ".out" file.
+        Messages of the MPI launcher and of the dynamic linker are written to stderr and only reach
+        the ".out" file if stderr was redirected into it.
     case_sensitive: bool
         Whether `grep_string` is matched case-sensitively.
 
@@ -282,7 +283,7 @@ class MissingSharedLibraryError(ErrorPattern):
     """
     Triggered when the dynamic linker cannot load a shared library required by an ORCA binary,
     for example `libmpi.so` of a missing or mismatching Open MPI installation.
-    The linker writes to stderr, hence the ".err" file is searched.
+    The linker writes to stderr, hence the ".err" file is searched first.
     """
 
     grep_string = "error while loading shared libraries"
@@ -304,15 +305,45 @@ class MissingSharedLibraryError(ErrorPattern):
         )
 
 
+class MpiProcessAbortError(ErrorPattern):
+    """
+    Triggered when `mpirun` reports that one of the MPI processes was terminated by a signal,
+    e.g. a segmentation fault or a kill by the out-of-memory killer of the operating system.
+    `mpirun` writes to stderr, hence the ".err" file is searched first.
+    """
+
+    grep_string = "mpirun noticed that process rank"
+    message = "An MPI process terminated abnormally. Check the `.err` file for details"
+    critical = True
+    stderr = True
+
+    def extract(self, file_path: Path) -> str:
+        grepper = Grepper(file_path)
+        match = grepper.search(self.grep_string, case_sensitive=True)
+        if not match:
+            return ""
+        m = re.search(r"process rank (\d+).*exited on signal (\d+)(?: \(([^)]+)\))?", match[0])
+        if not m:
+            return self.message
+        rank, signal, name = m.groups()
+        signal_desc = f"{signal} ({name})" if name else signal
+        msg = f"MPI process rank {rank} was terminated by signal {signal_desc}"
+        if signal == "9":
+            msg += ". The process was killed, possibly because the system ran out of memory"
+        return msg
+
+
 class ErrorTerminationError(ErrorPattern):
     """
     Triggered when an ORCA module terminates with an error, i.e. the catch-all for module
     failures that no more specific pattern above has already explained.
+    Not critical, so that the cause of the termination, e.g. an MPI process killed by a signal,
+    can still be reported after it.
     """
 
     grep_string = "ORCA finished by error termination in"
     message = "ORCA finished by error termination"
-    critical = True
+    critical = False
 
     def extract(self, file_path: Path) -> str:
         grepper = Grepper(file_path)

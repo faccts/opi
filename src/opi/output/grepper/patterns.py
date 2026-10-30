@@ -10,6 +10,7 @@ from opi.output.grepper.error_pattern import (
     MdciPairsError,
     MissingBasisError,
     MissingSharedLibraryError,
+    MpiProcessAbortError,
     MultiplicityError,
     NotEnoughMemoryScfError,
     SimpleKeywordsError,
@@ -96,12 +97,6 @@ MPI_SLOTS_ERROR = ErrorPattern(
     critical=True,
     stderr=True,
 )
-MPI_ABORT_ERROR = ErrorPattern(
-    "mpirun noticed that process rank",
-    "An MPI process terminated abnormally. Check the `.err` file for details",
-    critical=True,
-    stderr=True,
-)
 ABORTING_ERROR = ErrorPattern("aborting the run", "ORCA aborted the run", case_sensitive=False)
 GENERIC_ERROR = ErrorPattern("ERROR", "ORCA encountered an error")
 
@@ -136,13 +131,15 @@ ERROR_PATTERNS: list[ErrorPattern] = [
     MPIRUN_NOT_FOUND_ERROR,  # critical
     MissingSharedLibraryError(),  # critical
     MPI_SLOTS_ERROR,  # critical
-    MPI_ABORT_ERROR,  # critical
     # > non-critical convergence errors. Checked before the generic error termination below,
-    # > which is less specific and would stop the scan.
+    # > which is less specific.
     OPT_NOT_CONVERGED_ERROR,  # non-critical: scan continues
     CIS_TDA_NOT_CONVERGED_ERROR,  # non-critical: scan continues
-    # > Any module that terminates not normally
-    ErrorTerminationError(),  # critical
+    # > Any module that terminates not normally. Reported before the MPI process abort below,
+    # > as it names the failing ORCA module, while the abort gives the signal as the cause.
+    ErrorTerminationError(),  # non-critical: scan continues
+    # > MPI process killed by a signal
+    MpiProcessAbortError(),  # critical
     # > Unspecific errors
     ABORTING_ERROR,  # non-critical: scan continues
     GENERIC_ERROR,  # non-critical: scan continues
