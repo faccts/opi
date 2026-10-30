@@ -50,6 +50,7 @@
 - Added `SimpleKeywordBox.find_keyword()`, `from_string()` and `validate_keyword()` to look up a keyword in a group by name or alias, e.g. `Scf.find_keyword("tight")`. (#218)
 - Split `Scf`, `Opt`, `Dlpno` and `Wft` into subgroups such as `ScfThreshold` and `OptThreshold`. (#218)
 - Added `Solvent.find_keyword()` and `BlockABC.get_subclass_by_name()`. (#218)
+- Added `Output.get_final_energy_components()` which resolves the final energy contributions. (#290)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)

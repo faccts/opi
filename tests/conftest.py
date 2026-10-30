@@ -78,6 +78,8 @@ def json_file_list(json_dir: Path) -> list[Path]:
         "property/test_exmp017_roci_job.property.json",
         "gbw/test_exmp018_cipsi_job.json",
         "property/test_exmp018_cipsi_job.property.json",
+        "gbw/test_exmp019_engrad_job.json",
+        "property/test_exmp019_engrad_job.property.json",
         "gbw/test_exmp028_nevp2_job.json",
         "property/test_exmp028_nevp2_job.property.json",
         "gbw/test_exmp038_integrals_job.json",
