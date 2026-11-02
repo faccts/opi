@@ -10,6 +10,7 @@ from opi.output.grepper.patterns import (
     HAS_FREQ,
     HAS_GEOMETRY_OPT,
     HAS_SCF,
+    INPUT_COORDS_CHARGE_MULT,
     NEB_CONVERGED,
     SCF_CONVERGED,
     TERMINATED_NORMALLY,
@@ -129,6 +130,35 @@ def get_float_from_line(
             raise
         else:
             return None
+
+
+def get_charge_and_mult_from_input(file_name: Path, /) -> tuple[int, int] | None:
+    """
+    Get charge and multiplicity from the coordinate line (e.g. "* xyz 0 1") of the input file
+    as echoed in the ORCA output. If the output contains several jobs, the last one is used.
+
+    Parameters
+    ----------
+    file_name : Path
+        Path to the ORCA output file.
+
+    Returns
+    -------
+    tuple[int, int] | None
+        Charge and multiplicity, or None if the file does not exist or no coordinate line is found.
+    """
+    try:
+        lines = Grepper(file_name).search(INPUT_COORDS_CHARGE_MULT, fallback=[])
+    except FileNotFoundError:
+        return None
+
+    if not lines:
+        return None
+
+    match = INPUT_COORDS_CHARGE_MULT.search(lines[-1])
+    if match is None:
+        return None
+    return int(match.group(1)), int(match.group(2))
 
 
 def get_lines_from_block(
