@@ -198,6 +198,33 @@ class MultiplicityError(ErrorPattern):
         )
 
 
+class XyzSyntaxError(ErrorPattern):
+    """
+    Triggered when ORCA cannot read the coordinates of an xyz file, e.g. because a line starts
+    with an atomic number instead of an element symbol.
+    Unknown element symbols do not trigger this error, ORCA silently turns them into dummy atoms.
+    """
+
+    grep_string = "Wrong syntax in xyz coordinates"
+    message = "Wrong syntax in the xyz coordinates"
+    critical = True
+
+    def extract(self, file_path: Path) -> str:
+        grepper = Grepper(file_path)
+        if not grepper.search(self.grep_string, case_sensitive=True):
+            return ""
+        # > The preceding line names what ORCA found instead of an element symbol.
+        found = Grepper(file_path).search(
+            "readCoordsInXYZFile::Error: Expected atomic symbol", case_sensitive=True
+        )
+        if not found:
+            return self.message
+        m = re.search(r"Instead found (.+?)\.?$", found[0])
+        if not m:
+            return self.message
+        return f"Expected an element symbol in the xyz coordinates, but found: {m.group(1)}"
+
+
 class ZeroDistanceError(ErrorPattern):
     """
     Triggered when two atoms of the input structure sit on top of each other, which makes the

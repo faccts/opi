@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
 Tests for error extraction capabilities of OPI from the ORCA output with bad ORCA input.
-Covers invalid lines, unknown simple keywords, unknown blocks, and invalid block options.
+Covers invalid lines, unknown simple keywords, unknown blocks, invalid block options, and
+invalid xyz files.
 """
 
 import pytest
 
 from opi.core import Calculator
 from opi.input.blocks import BlockScf
-from opi.input.structures import Structure
+from opi.input.simple_keywords import BasisSet, Method
+from opi.input.structures import Structure, XyzFile
 from opi.output.grepper.patterns import NO_COORDS_ERROR
 
 
@@ -123,3 +125,23 @@ def test_unknown_block_value(calc_water):
     output = calc_water.get_output()
     assert not output.terminated_normally()
     assert output.error_message() == f"Unknown block value:  {invalid_value.upper()}"
+
+
+@pytest.mark.orca
+def test_xyz_syntax(calc, tmp_path):
+    """Test error_message for ORCA with an atomic number instead of an element symbol."""
+    # > The xyz file is passed to ORCA as is, so OPI does not check the element symbols
+    xyz_file = tmp_path / "inp.xyz"
+    xyz_file.write_text("2\n\nO 0.0 0.0 0.0\n999 0.0 0.0 1.0\n")
+    calc.structure = XyzFile(xyz_file)
+    calc.input.add_simple_keywords(Method.HF, BasisSet.DEF2_SVP)
+
+    # > write the input and run the calculation
+    calc.write_and_run()
+
+    # > get the output and check some results
+    output = calc.get_output()
+    assert not output.terminated_normally()
+    assert output.error_message() == (
+        "Expected an element symbol in the xyz coordinates, but found: 999"
+    )

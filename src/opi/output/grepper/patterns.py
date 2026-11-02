@@ -17,6 +17,7 @@ from opi.output.grepper.error_pattern import (
     UnknownBlockError,
     UnknownBlockKeyError,
     UnknownBlockValueError,
+    XyzSyntaxError,
     ZeroDistanceError,
 )
 
@@ -111,6 +112,7 @@ ERROR_PATTERNS: list[ErrorPattern] = [
     UnknownBlockKeyError(),  # critical
     UnknownBlockError(),  # critical
     NO_COORDS_ERROR,  # critical
+    XyzSyntaxError(),  # critical
     MultiplicityError(),  # critical
     ZeroDistanceError(),  # critical
     MissingBasisError(),  # critical
