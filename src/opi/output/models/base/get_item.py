@@ -1,10 +1,12 @@
 import re
 import typing
+import warnings
 from abc import ABC
 from types import UnionType
-from typing import Any, get_args, get_origin
+from typing import Any, ClassVar, get_args, get_origin
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError, ValidationInfo, model_validator
+from pydantic.functional_validators import ModelWrapValidatorHandler
 
 
 def get_clean_type_name(t: Any) -> str:
@@ -30,7 +32,52 @@ def get_clean_type_name(t: Any) -> str:
 
 
 class GetItem(BaseModel, ABC):
-    """This class contains the get_item function for nearly all other classes"""
+    """
+    This class contains the `get_item` function and is the ABC of the output model classes.
+
+    Attributes
+    -----------
+    strict: bool, default = True
+        Default boolean if no explicit context is given. If True, pydantic validation will raise a `ValidationError`,
+        if False, the field which caused the validation to fail will be dropped and return to the default Value, which
+        is typically `None`.
+    """
+
+    strict: ClassVar[bool] = (
+        True  # > Annotated but with ClassVar so that it is not treated as a Pydantic field
+    )
+
+    @model_validator(mode="wrap")
+    @classmethod
+    def _drop_invalid_fields(
+        cls,
+        data: Any,
+        handler: ModelWrapValidatorHandler["GetItem"],
+        info: ValidationInfo,
+    ) -> "GetItem":
+        # > First try to run core Pydantic validation
+        try:
+            return handler(data)
+        except ValidationError as e:
+            # > In strict mode (the default) we don't recover - just raise
+            if (info.context or {}).get("strict", cls.strict):
+                raise
+            # > data to validate should always be a dict since we load it from JSON - defensive check
+            if not isinstance(data, dict):
+                raise
+            # > Identify the top-level fields that triggered the ValidationError
+            bad_keys = {str(error["loc"][0]) for error in e.errors() if error["loc"]}
+            # > Nothing actionable to drop - re-raise the original error
+            if not bad_keys:
+                raise
+            # > Rebuild the input without the offending fields - each dropped field
+            # > falls back to its own default on revalidation - typically None
+            cleaned = {k: v for k, v in data.items() if str(k) not in bad_keys}
+            # > Revalidate - this re-raises if a dropped field was actually required
+            result = handler(cleaned)
+            # > Let the caller know which fields were dropped
+            warnings.warn(f"{cls.__name__}: dropped fields due to validation errors: {bad_keys}")
+            return result
 
     def __getitem__(self, name: str) -> Any:
         return getattr(self, name.lower())

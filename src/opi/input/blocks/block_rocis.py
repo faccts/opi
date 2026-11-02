@@ -1,9 +1,9 @@
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 
 __all__ = ("BlockRocis",)
 
 
-class BlockRocis(Block):
+class BlockRocis(BlockABC):
     """Class to model %rocis block in ORCA"""
 
     _name: str = "rocis"

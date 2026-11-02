@@ -1,12 +1,12 @@
 from pydantic import field_validator
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputFilePath
 
 __all__ = ("BlockEda",)
 
 
-class BlockEda(Block):
+class BlockEda(BlockABC):
     """Class to model %eda block in ORCA"""
 
     _name: str = "eda"

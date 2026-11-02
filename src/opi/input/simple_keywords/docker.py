@@ -1,5 +1,5 @@
 from opi.input.simple_keywords.base import (
-    SimpleKeyword,
+    ORCAKeyword,
     SimpleKeywordBox,
 )
 
@@ -9,45 +9,45 @@ __all__ = ("Docker",)
 class Docker(SimpleKeywordBox):
     """Enum to store all simple keywords of type Docker."""
 
-    NORMALDOCK = SimpleKeyword("normaldock")
-    """SimpleKeyword: Docker Methods."""
-    COMPLETEDOCK = SimpleKeyword("completedock")
-    """SimpleKeyword: Docker Methods."""
-    DOCK_GFN_FF = SimpleKeyword("dock(gfn-ff)")
-    """SimpleKeyword: Docker Methods."""
-    DOCK_GFN0_XTB = SimpleKeyword("dock(gfn0-xtb)")
-    """SimpleKeyword: Docker Methods."""
-    DOCK_GFN1_XTB = SimpleKeyword("dock(gfn1-xtb)")
-    """SimpleKeyword: Docker Methods."""
-    DOCK_GFN2_XTB = SimpleKeyword("dock(gfn2-xtb)")
-    """SimpleKeyword: Docker Methods."""
-    DOCK_GFNFF = SimpleKeyword("dock(gfnff)")
-    """SimpleKeyword: Docker Methods."""
-    DOCK_XTB = SimpleKeyword("dock(xtb)")
-    """SimpleKeyword: Docker Methods."""
-    DOCK_XTB0 = SimpleKeyword("dock(xtb0)")
-    """SimpleKeyword: Docker Methods."""
-    DOCK_XTB1 = SimpleKeyword("dock(xtb1)")
-    """SimpleKeyword: Docker Methods."""
-    DOCKER = SimpleKeyword("docker")
-    """SimpleKeyword: GOAT Methods."""
-    DOCKER_GFN_FF = SimpleKeyword("docker(gfn-ff)")
-    """SimpleKeyword: Docker Methods."""
-    DOCKER_GFN0_XTB = SimpleKeyword("docker(gfn0-xtb)")
-    """SimpleKeyword: Docker Methods."""
-    DOCKER_GFN1_XTB = SimpleKeyword("docker(gfn1-xtb)")
-    """SimpleKeyword: Docker Methods."""
-    DOCKER_GFN2_XTB = SimpleKeyword("docker(gfn2-xtb)")
-    """SimpleKeyword: Docker Methods."""
-    DOCKER_GFNFF = SimpleKeyword("docker(gfnff)")
-    """SimpleKeyword: Docker Methods."""
-    DOCKER_XTB = SimpleKeyword("docker(xtb)")
-    """SimpleKeyword: Docker Methods."""
-    DOCKER_XTB0 = SimpleKeyword("docker(xtb0)")
-    """SimpleKeyword: Docker Methods."""
-    DOCKER_XTB1 = SimpleKeyword("docker(xtb1)")
-    """SimpleKeyword: Docker Methods."""
-    QUICKDOCK = SimpleKeyword("quickdock")
-    """SimpleKeyword: Docker Methods."""
-    SCREENDOCK = SimpleKeyword("screendock")
-    """SimpleKeyword: Docker Methods."""
+    NORMALDOCK = ORCAKeyword("normaldock")
+    """ORCAKeyword: Docker Methods."""
+    COMPLETEDOCK = ORCAKeyword("completedock")
+    """ORCAKeyword: Docker Methods."""
+    DOCK_GFN_FF = ORCAKeyword("dock(gfn-ff)")
+    """ORCAKeyword: Docker Methods."""
+    DOCK_GFN0_XTB = ORCAKeyword("dock(gfn0-xtb)")
+    """ORCAKeyword: Docker Methods."""
+    DOCK_GFN1_XTB = ORCAKeyword("dock(gfn1-xtb)")
+    """ORCAKeyword: Docker Methods."""
+    DOCK_GFN2_XTB = ORCAKeyword("dock(gfn2-xtb)")
+    """ORCAKeyword: Docker Methods."""
+    DOCK_GFNFF = ORCAKeyword("dock(gfnff)")
+    """ORCAKeyword: Docker Methods."""
+    DOCK_XTB = ORCAKeyword("dock(xtb)")
+    """ORCAKeyword: Docker Methods."""
+    DOCK_XTB0 = ORCAKeyword("dock(xtb0)")
+    """ORCAKeyword: Docker Methods."""
+    DOCK_XTB1 = ORCAKeyword("dock(xtb1)")
+    """ORCAKeyword: Docker Methods."""
+    DOCKER = ORCAKeyword("docker")
+    """ORCAKeyword: GOAT Methods."""
+    DOCKER_GFN_FF = ORCAKeyword("docker(gfn-ff)")
+    """ORCAKeyword: Docker Methods."""
+    DOCKER_GFN0_XTB = ORCAKeyword("docker(gfn0-xtb)")
+    """ORCAKeyword: Docker Methods."""
+    DOCKER_GFN1_XTB = ORCAKeyword("docker(gfn1-xtb)")
+    """ORCAKeyword: Docker Methods."""
+    DOCKER_GFN2_XTB = ORCAKeyword("docker(gfn2-xtb)")
+    """ORCAKeyword: Docker Methods."""
+    DOCKER_GFNFF = ORCAKeyword("docker(gfnff)")
+    """ORCAKeyword: Docker Methods."""
+    DOCKER_XTB = ORCAKeyword("docker(xtb)")
+    """ORCAKeyword: Docker Methods."""
+    DOCKER_XTB0 = ORCAKeyword("docker(xtb0)")
+    """ORCAKeyword: Docker Methods."""
+    DOCKER_XTB1 = ORCAKeyword("docker(xtb1)")
+    """ORCAKeyword: Docker Methods."""
+    QUICKDOCK = ORCAKeyword("quickdock")
+    """ORCAKeyword: Docker Methods."""
+    SCREENDOCK = ORCAKeyword("screendock")
+    """ORCAKeyword: Docker Methods."""

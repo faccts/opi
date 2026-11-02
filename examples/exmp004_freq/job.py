@@ -69,6 +69,8 @@ def run_exmp004(
     print(output.get_entropy())
     print("G-E(el)")
     print(output.get_free_energy_delta())
+    print("Is PES minimum")
+    print(output.is_pes_minimum())
     return output
 
 

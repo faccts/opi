@@ -1,5 +1,5 @@
 from opi.input.simple_keywords.base import (
-    SimpleKeyword,
+    ORCAKeyword,
     SimpleKeywordBox,
 )
 
@@ -9,13 +9,13 @@ __all__ = ("Grid",)
 class Grid(SimpleKeywordBox):
     """Enum to store all simple keywords of type Grid."""
 
-    DEFGRID1 = SimpleKeyword("defgrid1")
-    """SimpleKeyword: small grid."""
-    DEFGRID2 = SimpleKeyword("defgrid2")
-    """SimpleKeyword: medium grid."""
-    DEFGRID3 = SimpleKeyword("defgrid3")
-    """SimpleKeyword: large grid."""
-    REFGRID = SimpleKeyword("refgrid")
-    """SimpleKeyword: reference grid."""
-    ROTINVGRID = SimpleKeyword("rotinvgrid")
-    """SimpleKeyword: Rotational invariant grid."""
+    DEFGRID1 = ORCAKeyword("defgrid1", alias="1")
+    """ORCAKeyword: small grid."""
+    DEFGRID2 = ORCAKeyword("defgrid2", alias="2")
+    """ORCAKeyword: medium grid."""
+    DEFGRID3 = ORCAKeyword("defgrid3", alias="3")
+    """ORCAKeyword: large grid."""
+    REFGRID = ORCAKeyword("refgrid")
+    """ORCAKeyword: reference grid."""
+    ROTINVGRID = ORCAKeyword("rotinvgrid")
+    """ORCAKeyword: Rotational invariant grid."""

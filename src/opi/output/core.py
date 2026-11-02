@@ -4,7 +4,7 @@ It's mostly based on the ORCA's two JSONs files.
 """
 
 import json
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 from typing import Any, cast
 from warnings import warn
@@ -16,6 +16,7 @@ from pydantic import StrictInt, StrictStr
 from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
+from opi.output.fcidump import Fcidump
 from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
     get_error_message,
@@ -25,6 +26,7 @@ from opi.output.grepper.recipes import (
     has_casscf_converged,
     has_cc_converged,
     has_geometry_optimization_converged,
+    has_neb_converged,
     has_scf_converged,
     has_terminated_normally,
 )
@@ -39,9 +41,12 @@ from opi.output.models.base.strict_types import (
 )
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.gbw.properties.mo import MO
+from opi.output.models.json.property.properties.calc_time import CalculationTiming
+from opi.output.models.json.property.properties.ci_psi import CiPsi
 from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
 from opi.output.models.json.property.properties.energy import Energy
 from opi.output.models.json.property.properties.energy_list import EnergyList
+from opi.output.models.json.property.properties.gcp_energy import GcpEnergy
 from opi.output.models.json.property.properties.hirshfeld_population_analysis import (
     HirshfeldPopulationAnalysis,
 )
@@ -58,6 +63,10 @@ from opi.output.models.json.property.properties.population_analysis import (
     MullikenPopulationAnalysis,
 )
 from opi.output.models.json.property.properties.quadrupole_moment import QuadrupoleMoment
+from opi.output.models.json.property.properties.roci_en import RoCisEnergy
+from opi.output.models.json.property.properties.van_der_waals_correction import (
+    VdwCorrection,
+)
 from opi.output.models.json.property.property_results import (
     PropertyResults,
 )
@@ -104,6 +113,7 @@ class Output:
         working_dir: Path | None = None,
         version_check: bool = True,
         parse: bool = False,
+        strict: bool = True,
     ):
         """
         ORCA output parser that is mainly based on the JSON-property and JSON-GBW file.
@@ -124,6 +134,10 @@ class Output:
             True: Create (if turned on by `create_gbw_json/create_property_json`) and parse JSONs files at the end of the initialization.
             False: Only return an Output object. In order to use the object to access the JSON data,
                    `Output.parse()` has to be called first.
+        strict: bool, default: True
+            If `True`, a `ValidationError` is raised when any field in the parsed output cannot be validated.
+            If `False`, fields that fail validation are silently set to `None` and a `UserWarning` is emitted.
+            Only takes effect when `parse=True`; otherwise pass `strict` directly to `Output.parse()`.
 
         Raises
         ----------
@@ -157,7 +171,7 @@ class Output:
 
         # // CREATE AND PARSE JSONS FILES
         if parse:
-            self.parse()
+            self.parse(strict=strict)
 
     def parse(
         self,
@@ -165,6 +179,7 @@ class Output:
         do_create_gbw_json: bool | None = None,
         read_prop_json: bool = True,
         read_gbw_json: bool = True,
+        strict: bool = True,
     ) -> None:
         """
         Create and read property- and gbw-JSON file(s) (according to `do_create_property_json` and `do_create_gbw_json`).
@@ -185,6 +200,9 @@ class Output:
             Whether to read the gbw JSON files. If True, the base gbw JSON file and any gbw JSON files from multi gbw
             runs (e.g., scan or neb) will be read. If False, none of these files will be read.
             If any of the JSON files that should be read are not present, a FileNotFoundError is raised.
+        strict: bool, default: True
+            If `True`, a `ValidationError` is raised when any field in the parsed output cannot be validated.
+            If `False`, fields that fail validation are silently set to `None` and a `UserWarning` is emitted.
 
         Raises
         ----------
@@ -192,20 +210,22 @@ class Output:
             If any JSON file should be read that is not present.
         """
         if read_prop_json:
-            self.parse_property(do_create_property_json=do_create_property_json)
+            self.parse_property(do_create_property_json=do_create_property_json, strict=strict)
         else:
             # // version check is performed with property JSON
             if self.do_version_check:
                 warn("No version check possible.")
 
         if read_gbw_json:
-            self.parse_gbw(do_create_gbw_json=do_create_gbw_json)
+            self.parse_gbw(do_create_gbw_json=do_create_gbw_json, strict=strict)
 
         # > Redump JSON files
         if self.do_redump_jsons:
             self._redump_jsons()
 
-    def parse_property(self, do_create_property_json: bool | None = None) -> None:
+    def parse_property(
+        self, do_create_property_json: bool | None = None, strict: bool = True
+    ) -> None:
         """
         Create and read property-JSON file.
 
@@ -214,6 +234,9 @@ class Output:
         do_create_property_json: bool | None, default: None
             Whether to create the property JSON file. If None, the file is only created if it is missing. If True,
             the existing file will be overwritten. If False, the file will not be created. Default is None.
+        strict: bool, default: True
+            If `True`, a `ValidationError` is raised when any field cannot be validated.
+            If `False`, fields that fail validation are set to `None` and a `UserWarning` is emitted.
         """
         # // Use default name if None was supplied
         if not self.property_json_file:
@@ -229,9 +252,11 @@ class Output:
         # > Check in property JSON whether version fits:
         if self.do_version_check:
             self.check_version()
-        self.results_properties = PropertyResults(**self.property_json_data)
+        self.results_properties = PropertyResults.model_validate(
+            self.property_json_data, context={"strict": strict}
+        )
 
-    def parse_gbw(self, do_create_gbw_json: bool | None = None) -> None:
+    def parse_gbw(self, do_create_gbw_json: bool | None = None, strict: bool = True) -> None:
         """
         Create and read gbw-JSON file(s).
 
@@ -240,6 +265,10 @@ class Output:
         do_create_gbw_json: bool | None, default: None
             Whether to create the gbw JSON files. If None, the files are only created if they are missing. If True,
             the existing files will be overwritten. If False, the files will not be created. Default is None.
+        strict: bool, default: True
+
+            If `True`, a `ValidationError` is raised when any field cannot be validated.
+            If `False`, fields that fail validation are set to `None` and a `UserWarning` is emitted.
         """
         # // Use default names if None was supplied
         if not self.gbw_json_files:
@@ -252,7 +281,10 @@ class Output:
 
         # // read the GBW files
         self.gbw_json_data = self._process_json_files(self.gbw_json_files, continue_on_error=True)
-        self.results_gbw = [GbwResults(**data) for data in self.gbw_json_data]
+        self.results_gbw = [
+            GbwResults.model_validate(data, context={"strict": strict})
+            for data in self.gbw_json_data
+        ]
 
     @property
     def gbw_json_files(self) -> tuple[Path, ...]:
@@ -386,27 +418,13 @@ class Output:
         assert self.results_gbw
         for i, gbw_json_file in enumerate(self.gbw_json_files):
             redumped_gbw_json_file = gbw_json_file.with_suffix(".interface.json")
-            self._dump_json(self.results_gbw[i], redumped_gbw_json_file)
+            # > Keeping the empty fields, as they show what could not be parsed
+            self.results_gbw[i].to_json_file(redumped_gbw_json_file, exclude_none=False)
 
         assert self.property_json_file
         assert self.results_properties
         redumped_property_json_file = self.property_json_file.with_suffix(".interface.json")
-        self._dump_json(self.results_properties, redumped_property_json_file)
-
-    def _dump_json(self, result: GbwResults | PropertyResults, json_file: Path, /) -> None:
-        """
-        Dump `GbwResults` or `PropertyResults` to a JSON file.
-
-        Parameters
-        ----------
-        result : GbwResults | PropertyResults
-            Results to be dumped.
-        json_file : Path
-            Path to JSON file to be written.
-        """
-
-        json_string: str = result.model_dump_json(indent=2)
-        json_file.write_text(json_string)
+        self.results_properties.to_json_file(redumped_property_json_file, exclude_none=False)
 
     def collect_gbw_json_files(self) -> None:
         """
@@ -512,6 +530,80 @@ class Output:
         if not basename:
             basename = self.basename
         return self.working_dir / (basename + suffix)
+
+    def _delete_files(self, basename: str | None = None, *, suffixes: Sequence[str] = ()) -> None:
+        """
+        Delete files in `working_dir` belonging to the job with the given basename.
+
+        Parameters
+        ----------
+        basename : str | None, default: None
+            Basename of the job whose files should be deleted.
+            If not given, `self.basename` is used.
+        suffixes : Sequence[str] | None, default: None
+            If given, treated as glob patterns matched against `{basename}*{suffix}`;
+            only matching files are deleted.
+            If None, all files matching the basename are deleted.
+
+        Raises
+        ------
+        ValueError
+            If no basename is available or if the basename contains path separators.
+        """
+        basename = basename if basename else self.basename
+        # > Check whether there is a basename native to the `Output` instance if no basename given
+        if not basename:
+            raise ValueError("No basename specified")
+
+        # > Check to ensure `basename` is not a file path
+        if len(Path(basename).parts) > 1:
+            raise ValueError(f"Basename must not contain path separators: {basename!r}")
+
+        files: Iterable[Path]
+        # > If no suffixes are given , collect all files with either given or existing basename
+        if not suffixes:
+            files = self.working_dir.glob(f"{basename}*")
+        else:
+            # > If suffixes are given, collect all files that contain both the basename and the suffix
+            files = (
+                file
+                for suffix in suffixes
+                for file in self.working_dir.glob(f"{basename}*{suffix}")
+            )
+
+        # > Delete all collected files
+        for file in files:
+            if file.is_file():
+                file.unlink(missing_ok=True)
+
+    def cleanup_files(self, basename: str | None = None) -> None:
+        """
+        Delete all files in `working_dir` belonging to the job with the given basename. This will also include files which have the
+        same basename with additional labels, for example, if the basename is `job` and there exists files with basename 'job_1',
+        the files will be deleted.
+
+        Parameters
+        ----------
+        basename : str | None, default: None
+            Basename of the job whose files should be deleted.
+            If not given, `self.basename` is used.
+        """
+        self._delete_files(basename)
+
+    def cleanup_temp_files(self, basename: str | None = None) -> None:
+        """
+        Delete temporary files in `working_dir` belonging to the job with the given basename.This will also include files which have the
+        same basename with additional labels, for example, if the basename is `job` and there exists files with basename 'job_1',
+        the files will be deleted.
+
+        Parameters
+        ----------
+        basename : str | None, default: None
+            Basename of the job whose temporary files should be deleted.
+            If not given, `self.basename` is used.
+        """
+        temp_file_suffixes: tuple[str, ...] = (".tmp", ".proc", ".tmp.*", ".proc.*")
+        self._delete_files(basename, suffixes=temp_file_suffixes)
 
     def _get_version(self) -> "OrcaVersion":
         """Gets the ORCA version from the property-JSON file."""
@@ -687,8 +779,8 @@ class Output:
 
         Returns
         -------
-        list[str] | None
-            List of error message strings if any errors were detected, else None.
+        list[str]
+            List of error message strings if any errors were detected, else an empty list.
         """
         outfile = self.get_outfile()
         try:
@@ -703,8 +795,8 @@ class Output:
 
         Returns
         -------
-        str | None
-            Error message string if an error was detected, else None.
+        str
+            Error message string if an error was detected, else an empty string.
         """
         outfile = self.get_outfile()
         try:
@@ -763,6 +855,19 @@ class Output:
             True if "HURRAY" is found in ".out" file else False
         """
         return self._has(has_geometry_optimization_converged)
+
+    def neb_converged(self) -> bool:
+        """
+        Determine if an ORCA NEB optimization converged, by looking for "H U R R A Y" in the ".out" file.
+        Check only if an ORCA NEB optimization was actually requested.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if "H U R R A Y" is found in ".out" file else False
+        """
+        return self._has(has_neb_converged)
 
     def print_graph(self, *, max_length: int = 3, depth: int = -1) -> None:
         """
@@ -1087,9 +1192,17 @@ class Output:
         else:
             return None
 
-    def get_charge(self) -> StrictInt | None:
+    def get_charge(self, *, fallback: bool = True) -> StrictInt | None:
         """
-        Get the molecular charge from the json properties file.
+        Get the molecular charge.
+
+        Parameters
+        ----------
+        fallback : bool, default: True
+            If True and the JSON output is unavailable, attempt to parse the charge from the
+            plain-text `.out` file by grepping for "Total Charge           Charge".
+            This line is present in standard ORCA output but not for external methods
+            such as GFN-FF, where None is returned.
 
         Returns
         -------
@@ -1098,13 +1211,27 @@ class Output:
         charge = self._safe_get("results_properties", "calculation_info", "charge")
 
         if charge is not None:
-            charge = cast(StrictInt, charge)
+            return cast(StrictInt, charge)
 
-        return charge
+        if not fallback:
+            return None
 
-    def get_mult(self) -> StrictPositiveInt | None:
+        raw = get_float_from_line(
+            self.get_outfile(), "Total Charge           Charge", 0, -1, strict=False
+        )
+        return int(raw) if raw is not None else None
+
+    def get_mult(self, *, fallback: bool = True) -> StrictPositiveInt | None:
         """
-        Get the molecular electron multiplicity from the json properties file.
+        Get the molecular electron multiplicity.
+
+        Parameters
+        ----------
+        fallback : bool, default: True
+            If True and the JSON output is unavailable, attempt to parse the multiplicity
+            from the plain-text `.out` file by grepping for "Multiplicity           Mult".
+            This line is present in standard ORCA output but not for external methods
+            such as GFN-FF, where None is returned.
 
         Returns
         -------
@@ -1113,9 +1240,15 @@ class Output:
         mult = self._safe_get("results_properties", "calculation_info", "mult")
 
         if mult is not None:
-            mult = cast(StrictPositiveInt, mult)
+            return cast(StrictPositiveInt, mult)
 
-        return mult
+        if not fallback:
+            return None
+
+        raw = get_float_from_line(
+            self.get_outfile(), "Multiplicity           Mult", 0, -1, strict=False
+        )
+        return int(raw) if raw is not None else None
 
     def get_nelectrons(
         self, *, spin_resolved: bool = False
@@ -1180,7 +1313,25 @@ class Output:
 
         return nbf
 
-    def get_final_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
+    def get_timings(self) -> CalculationTiming | None:
+        """
+        Get the timings (in seconds) of the individual calculation steps and their total.
+
+        Returns
+        -------
+        timings : CalculationTiming | None
+            Timings of the calculation or None if the output contains none.
+        """
+        timings = self._safe_get("results_properties", "calculation_timings")
+
+        if timings is not None:
+            timings = cast(CalculationTiming, timings)
+
+        return timings
+
+    def get_final_energy(
+        self, *, index: int = -1, fallback: bool = True
+    ) -> StrictFiniteFloat | None:
         """
         Easy access to the final single point energy.
 
@@ -1189,6 +1340,9 @@ class Output:
         index : int, default: -1
             Index of the geometry for which the energy should be returned. The default -1 refers to the final geometry.
             Silently ignores if the requested index is not available and returns None.
+        fallback : bool, default: True
+            If True and the JSON output is unavailable, attempt to parse the energy from the plain-text
+            `.out` file by grepping for "FINAL SINGLE POINT ENERGY".
 
         Returns
         ----------
@@ -1203,8 +1357,14 @@ class Output:
 
         if final_energy is not None:
             final_energy = cast(StrictFiniteFloat, final_energy)
+            return final_energy
 
-        return final_energy
+        if not fallback:
+            return None
+
+        return get_float_from_line(
+            self.get_outfile(), "FINAL SINGLE POINT ENERGY", index, -1, strict=False
+        )
 
     def get_energies(self, *, index: int = -1) -> dict[str, Energy] | None:
         """
@@ -1232,6 +1392,15 @@ class Output:
             - **CASSCF**      : CASSCF energy.
             - **MP2**         : MP2 energy.
             - **TDA/CIS**     : TDA-TD-DFT or CIS energy.
+
+        The keys are the names that ORCA gives the energy types, so plain strings are the natural
+        way to look an energy up. For reference, `EnergyType` enumerates and documents the known
+        names; as its members are plain strings, they can be used for the lookup as well, e.g.
+        `output.get_energies()[EnergyType.MDCI_SD_T]`.
+
+        Only the energies of ORCA's energy list are reported here. The corrections that ORCA adds on
+        top of them, e.g. the dispersion correction, are included by
+        `Output.get_final_energy_components()`.
         """
 
         # > Energy dict to populate & return
@@ -1246,20 +1415,183 @@ class Output:
             return None
 
         for energy in energy_list:
-            if not energy.method:
-                key = "Unknown"
-            else:
-                key = energy.method
+            base_key = energy.method if energy.method else "Unknown"
+            key = base_key
             # > Add index at the end if multiple energies of the same type are present
-            index = 1
+            counter = 1
             while key in energy_dict:
-                key = f"{key}_{index}"
-                index += 1
+                key = f"{base_key}_{counter}"
+                counter += 1
             energy_dict[key] = energy
 
         return energy_dict
 
-    def get_gradient(self, *, index: int = -1) -> list[StrictFiniteFloat] | None:
+    def get_final_energy_components(self, *, index: int = -1) -> dict[str, Energy] | None:
+        """
+        Return a dictionary with all energy components that contribute to the final energy of the
+        geometry at a given index, i.e. the energies of `Output.get_energies()` plus the corrections
+        that ORCA adds on top of the total energy of the electronic structure method.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the energy components should be returned. The default -1 refers
+            to the final geometry. Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        -------
+        dict[str, Energy] | None
+            Dictionary where the keys identify the energy component, following the conventions of
+            `Output.get_energies()`. None if the output contains no energy component for the requested index.
+
+        Notes
+        -----
+        On top of the keys of `Output.get_energies()`, the corrections that ORCA reports outside of
+        its energy list are included:
+            - **VdW** : Dispersion correction (e.g. D3 or D4).
+            - **gCP** : Geometrical counterpoise correction. ORCA reports the plain gCP correction
+              (e.g. r2SCAN-3c), the combined gCP+basis set correction (e.g. HF-3c) and the
+              short-range basis (SRB) correction (e.g. B97-3c) in the same field, so all of them
+              show up under this key.
+
+        The corrections are wrapped into `Energy` objects carrying only the method and the energy
+        itself, so their value is accessed the same way as for the other entries, i.e. via the
+        `Energy.energy` property. Everything else that ORCA reports about them is available from
+        `Output.get_vdw_correction()` and `Output.get_gcp_correction()`.
+
+        Adding the corrections to the total energy of the highest-level method present yields
+        `Output.get_final_energy()`. Mind that the energies of the lower-level methods are listed as
+        well (e.g. `SCF` next to `MP2`), hence summing up all entries generally does not give the
+        final energy. For excited-state methods like EOM-CCSD, ORCA reports the first excited
+        state as the final energy, no matter how many roots were calculated, while the components
+        refer to the ground state, so they add up to the ground state and the excitation energy of
+        the first root is missing from them.
+
+        Not every energy that ORCA can report shows up here: methods whose results are not modelled
+        as an `Energy` have their own getters, namely `Output.get_rocis_energies()` and
+        `Output.get_cipsi_energies()`.
+        """
+
+        # > Energies of ORCA's energy list, the corrections are added on top of them
+        energy_components: dict[str, Energy] = self.get_energies(index=index) or {}
+
+        # > Add the corrections that ORCA reports outside of the energy list. Only the correction
+        # > itself is carried over, the full models are returned by their own getters.
+        vdw_correction = self.get_vdw_correction(index=index)
+        gcp_correction = self.get_gcp_correction(index=index)
+        corrections: tuple[tuple[str, StrictFiniteFloat | None], ...] = (
+            ("VdW", vdw_correction.vdw if vdw_correction is not None else None),
+            ("gCP", gcp_correction.gcp_energy if gcp_correction is not None else None),
+        )
+        for key, correction in corrections:
+            if correction is None:
+                continue
+            energy_components[key] = Energy(method=key, totalenergy=[[correction]])
+
+        return energy_components or None
+
+    def get_vdw_correction(self, *, index: int = -1) -> VdwCorrection | None:
+        """
+        Easy access to the dispersion correction (in Eh).
+        Requires a method with a dispersion correction (e.g. D3, D4 or a composite method).
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the correction should be returned. The default -1 refers to
+            the final geometry. Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        -------
+        VdwCorrection | None
+            Returns the dispersion correction, which contains the correction itself and, if requested,
+            its atomic decomposition (ADLD), or None if the ORCA output does not contain it for the
+            requested index.
+        """
+        vdw_correction = self._safe_get("results_properties", "geometries", index, "vdw_correction")
+
+        if vdw_correction is not None:
+            vdw_correction = cast(VdwCorrection, vdw_correction)
+
+        return vdw_correction
+
+    def get_gcp_correction(self, *, index: int = -1) -> GcpEnergy | None:
+        """
+        Easy access to the geometrical counterpoise correction (in Eh).
+        Requires a method with a gCP correction (e.g. a composite method like r2SCAN-3c).
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the correction should be returned. The default -1 refers to
+            the final geometry. Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        -------
+        GcpEnergy | None
+            Returns the gCP correction, which also covers the gCP+basis set correction of HF-3c and the
+            SRB correction of B97-3c, or None if the ORCA output does not contain it for the requested
+            index.
+        """
+        gcp_correction = self._safe_get("results_properties", "geometries", index, "gcp_energy")
+
+        if gcp_correction is not None:
+            gcp_correction = cast(GcpEnergy, gcp_correction)
+
+        return gcp_correction
+
+    def get_rocis_energies(self, *, index: int = -1) -> RoCisEnergy | None:
+        """
+        Easy access to the energies (in Eh) of a restricted open-shell CI calculation.
+        Requires a ROCIS calculation.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the energies should be returned. The default -1 refers to
+            the final geometry. Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        -------
+        RoCisEnergy | None
+            Returns the ROCIS energies, which contain the total energy of the lowest root, the
+            reference and correlation energy and the energies of all roots, or None if the ORCA
+            output does not contain them for the requested index.
+        """
+        rocis_energies = self._safe_get("results_properties", "geometries", index, "rocis_energies")
+
+        if rocis_energies is not None:
+            rocis_energies = cast(RoCisEnergy, rocis_energies)
+
+        return rocis_energies
+
+    def get_cipsi_energies(self, *, index: int = -1) -> CiPsi | None:
+        """
+        Easy access to the energies (in Eh) of an iterative CI calculation.
+        Requires an ICE-CI/CIPSI calculation (`%ice` block).
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the energies should be returned. The default -1 refers to
+            the final geometry. Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        -------
+        CiPsi | None
+            Returns the CIPSI energies, which contain the final energy and the energies of all
+            roots, or None if the ORCA output does not contain them for the requested index.
+        """
+        cipsi_energies = self._safe_get("results_properties", "geometries", index, "cipsi_energies")
+
+        if cipsi_energies is not None:
+            cipsi_energies = cast(CiPsi, cipsi_energies)
+
+        return cipsi_energies
+
+    def get_gradient(
+        self, *, index: int = -1, fallback: bool = True
+    ) -> list[StrictFiniteFloat] | None:
         """
         Easy access to the nuclear gradient
 
@@ -1271,6 +1603,9 @@ class Output:
             geometry, so the default index will return None. You can request the gradient for the structure one step
             before the final one with the index -2. For most intents and purposes, the last and second to last
             geometries, energies and gradients are the same within the given tolerances.
+        fallback : bool, default: True
+            If True and the JSON output is unavailable, attempt to parse the gradient from the plain-text
+            `.out` file by grepping for "CARTESIAN GRADIENT".
 
         Returns
         ----------
@@ -1290,11 +1625,16 @@ class Output:
                 gradient,
             )
             flat = [inner[0] for inner in gradient]
-            gradient = flat
+            return flat
 
-        return gradient
+        if not fallback:
+            return None
 
-    def get_structure(self, *, index: int = -1, with_fragments: bool = True) -> Structure | None:
+        return self._grep_gradient(index)
+
+    def get_structure(
+        self, *, index: int = -1, with_fragments: bool = True, fallback: bool = True
+    ) -> Structure | None:
         """
         Returns structure from ORCA job as Structure object (by default the final structure).
         Silently returns None of no structure is available.
@@ -1305,6 +1645,10 @@ class Output:
             index of geometry to return. The default -1 refers to the final geometry.
         with_fragments : bool, default: True
             whether the fragment IDs should be added as well to the structure (if available)
+        fallback : bool, default: True
+            If True and the JSON output is unavailable, attempt to parse the structure from the plain-text
+            `.out` file by grepping for "CARTESIAN COORDINATES (ANGSTROEM)". This is useful for recovering
+            structures from failed or incomplete geometry optimisations where no JSON was written.
 
         Returns
         ----------
@@ -1317,7 +1661,9 @@ class Output:
         cartesians = self._get_cartesians(index)
 
         if cartesians is None:
-            return None
+            if not fallback:
+                return None
+            return self._grep_structure(index)
 
         for line in cartesians:
             elem, x_au, y_au, z_au = line
@@ -1349,6 +1695,36 @@ class Output:
         if mult is not None:
             structure.multiplicity = mult
         return structure
+
+    def get_structure_from_gbw(self, *, index: int = 0) -> Structure | None:
+        """
+        Returns the structure stored in a gbw file as `Structure` object.
+        Silently returns None if no structure is available.
+
+        In contrast to `get_structure()`, which reads the geometry from the property JSON, this
+        getter uses the gbw JSON. It therefore offers no fragment IDs and no `.out` file fallback,
+        but it does distinguish ghost atoms from real ones.
+
+        Parameters
+        ----------
+        index : int, default: 0
+            Index (>= 0) of the gbw file in `self.results_gbw`. The default 0 refers to the main
+            gbw file.
+
+        Returns
+        ----------
+        structure: Structure | None
+            Structure generated from the gbw data or None if no structure is available.
+        """
+        results_gbw = self._safe_get("results_gbw", index)
+        if results_gbw is None:
+            return None
+
+        try:
+            return cast(GbwResults, results_gbw).get_structure()
+        except ValueError:
+            # > `GbwResults.get_structure()` raises on malformed atom data
+            return None
 
     def _get_cartesians(
         self, index: int, /
@@ -1405,6 +1781,82 @@ class Output:
             )
 
         return fragments
+
+    def _grep_structure(self, index: int, /) -> Structure | None:
+        """Parse structure from "CARTESIAN COORDINATES (ANGSTROEM)" block in the .out file."""
+        # > Get geometry block in the output file
+        lines = get_lines_from_block(
+            self.get_outfile(),
+            "CARTESIAN COORDINATES (ANGSTROEM)",
+            index=index,
+            offset=2,
+        )
+
+        # > If we found nothing we return None
+        if not lines:
+            return None
+
+        # > Collect the atoms from the block
+        atoms: list[Atom] = []
+        for line in lines:
+            parts = line.split()
+            if len(parts) != 4:
+                continue
+            try:
+                elem = parts[0]
+                x, y, z = float(parts[1]), float(parts[2]), float(parts[3])
+            except ValueError:
+                continue
+            atoms.append(Atom(element=elem, coordinates=Coordinates((x, y, z))))
+
+        # > If no atoms were collected return None
+        if not atoms:
+            return None
+
+        # > Assemble the structure
+        structure = Structure(atoms)
+
+        # > Add molecular charge if present
+        charge = self.get_charge()
+        if charge is not None:
+            structure.charge = charge
+
+        # > Add molecular multiplicity if present
+        mult = self.get_mult()
+        if mult is not None:
+            structure.multiplicity = mult
+
+        return structure
+
+    def _grep_gradient(self, index: int, /) -> list[StrictFiniteFloat] | None:
+        """Parse gradient from "CARTESIAN GRADIENT" block in the .out file (Eh/Bohr)."""
+        # > Get gradient block from the output file
+        lines = get_lines_from_block(
+            self.get_outfile(),
+            "CARTESIAN GRADIENT",
+            index=index,
+            offset=3,
+        )
+
+        # > Return None if no block was found
+        if not lines:
+            return None
+
+        # > Collect gradient line by line
+        gradient: list[StrictFiniteFloat] = []
+        for line in lines:
+            parts = line.split()
+            # format: "1  O  :  x  y  z"
+            if len(parts) < 6 or parts[2] != ":":
+                continue
+            try:
+                x, y, z = float(parts[3]), float(parts[4]), float(parts[5])
+            except ValueError:
+                continue
+            gradient.extend(cast(list[StrictFiniteFloat], [x, y, z]))
+
+        # > Return gradient or None
+        return gradient if gradient else None
 
     def get_mos(self, gbw_index: int = 0) -> dict[str, list[MO]] | None:
         """
@@ -2067,6 +2519,115 @@ class Output:
         else:
             return None
 
+    def get_frequencies(
+        self, *, index: int = -1, threshold: float | None = None
+    ) -> dict[int, float] | None:
+        """
+        Returns all vibrational frequencies (in cm⁻¹). Requires a frequency calculation (FREQ or NUMFREQ).
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the frequencies should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            frequencies are only available for the final geometry.
+        threshold : float | None, default: None
+            Frequencies more negative than ``-threshold`` (in cm⁻¹) are returned.
+            If threshold is None no frequencies will be sorted out.
+
+        Returns
+        ----------
+        frequencies : dict[int, float] | None
+            Dictionary mapping 1-based mode index to vibrational frequency in cm⁻¹, or None if no frequency
+            data is found.
+        """
+        # > "thermochemistry_energies" contains a list, but there should always be only one index
+        freq_list = self._safe_get(
+            "results_properties", "geometries", index, "thermochemistry_energies", 0, "freq"
+        )
+
+        if freq_list is None:
+            return None
+
+        freq_list = cast(list[list[float]], freq_list)
+
+        return {
+            i + 1: inner[0]
+            for i, inner in enumerate(freq_list)
+            if threshold is None or inner[0] < -threshold
+        }
+
+    def get_imaginary_frequencies(self, *, threshold: float = 0.0) -> dict[int, float] | None:
+        """
+        Returns only the imaginary (negative) vibrational frequencies (in cm⁻¹). Requires a frequency
+        calculation (FREQ or NUMFREQ).
+
+        threshold : float, default: 0.0
+            Frequencies more negative than ``-threshold`` (in cm⁻¹) are considered imaginary.
+            A positive threshold ignores small negative frequencies that may arise from numerical
+            noise, e.g. a threshold of 50.0 treats any frequency above -50.0 cm⁻¹ as real.
+
+        Returns
+        ----------
+        imaginary_frequencies : dict[int, float] | None
+            Dictionary mapping 1-based mode index to imaginary frequency in cm⁻¹. Returns None if no frequency
+            data is present, and an empty dict if all frequencies are real.
+        """
+        return self.get_frequencies(threshold=threshold)
+
+    def is_pes_minimum(self, *, threshold: float = 0.0) -> bool | None:
+        """
+        Returns True if the structure is a PES minimum, i.e. all vibrational frequencies are real
+        within the given threshold. Requires a frequency calculation (FREQ or NUMFREQ).
+
+        Parameters
+        ----------
+        threshold : float, default: 0.0
+            Frequencies more negative than ``-threshold`` (in cm⁻¹) are considered imaginary.
+            A positive threshold ignores small negative frequencies that may arise from numerical
+            noise, e.g. a threshold of 50.0 treats any frequency above -50.0 cm⁻¹ as real.
+
+        Returns
+        ----------
+        is_minimum : bool | None
+            True if no frequency lies below ``-threshold``, False if at least one does, or None
+            if no frequency data is available.
+        """
+        imaginary_frequencies = self.get_imaginary_frequencies(threshold=threshold)
+
+        if imaginary_frequencies is None:
+            return None
+
+        # > Minimum if no imaginary_frequency is present
+        return not bool(imaginary_frequencies)
+
+    def is_pes_transition_state(self, *, threshold: float = 0.0) -> bool | None:
+        """
+        Returns True if the structure is a first-order saddle point (transition state), i.e.
+        exactly one vibrational frequency lies below ``-threshold``. Requires a frequency calculation
+        (FREQ or NUMFREQ).
+
+        Parameters
+        ----------
+        threshold : float, default: 0.0
+            Frequencies more negative than ``-threshold`` (in cm⁻¹) are considered imaginary.
+            A positive threshold ignores small negative frequencies that may arise from numerical
+            noise, e.g. a threshold of 50.0 treats any frequency above -50.0 cm⁻¹ as real.
+
+        Returns
+        ----------
+        is_transition_state : bool | None
+            True if exactly one frequency lies below ``-threshold``, False otherwise, or None
+            if no frequency data is available.
+        """
+        imaginary_frequencies = self.get_imaginary_frequencies(threshold=threshold)
+
+        if imaginary_frequencies is None:
+            return None
+
+        # > Transition state if only one imaginary mode is present
+        return len(imaginary_frequencies) == 1
+
     def recreate_gbw_results(self, config_dict: dict[str, Any], gbw_index: int = 0, /) -> None:
         """
         Function for recreating a specific gbw-JSON file with a config dict. Silently does nothing if `gbw_index` is
@@ -2479,3 +3040,33 @@ class Output:
         except (KeyError, IndexError):
             return None
         return float(free_solv_energy)
+
+    def get_fcidump(self) -> Fcidump | None:
+        """
+        Parse the FCIDUMP file generated by ORCA and return its data in the `Fcidump` data class.
+        The FCIDUMP file has to be generated by the ORCA job and cannot be generated on-the-fly after the calculation.
+        To generate FCIDUMP files, set the following options:
+        ```
+        %output
+           dumpactints true
+        end
+        ```
+        See `BlockOutput` for the related block option.
+
+        Returns
+        -------
+        fcidump_data: Fcidump | None
+            The parsed FCIDUMP data or None if the file is not present or could not be parsed.
+        """
+
+        # > Get path to the FCIDUMP file
+        fci_path = self.get_file(".fcidump")
+
+        # > If there is no file we return None
+        if not fci_path.is_file():
+            return None
+
+        try:
+            return Fcidump.from_file(fci_path)
+        except ValueError:
+            return None

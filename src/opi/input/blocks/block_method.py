@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from opi.input.blocks import Block
+from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputFilePath
 
 __all__ = ("BlockMethod",)
@@ -54,7 +54,7 @@ class ExternalParam(BaseModel):
         return "\n".join(lines)
 
 
-class BlockMethod(Block):
+class BlockMethod(BlockABC):
     """Class to model %method block in ORCA"""
 
     _name: str = "Method"

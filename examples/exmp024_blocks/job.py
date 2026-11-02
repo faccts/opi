@@ -49,9 +49,9 @@ def run_exmp024(
 
     # add block, get it, modify it, and add it back to the Calculator
     calc.input.add_blocks(BlockMethod(d3s6=0.64, d3a1=0.3065, d3s8=0.9147, d3a2=5.0570))
-    block = calc.input.get_blocks(BlockMethod)
-    # modify the %method block
-    block[BlockMethod].d3s6 = 0.4
+    method_block = calc.input.get_block("method")
+    # modify the %method block, which is keyed by its ORCA block name
+    method_block.d3s6 = 0.4
     calc.write_input()
     calc.run()
 

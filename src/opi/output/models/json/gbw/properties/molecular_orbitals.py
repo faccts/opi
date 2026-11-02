@@ -1,4 +1,4 @@
-from pydantic import StrictStr
+from pydantic import Field, StrictStr
 
 from opi.output.models.base.get_item import GetItem
 from opi.output.models.json.gbw.properties.mo import MO
@@ -18,6 +18,6 @@ class MolecularOrbitals(GetItem):
         Orbital label of each orbital
     """
 
-    energyunit: StrictStr | None = None
-    mos: list[MO] | None = None
-    orbitallabels: list[StrictStr] | None = None
+    energyunit: StrictStr | None = Field(default=None, serialization_alias="EnergyUnit")
+    mos: list[MO] | None = Field(default=None, serialization_alias="MOs")
+    orbitallabels: list[StrictStr] | None = Field(default=None, serialization_alias="OrbitalLabels")
