@@ -5,12 +5,20 @@ At the end of the file the list of ErrorPatterns is found that is used to genera
 
 from opi.output.grepper.error_pattern import (
     ErrorPattern,
+    ErrorTerminationError,
     InvalidLineError,
+    MdciPairsError,
+    MissingBasisError,
+    MissingSharedLibraryError,
+    MpiProcessAbortError,
+    MultiplicityError,
     NotEnoughMemoryScfError,
     SimpleKeywordsError,
     UnknownBlockError,
     UnknownBlockKeyError,
     UnknownBlockValueError,
+    XyzSyntaxError,
+    ZeroDistanceError,
 )
 
 # > Success strings - String that indicate something finished with success
@@ -67,22 +75,30 @@ OOM_ERROR = ErrorPattern(
     "Calculation ran out of memory",
     critical=True,
 )
-MDCI_ERROR = ErrorPattern(
-    "ORCA finished by error termination in MDCI",
-    "Error in MDCI part of the calculation",
+NO_VIRTUALS_ERROR = ErrorPattern(
+    "Cannot do Coupled Cluster calculations without virtuals",
+    "No virtual orbitals available for the coupled-cluster calculation. Choose a larger basis set",
     critical=True,
 )
-MP2_ERROR = ErrorPattern(
-    "ORCA finished by error termination in MP2",
-    "Error in MP2 part of the calculation",
+MOINP_GEOMETRY_ERROR = ErrorPattern(
+    "Error: Input geometry does not match current geometry",
+    "The geometry of the orbitals read in with `moinp` does not match the current geometry",
     critical=True,
 )
-MPI_ERROR = ErrorPattern(
-    "-" * 74,
-    "Potentially an Open MPI related error occurred.",
-    critical=False,
+# > Open MPI and dynamic linker messages are written to stderr and never reach the ".out" file.
+MPIRUN_NOT_FOUND_ERROR = ErrorPattern(
+    "mpirun: not found",
+    "Could not find `mpirun`. Check your Open MPI installation",
+    critical=True,
+    stderr=True,
 )
-ABORTING_ERROR = ErrorPattern("ABORTING THE RUN", "ORCA aborted the run")
+MPI_SLOTS_ERROR = ErrorPattern(
+    "There are not enough slots available in the system",
+    "Not enough Open MPI slots available for the requested number of processes",
+    critical=True,
+    stderr=True,
+)
+ABORTING_ERROR = ErrorPattern("aborting the run", "ORCA aborted the run", case_sensitive=False)
 GENERIC_ERROR = ErrorPattern("ERROR", "ORCA encountered an error")
 
 # > Error patterns in order of priority.
@@ -96,6 +112,10 @@ ERROR_PATTERNS: list[ErrorPattern] = [
     UnknownBlockKeyError(),  # critical
     UnknownBlockError(),  # critical
     NO_COORDS_ERROR,  # critical
+    XyzSyntaxError(),  # critical
+    MultiplicityError(),  # critical
+    ZeroDistanceError(),  # critical
+    MissingBasisError(),  # critical
     # > Critical convergence errors
     CPSCF_NOT_CONVERGED_ERROR,  # critical
     CC_NOT_CONVERGED_ERROR,  # critical
@@ -104,14 +124,24 @@ ERROR_PATTERNS: list[ErrorPattern] = [
     NotEnoughMemoryScfError(),  # critical
     TRIPLES_OOM_ERROR,  # critical
     OOM_ERROR,  # critical
-    # > Module terminates not normally
-    MDCI_ERROR,  # critical
-    MP2_ERROR,  # critical
-    # > non-critical convergence errors
+    # > Critical setup errors of correlated methods
+    NO_VIRTUALS_ERROR,  # critical
+    MdciPairsError(),  # critical
+    # > Orbitals read in with `moinp` do not fit the calculation
+    MOINP_GEOMETRY_ERROR,  # critical
+    # > Open MPI and dynamic linker errors, searched in the ".err" file
+    MPIRUN_NOT_FOUND_ERROR,  # critical
+    MissingSharedLibraryError(),  # critical
+    MPI_SLOTS_ERROR,  # critical
+    # > non-critical convergence errors. Checked before the generic error termination below,
+    # > which is less specific.
     OPT_NOT_CONVERGED_ERROR,  # non-critical: scan continues
     CIS_TDA_NOT_CONVERGED_ERROR,  # non-critical: scan continues
-    # > Potentially MPI related error
-    MPI_ERROR,  # non-critical: scan continues
+    # > Any module that terminates not normally. Reported before the MPI process abort below,
+    # > as it names the failing ORCA module, while the abort gives the signal as the cause.
+    ErrorTerminationError(),  # non-critical: scan continues
+    # > MPI process killed by a signal
+    MpiProcessAbortError(),  # critical
     # > Unspecific errors
     ABORTING_ERROR,  # non-critical: scan continues
     GENERIC_ERROR,  # non-critical: scan continues

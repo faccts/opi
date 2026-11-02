@@ -234,7 +234,7 @@ class Calculator:
                 # ---------------------------------
                 if self.structure:
                     if isinstance(self.structure, BaseStructureFile):
-                        inp.write(f"{self.structure.format_orca(self.working_dir)} ")
+                        inp.write(f"{self.structure.format_orca(self.working_dir)}\n")
                     else:
                         inp.write(f"\n{self.structure.format_orca()}\n")
 
