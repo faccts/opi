@@ -366,6 +366,21 @@ class ErrorTerminationError(ErrorPattern):
     failures that no more specific pattern above has already explained.
     Not critical, so that the cause of the termination, e.g. an MPI process killed by a signal,
     can still be reported after it.
+
+    The failing module is the word that follows "in" in the line ORCA writes.
+    If no module follows "in", the generic message is returned.
+
+    Example
+    -------
+        Line in the ".out" file:
+            ORCA finished by error termination in LEANSCF
+        Message:
+            Error in LEANSCF part of the calculation
+
+        Line in the ".out" file:
+            ORCA finished by error termination in MP2
+        Message:
+            Error in MP2 part of the calculation
     """
 
     grep_string = "ORCA finished by error termination in"
@@ -377,5 +392,5 @@ class ErrorTerminationError(ErrorPattern):
         match = grepper.search(self.grep_string, case_sensitive=True)
         if not match:
             return ""
-        module = match[0].split()[-1]
-        return f"Error in {module} part of the calculation" if module else self.message
+        m = re.search(r"error termination in (\S+)", match[0])
+        return f"Error in {m.group(1)} part of the calculation" if m else self.message
