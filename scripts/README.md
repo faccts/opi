@@ -39,11 +39,12 @@ uv run nox -s all_notebooks                # the whitelist; takes no arguments
 
 A name is the notebook's stem (`how_to_opi`, not `how_to_opi.ipynb`); a path works too.
 A notebook named on the command line runs whether or not it is whitelisted, so the ones
-commented out below can still be tried by hand.
+left off the whitelist can still be tried by hand.
 
-The session installs the `notebooks` dependency group (`nbclient`, `nbformat`,
-`ipykernel`, and `pip`, which uv-created environments otherwise lack) into `.nox/notebooks`
-and runs the notebooks in it.
+The session installs OPI and the `notebooks` dependency group into `.nox/notebooks` and
+runs the notebooks in it. The group holds `nbclient`, `nbformat`, `nbconvert` and
+`ipykernel`; `pip`, which uv-created environments otherwise lack; and what the whitelisted
+notebooks install for themselves (`matplotlib`, `numpy`, `pandas`, `py3dmol`, `seaborn`).
 
 That environment is also where the notebooks put their own dependencies. Most of them
 open with a cell along the lines of
@@ -53,23 +54,27 @@ open with a cell along the lines of
 ```
 
 and `sys.executable` is the kernel's interpreter, which is the one running the session --
-so those packages land in `.nox/notebooks/lib/python3.*/site-packages`, next to the group
-above, and never in your own environment. They do not accumulate: the `uv sync` at the
-start of the next session removes whatever is not in the lock file, so each run starts
-from the same place and re-installs what it needs.
+so whatever those cells install lands in `.nox/notebooks/lib/python3.*/site-packages`,
+next to the group above, and never in your own environment. For the whitelisted notebooks
+the group has it all installed already, but `--upgrade` still asks PyPI and pulls a
+release newer than `uv.lock` if there is one: nothing keeps `pip` offline. None of it
+accumulates: the `uv sync` at the start of the next session puts the locked versions back
+and removes whatever is not in the lock file, so each run starts from the same place.
 
 ## The whitelist
 
 `WHITELIST` at the top of `scripts/run_notebooks.py` is the one place that decides what
 "all of them" means. A notebook that cannot run unattended — one that needs a GPU, a
-licence or more patience than a sweep has — is commented out there, with the reason.
-A whitelisted notebook that no longer exists is an error, not a silent skip.
+licence or more patience than a sweep has — is left off it. `nox -s notebooks -- --list`
+prints what is on it. A whitelisted notebook that no longer exists is an error, not a
+silent skip.
 
 ## Timeouts
 
-A notebook gets 45 minutes of wall clock, and no single cell more than 30 minutes;
+A notebook gets 60 minutes of wall clock, and no single cell more than 45 minutes;
 whichever comes first ends it. `run_notebooks.py` waits 120 s beyond the notebook's own
-budget, then stops the runner and kills what it left behind (a kernel, an ORCA).
+budget, then asks the runner to stop, gives it 30 s to clean up, and kills whatever is
+left of it (a kernel, an ORCA).
 
 ```bash
 uv run nox -s notebooks -- led --timeout 7200 --cell-timeout 3600
@@ -80,10 +85,12 @@ uv run nox -s notebooks -- led --timeout 7200 --cell-timeout 3600
 Cells are printed as they run, and the run ends with one line per notebook:
 
 ```
-  OK       how_to_opi   4m 12s
-  FAILED   led          1m 03s
-  KILLED   redox       47m 00s
-  3 notebooks: 1 ok, 1 failed, 1 killed -- 52m 15s total
+========================================================================
+  OK       how_to_opi     5.1 s
+  FAILED   led           1m 03s
+  KILLED   redox         1h 02m
+------------------------------------------------------------------------
+  3 notebooks: 1 ok, 1 failed, 1 killed -- 1h 03m total
 ```
 
 `FAILED` means a cell raised (the traceback is above, and execution stopped there rather

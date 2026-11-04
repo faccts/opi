@@ -7,8 +7,8 @@ sources -- with a non-interactive matplotlib backend, in whatever Python environ
 script runs in. Everything the notebook writes is discarded with that directory
 afterwards: the only thing checked here is that every cell terminated normally.
 
-A notebook gets 45 minutes of wall clock in total, and no single cell may run longer
-than 30 minutes. Whichever limit is reached first ends the run.
+A notebook gets 60 minutes of wall clock in total, and no single cell may run longer
+than 45 minutes. Whichever limit is reached first ends the run.
 
 Examples
 --------

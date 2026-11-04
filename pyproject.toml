@@ -121,9 +121,10 @@ notebooks = [
     # > The notebooks themselves run `!{sys.executable} -m pip install ...`.
     # > uv-created environments have no pip, so it has to be an explicit dependency.
     "pip>=25",
-    # > What those cells install, pinned here so that a run never downloads anything that
-    # > is not in uv.lock: `run_notebook.py` sets PIP_NO_INDEX, and the cells find it all
-    # > installed already. A notebook that installs something new must add it here.
+    # > What the whitelisted notebooks' cells install, pinned here so that they find it all
+    # > installed already. Their `--upgrade` still asks PyPI and can pull a newer release;
+    # > the next `uv sync` puts the locked one back. A notebook that installs something new
+    # > should add it here.
     "matplotlib>=3.10,<4",
     "numpy>=2.4,<3",
     "pandas>=3.0,<4",
@@ -156,7 +157,6 @@ markers = [
     "json_files: Export JSON files with --update-json-files",
     "out_files: Export .out fixture files with --update-out-files",
     "simpletasks: simpletasks unit tests",
-    "notebooks: tests that run Jupyter notebooks",
 ]
 
 

@@ -66,7 +66,9 @@ def notebooks(session):
     """
     Execute the documentation notebooks: `nox -s notebooks -- how_to_opi`.
 
-    Without arguments, every notebook in `docs/contents/notebooks/` runs.
+    Without arguments, the whitelist in `scripts/run_notebooks.py` runs, as in
+    `all_notebooks`; `nox -s notebooks -- '*'` runs every notebook in
+    `docs/contents/notebooks/`.
     """
     session.run_install(
         "uv",

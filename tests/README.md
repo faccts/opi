@@ -109,7 +109,8 @@ CI-safe.
 ## The documentation notebooks
 
 The notebooks in `docs/contents/notebooks/` are **not** pytest tests:
-they require ORCA and network access (for `uv sync`), and take hours. They have their own nox sessions:
+they require ORCA and network access (for `uv sync`, and for the `pip install --upgrade`
+cells most of them run), and take hours. They have their own nox sessions:
 
     uv run nox -s notebooks -- --list       # what a sweep would run
     uv run nox -s notebooks -- how_to_opi   # one notebook, by name or glob
