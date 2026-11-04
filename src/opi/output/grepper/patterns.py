@@ -1,9 +1,7 @@
 """
-Contains patterns for ORCA health checks, error checking capabilities, and property retrieval from the ORCA output file.
+Contains patterns for ORCA health checks and error checking capabilities.
 At the end of the file the list of ErrorPatterns is found that is used to generate the output of `get_error_messages`.
 """
-
-import re
 
 from opi.output.grepper.error_pattern import (
     ErrorPattern,
@@ -28,13 +26,6 @@ HAS_GEOMETRY_OPT = "Geometry Optimization Run"
 HAS_SCF = "SCF SETTINGS"
 HAS_FREQ = "VIBRATIONAL FREQUENCIES"
 HAS_ABORTING = "aborting"
-
-# > Coordinate line of the input file as echoed in the output, e.g. "| 10> * xyz 0 1"
-# > Group 1 is the charge, group 2 the multiplicity
-INPUT_COORDS_CHARGE_MULT = re.compile(
-    r"^\|\s*\d+>\s*\*\s*(?:xyz|int|internal|gzmt|xyzfile|gzmtfile|pdbfile)\s+([+-]?\d+)\s+(\d+)",
-    re.IGNORECASE,
-)
 
 # > Named error pattern instances
 NO_COORDS_ERROR = ErrorPattern(
