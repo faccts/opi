@@ -3,9 +3,10 @@
 Execute one Jupyter notebook headlessly and report whether it ran to the end.
 
 The notebook runs in a temporary directory -- so nothing is written next to the notebook
-sources -- with a non-interactive matplotlib backend, in whatever Python environment this
-script runs in. Everything the notebook writes is discarded with that directory
-afterwards: the only thing checked here is that every cell terminated normally.
+sources -- with a non-interactive matplotlib backend and no package index for `pip`, in
+whatever Python environment this script runs in. Everything the notebook writes is
+discarded with that directory afterwards: the only thing checked here is that every cell
+terminated normally.
 
 A notebook gets 60 minutes of wall clock in total, and no single cell may run longer
 than 45 minutes. Whichever limit is reached first ends the run.
@@ -182,6 +183,10 @@ def main(argv: list[str] | None = None) -> int:
 
     # > Headless: no GUI backend, and no plot window waiting for someone to close it.
     os.environ.setdefault("MPLBACKEND", "Agg")
+    # > Offline: the notebooks' `pip install --upgrade` cells find what they need in the
+    # > `notebooks` dependency group, and cannot move past the versions in uv.lock.
+    # > `PIP_NO_INDEX=0` lets them reach PyPI again.
+    os.environ.setdefault("PIP_NO_INDEX", "1")
     # > Whoever stops this run -- `run_notebooks.py`, a batch system -- gets a clean exit.
     signal.signal(signal.SIGTERM, terminate)
 

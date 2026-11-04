@@ -5,8 +5,8 @@ that every cell of a notebook runs to the end without raising. Nothing is assert
 the numbers that come out, and nothing the notebooks write is kept — each one runs in a
 temporary directory that is removed afterwards.
 
-They are **not** pytest tests. They need ORCA, they need network access (most of them
-`pip install` their own extras at runtime), and a full sweep takes hours.
+They are **not** pytest tests. They need ORCA, the session's `uv sync` needs network
+access, and a full sweep takes hours.
 
 Two scripts do the work, and two nox sessions drive them:
 
@@ -55,11 +55,24 @@ open with a cell along the lines of
 
 and `sys.executable` is the kernel's interpreter, which is the one running the session --
 so whatever those cells install lands in `.nox/notebooks/lib/python3.*/site-packages`,
-next to the group above, and never in your own environment. For the whitelisted notebooks
-the group has it all installed already, but `--upgrade` still asks PyPI and pulls a
-release newer than `uv.lock` if there is one: nothing keeps `pip` offline. None of it
-accumulates: the `uv sync` at the start of the next session puts the locked versions back
-and removes whatever is not in the lock file, so each run starts from the same place.
+next to the group above, and never in your own environment.
+
+In practice they install nothing. `run_notebook.py` sets `PIP_NO_INDEX=1`, so `pip`
+cannot reach PyPI, and finds everything the whitelisted notebooks ask for already
+installed from the group, at the version in `uv.lock`. A sweep therefore tests exactly
+what the lock file holds, whatever has been released since. To test a newer release,
+upgrade it in the lock file (`uv lock --upgrade-package pandas`).
+
+A notebook that needs a package the group does not have fails -- not at its `pip` cell,
+since a failed `!` command does not raise, but at the import that follows. Add the package
+to the group, or let that run reach PyPI:
+
+```bash
+PIP_NO_INDEX=0 uv run nox -s notebooks -- chemeleon_orca
+```
+
+Whatever such a run installs does not accumulate: the `uv sync` at the start of the next
+session puts the locked versions back and removes whatever is not in the lock file.
 
 ## The whitelist
 

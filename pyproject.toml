@@ -121,10 +121,9 @@ notebooks = [
     # > The notebooks themselves run `!{sys.executable} -m pip install ...`.
     # > uv-created environments have no pip, so it has to be an explicit dependency.
     "pip>=25",
-    # > What the whitelisted notebooks' cells install, pinned here so that they find it all
-    # > installed already. Their `--upgrade` still asks PyPI and can pull a newer release;
-    # > the next `uv sync` puts the locked one back. A notebook that installs something new
-    # > should add it here.
+    # > What the whitelisted notebooks' cells install, listed here so that they find it all
+    # > installed already: `run_notebook.py` sets PIP_NO_INDEX, so a run never goes past
+    # > what uv.lock holds. A notebook that installs something new must add it here.
     "matplotlib>=3.10,<4",
     "numpy>=2.4,<3",
     "pandas>=3.0,<4",
