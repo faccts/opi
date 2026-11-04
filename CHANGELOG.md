@@ -77,6 +77,7 @@
 - Negative calculation timings occasionally reported by ORCA are now clamped to zero instead of raising a `ValidationError` (#284).
 - Made OPI runner thread safe by copying the env for each run (#293).
 - Fixed `BlockIce()` requiring `integrals` to be set. (#218)
+- The pydantic output fields `EfgTensor.nuc`, `SpinSpinCoupling.pairsinfo` and `Tensor.nuc` now accept zero as valid output values (#305).
 
 ## [2.0.0] - 2026-02-10
 
