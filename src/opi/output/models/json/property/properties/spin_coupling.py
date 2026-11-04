@@ -35,8 +35,8 @@ class SpinSpinCoupling(GetItem):
         Number of nuclear pairs to calculate FC
     numofnucpairssd: StrictPositiveInt | None, default = None
         Number of nuclear pairs to calculate SD
-    pairsinfo: list[tuple[StrictPositiveInt, StrictPositiveInt, StrictPositiveInt, StrictPositiveInt]] | None, default = None
-        Index1, atom number 1, index 2 and atom number 2 of atoms that builds a pair
+    pairsinfo: list[tuple[StrictNonNegativeInt, StrictPositiveInt, StrictNonNegativeInt, StrictPositiveInt]] | None, default = None
+        Index 1 (0-based), atomic number 1, index 2 (0-based) and atomic number 2 of the atoms that build a pair
     pairsdistances: list[list[StrictPositiveFloat]] | None, default = None
         Distance of each pair
     pairstotalssciso: list[list[StrictPositiveFloat]] | None, default = None
@@ -56,9 +56,9 @@ class SpinSpinCoupling(GetItem):
     pairsinfo: (
         list[
             tuple[
+                StrictNonNegativeInt,
                 StrictPositiveInt,
-                StrictPositiveInt,
-                StrictPositiveInt,
+                StrictNonNegativeInt,
                 StrictPositiveInt,
             ]
         ]
