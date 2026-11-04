@@ -51,6 +51,7 @@
 - Split `Scf`, `Opt`, `Dlpno` and `Wft` into subgroups such as `ScfThreshold` and `OptThreshold`. (#218)
 - Added `Solvent.find_keyword()` and `BlockABC.get_subclass_by_name()`. (#218)
 - Added `Output.get_final_energy_components()` which resolves the final energy contributions. (#290)
+- Added another fallback to `Output.get_structure()` where the charge and multiplicity are grepped from the echoed input in the output (#307).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
@@ -60,6 +61,7 @@
 - `Input.add_arbitrary_string()` now also accepts an `ArbitraryString` instance next to a plain `str`, so that an arbitrary string can be added together with the position it carries. (#288)
 - `ORCAKeyword` now compares equal case-insensitively, matching `ORCAKeyword.format_orca()`, which lowercases the keyword, and ORCA itself, which ignores the case. Hence keywords that only differ in case count as duplicates of each other in `Input.add_simple_keywords()`, `Input.remove_simple_keywords()`, `Input.has_simple_keywords()` and `Input.get_simple_keywords()`. (#288)
 - The gbw-JSON files redumped by `Output` (`do_redump_jsons`) now use the keys of the original ORCA JSON files instead of the field names of the models (#289).
+- `Structure.charge` and `Structure.multiplicity` can now be `None` for cases where they are unknown (#307).
 
 ### Deprecated
 ### Removed
