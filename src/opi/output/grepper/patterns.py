@@ -1,5 +1,5 @@
 """
-Contains patterns for ORCA health checks and error checking capabilities.
+Contains patterns for ORCA health checks, error checking capabilities, and property retrieval from the ORCA output file.
 At the end of the file the list of ErrorPatterns is found that is used to generate the output of `get_error_messages`.
 """
 
