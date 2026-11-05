@@ -1,6 +1,7 @@
 import pytest
 
 from opi.output.core import Output
+from opi.output.models.json.property.properties.calc_time import CalculationTiming
 
 """
 Unit tests for Output system property getters. 
@@ -81,6 +82,24 @@ def test_get_mult_no_fallback(output_no_json):
 @pytest.mark.unit
 @pytest.mark.output
 @pytest.mark.parametrize(
+    "coord_line, expected",
+    [
+        ("* xyz -1 2", (-1, 2)),
+        ("*xyzfile 1 3 inp.xyz", (1, 3)),
+        ("* GZMT 0 1", (0, 1)),
+    ],
+)
+def test_get_charge_mult_input_fallback(tmp_path, coord_line: str, expected: tuple[int, int]):
+    """Test that `get_charge()`/`get_mult()` fall back to the input file echoed in the .out file."""
+    (tmp_path / "job.out").write_text(f"|  1> ! b3lyp def2-svp\n|  2> {coord_line}\n|  3> *\n")
+    output = Output("job", version_check=False)
+    output.working_dir = tmp_path
+    assert (output.get_charge(), output.get_mult()) == expected
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize(
     "task, expected_values",
     [("opt", 8), ("roci", 11)],
 )
@@ -121,3 +140,23 @@ def test_get_nelectrons_nonexistent(empty_output_object: Output):
 def test_get_nbf_nonexistent(empty_output_object: Output):
     """Test to check if `Output.get_nbf()` returns None when expected."""
     assert not empty_output_object.get_nbf()
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_timings(output_object_factory):
+    """Test to check if `Output.get_timings()` returns the expected timings."""
+    output_object = output_object_factory("opt")
+    timings = output_object.get_timings()
+    # > Check that the timings are non-negative
+    assert timings.scf >= 0.0
+    assert timings.sum >= 0.0
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_timings_negative_clamped():
+    """Test that negative timings reported by ORCA are clamped to zero instead of raising."""
+    timings = CalculationTiming.model_validate({"scf": -1.0e-6, "sum": 1.0})
+    assert timings.scf == 0.0
+    assert timings.sum == pytest.approx(1.0)

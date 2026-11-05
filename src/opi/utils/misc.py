@@ -3,7 +3,7 @@ import platform
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from opi import ORCA_MINIMAL_VERSION
 from opi.lib.orca_binary import OrcaBinary
@@ -189,7 +189,7 @@ def check_minimal_version(version: OrcaVersion, /) -> bool:
     ----------
     version : OrcaVersion
     """
-    return cast(bool, version >= ORCA_MINIMAL_VERSION)
+    return version >= ORCA_MINIMAL_VERSION
 
 
 def resolve_binary_name(name: str | OrcaBinary, /) -> str:

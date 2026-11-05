@@ -2,7 +2,7 @@ import subprocess
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 
 from opi.execution.text_stream import (
     StreamTargetSpec,
@@ -65,6 +65,7 @@ def run_subprocess_with_fanout(
     stderr: StreamTargetSpec = (),
     timeout: float | None = None,
     cwd: Path | None = None,
+    env: Mapping[str, str] | None = None,
 ) -> SubprocessRunResult:
     """
     Run a subprocess outputting to multiple stdout and stderr target streams.
@@ -83,6 +84,9 @@ def run_subprocess_with_fanout(
         Optional timeout value in seconds, by default None
     cwd : Path | None, optional
         Optional working directory of the subprocess, by default None
+    env : Mapping[str, str] | None, optional
+        Optional environment of the subprocess. If None, the subprocess inherits the
+        environment of the current process, by default None
 
     Returns
     -------
@@ -110,6 +114,7 @@ def run_subprocess_with_fanout(
             # > if stderr is active pipe output otherwise send to devnull
             stderr=subprocess.PIPE if stderr_target.active else subprocess.DEVNULL,
             cwd=cwd,
+            env=env,
             text=True,  # > Force text mode so that `stdout` and `stderr` are `IO[str]` streams.
             encoding="utf-8",
             errors="replace",  # > Replace invalid bytes/chars with a replacement marker

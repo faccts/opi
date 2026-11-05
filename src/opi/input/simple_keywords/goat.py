@@ -1,5 +1,5 @@
 from opi.input.simple_keywords.base import (
-    SimpleKeyword,
+    ORCAKeyword,
     SimpleKeywordBox,
 )
 
@@ -9,17 +9,17 @@ __all__ = ("Goat",)
 class Goat(SimpleKeywordBox):
     """Enum to store all simple keywords of type Goat."""
 
-    GOAT = SimpleKeyword("goat")
-    """SimpleKeyword: GOAT Methods."""
-    GOAT_COARSE = SimpleKeyword("goat-coarse")
-    """SimpleKeyword: GOAT Methods."""
-    GOAT_DIVERSITY = SimpleKeyword("goat-diversity")
-    """SimpleKeyword: GOAT Methods."""
-    GOAT_ENTROPY = SimpleKeyword("goat-entropy")
-    """SimpleKeyword: GOAT Methods."""
-    GOAT_EXPLORE = SimpleKeyword("goat-explore")
-    """SimpleKeyword: GOAT Methods."""
-    GOAT_REACT = SimpleKeyword("goat-react")
-    """SimpleKeyword: GOAT Methods."""
-    GOAT_TS = SimpleKeyword("goat-ts")
-    """SimpleKeyword: GOAT Methods."""
+    GOAT = ORCAKeyword("goat")
+    """ORCAKeyword: GOAT Methods."""
+    GOAT_COARSE = ORCAKeyword("goat-coarse")
+    """ORCAKeyword: GOAT Methods."""
+    GOAT_DIVERSITY = ORCAKeyword("goat-diversity")
+    """ORCAKeyword: GOAT Methods."""
+    GOAT_ENTROPY = ORCAKeyword("goat-entropy")
+    """ORCAKeyword: GOAT Methods."""
+    GOAT_EXPLORE = ORCAKeyword("goat-explore")
+    """ORCAKeyword: GOAT Methods."""
+    GOAT_REACT = ORCAKeyword("goat-react")
+    """ORCAKeyword: GOAT Methods."""
+    GOAT_TS = ORCAKeyword("goat-ts")
+    """ORCAKeyword: GOAT Methods."""

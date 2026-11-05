@@ -10,6 +10,7 @@ from opi.output.models.json.property.properties.efg_tensor import EfgTensor
 from opi.output.models.json.property.properties.energy_list import (
     EnergyList,
 )
+from opi.output.models.json.property.properties.gcp_energy import GcpEnergy
 from opi.output.models.json.property.properties.geometry import Geometry
 from opi.output.models.json.property.properties.gradient import NucGradient
 from opi.output.models.json.property.properties.gtensor import Gtensor
@@ -92,6 +93,9 @@ class Geometries(GetItem):
         Contains information about all energies calculated for DFT
     vdw_correction: VdwCorrection | None, default = None
         Contains information about the Van-der-Waals correction
+    gcp_energy: GcpEnergy | None, default = None
+        Contains information about the geometrical counterpoise (gCP) correction, the gCP+basis set
+        correction and the short-range basis (SRB) correction
     hessian: Hessian | None, default = None
         Contains information about the Hessian-matrix
     solvation_details: SolvDetails | None, default = None
@@ -146,6 +150,7 @@ class Geometries(GetItem):
     nuclear_gradient: list[NucGradient] | None = None
     dft_energy: DftEnergy | None = None
     vdw_correction: VdwCorrection | None = None
+    gcp_energy: GcpEnergy | None = None
     hessian: Hessian | None = None
     solvation_details: SolvDetails | None = None
     polarizability: list[Polarizability] | None = None

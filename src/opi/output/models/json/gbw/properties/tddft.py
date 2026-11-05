@@ -23,10 +23,10 @@ class TdDft(GetItem):
         AO basis amplitudes for rpa/td-dft
     """
 
-    iroot: StrictInt | None = None
-    orbwin: list[StrictPositiveInt] | None = None
-    x: list[list[StrictFiniteFloat]] | None = None
-    xy: list[StrictFiniteFloat] | None = Field(default=None, alias="x+y")
+    iroot: StrictInt | None = Field(default=None, serialization_alias="IRoot")
+    orbwin: list[StrictPositiveInt] | None = Field(default=None, serialization_alias="OrbWin")
+    x: list[list[StrictFiniteFloat]] | None = Field(default=None, serialization_alias="X")
+    xy: list[StrictFiniteFloat] | None = Field(default=None, alias="x+y", serialization_alias="X+Y")
 
     @field_validator("x", mode="before")
     @classmethod

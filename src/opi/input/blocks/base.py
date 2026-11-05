@@ -5,7 +5,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from opi.input.blocks.util import InputFilePath, NoCaseDict
-from opi.input.simple_keywords import SimpleKeyword, Solvent
+from opi.input.simple_keywords import ORCAKeyword, Solvent
 
 __all__ = ["BlockABC"]
 
@@ -273,13 +273,58 @@ class BlockABC(BaseModel, ABC):
             if value is not None:
                 if key == "aftercoord":  # skip aftercoord
                     continue
-                elif isinstance(value, SimpleKeyword | Solvent):
-                    s += f'    {key} "{str(value).lower()}"\n'  # add quotations if value is of type SimpleKeyword
+                elif isinstance(value, ORCAKeyword | Solvent):
+                    s += f'    {key} "{str(value).lower()}"\n'  # add quotations if value is of type ORCAKeyword
                 else:
                     s += f"    {key} {value}\n"  # print key value pairs as they are
         s += "end"
 
         return s
+
+    def __or__(self, other: "BlockABC") -> "BlockABC":
+        """
+        Merges two instances of `BlockABC` that model the same ORCA block. If a common attribute or
+        arbitrary option exists in both `self` and `other`, the value in `other` will be given
+        precedence. Neither operand is modified.
+
+        Note that the `aftercoord` value will also be overridden, even if the `self` block explicitly sets aftercoord to True,
+        the `other` block will override it to False as that is the default option.
+
+        Parameters
+        ----------
+        other: BlockABC
+            Instance of `BlockABC` to be merged into `self`
+
+        Returns
+        -------
+        BlockABC
+            New instance of `BlockABC` with attributes and arbitrary options of `self` and `other`.
+
+        Raises
+        ------
+        ValueError
+            If `self` and `other` model different ORCA blocks, as the merged block could only
+            carry one of the two names.
+        """
+        if not isinstance(other, BlockABC):
+            return NotImplemented
+        if self.name != other.name:
+            raise ValueError(
+                f"Cannot merge blocks that model different ORCA blocks: "
+                f"'%{self.name}' and '%{other.name}'."
+            )
+
+        # > Merge by copying `self` and overlaying `other`, rather than by revalidating a dump of
+        # > both: the block name and the arbitrary options live on private attributes, which
+        # > `model_dump()` does not include.
+        new_block = self.model_copy(deep=True)
+        # > `__dict__` holds the field values as they are, so nested blocks and arbitrary types
+        # > (e.g. `ORCAKeyword`) are carried over untouched instead of being serialized.
+        for key, value in other.__dict__.items():
+            if value is not None:
+                setattr(new_block, key, value)
+        new_block._arbitrary = NoCaseDict({**self._arbitrary, **other._arbitrary})
+        return new_block
 
     @property
     def name(self) -> str:
@@ -313,7 +358,7 @@ class BlockABC(BaseModel, ABC):
         ----------
         name : str
         """
-        raise AttributeError("*Block.name* is a read-only property!")
+        raise AttributeError("*BlockABC.name* is a read-only property!")
 
     @field_validator("*", mode="before")
     @classmethod
@@ -322,3 +367,50 @@ class BlockABC(BaseModel, ABC):
             return InputFilePath(file=inp)
         else:
             return inp
+
+    @classmethod
+    def get_subclass_by_name(cls, name: str) -> type["BlockABC"]:
+        """
+        Look up a ``Block`` subclass by its class name or ORCA block name.
+
+        Matching is case-insensitive and checks both the Python class name
+        (e.g. ``"BlockScf"``) and the ORCA block name returned by the
+        subclass's ``get_block_name()`` (e.g. ``"scf"``).
+
+        Parameters
+        ----------
+        name : str
+            Class name or ORCA block name of the desired subclass.
+
+        Returns
+        -------
+        type[BlockABC]
+            The matching subclass.
+
+        Raises
+        ------
+        ValueError
+            If no subclass matches ``name``.
+        """
+        # Search for `BlockABC` class by OPI name
+        opi_block_name_matches = {sub.__name__.lower(): sub for sub in cls.__subclasses__()}
+        # Search for `BlockABC` class by ORCA block name
+        # > `get_block_name()` returns an already-normalized name, or None for a subclass that
+        # > defines no class-level `_name` — those cannot be looked up by ORCA block name.
+        orca_block_name_matches = {
+            block_name: sub
+            for sub in cls.__subclasses__()
+            if (block_name := sub.get_block_name()) is not None
+        }
+        # Collect matches across both criteria
+        all_matches = opi_block_name_matches.get(name.lower()) or orca_block_name_matches.get(
+            name.lower()
+        )
+
+        # If no match is found, raise ValueError
+        if all_matches is None:
+            raise ValueError(
+                f"No Block subclass found with name {name!r}. Available: {list(opi_block_name_matches.keys())}"
+            )
+
+        return all_matches

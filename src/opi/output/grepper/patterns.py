@@ -17,6 +17,7 @@ from opi.output.grepper.error_pattern import (
 TERMINATED_NORMALLY = "****ORCA TERMINATED NORMALLY****"
 SCF_CONVERGED = "SUCCESS"
 GEOMETRY_CONVERGED = "HURRAY"
+NEB_CONVERGED = "H U R R A Y"
 CC_CONVERGED = "The Coupled-Cluster iterations have converged"
 CASSCF_CONVERGED = "---- THE CAS-SCF GRADIENT HAS CONVERGED ----"
 

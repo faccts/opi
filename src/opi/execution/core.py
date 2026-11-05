@@ -6,7 +6,7 @@ import json
 from collections.abc import Sequence
 from pathlib import Path
 
-from opi.execution.base import BaseRunner
+from opi.execution.base import BaseRunner, RunResult
 from opi.execution.text_stream import StreamTargetSpec, concatentate_stream_targets
 from opi.lib.orca_binary import OrcaBinary
 from opi.utils.misc import delete_empty_file
@@ -147,7 +147,7 @@ class Runner(BaseRunner):
 
     def run_orca_2json(
         self, args: Sequence[str] = (), /, *, working_dir: Path | None = None
-    ) -> None:
+    ) -> RunResult:
         """
         Execute `orca_2json` with given arguments.
 
@@ -155,8 +155,13 @@ class Runner(BaseRunner):
         ----------
         args : Sequence[str], default: ()
             Arguments to pass to `orca_2json`.
+
+        Returns
+        -------
+        RunResult
+            Completed `orca_2json` run result.
         """
-        self.run(OrcaBinary.ORCA_2JSON, args, cwd=working_dir)
+        return self.run(OrcaBinary.ORCA_2JSON, args, cwd=working_dir)
 
     def create_property_json(self, basename: str, /, *, force: bool = False) -> None:
         """
