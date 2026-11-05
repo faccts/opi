@@ -52,6 +52,10 @@
 - Added `Solvent.find_keyword()` and `BlockABC.get_subclass_by_name()`. (#218)
 - Added `Output.get_final_energy_components()` which resolves the final energy contributions. (#290)
 - Added another fallback to `Output.get_structure()` where the charge and multiplicity are grepped from the echoed input in the output (#307).
+- Added `OrcaMmRunner` with typed helpers for supported `orca_mm` commands. (#224)
+- Added `OrcaBinary.ORCA_MM`. (#224)
+- Added `OpiError`, `OpiExecutionError`, and `OrcaMmError`. (#224)
+- Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
