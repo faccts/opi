@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from examples.exmp065_orca_mm_forcefield.job import run_exmp065
+from examples.exmp064_orca_mm_forcefield.job import run_exmp064
 from opi.input.structures import Structure
 
 
@@ -14,14 +14,14 @@ def _count_ff_atoms(orcaff_file: Path) -> int:
 
 @pytest.mark.examples
 @pytest.mark.orca
-def test_exmp065_orca_mm_forcefield(example_input_file, tmp_path) -> None:
+def test_exmp064_orca_mm_forcefield(example_input_file, tmp_path) -> None:
     """Ensure the forcefield files are generated and the QM/MM calculation uses the merged one."""
-    input_file = example_input_file(run_exmp065)
+    input_file = example_input_file(run_exmp064)
     structure = Structure.from_xyz(input_file)
     n_solute = len(structure)
     n_solvent = 3 * 3
 
-    output = run_exmp065(structure=structure, working_dir=tmp_path)
+    output = run_exmp064(structure=structure, working_dir=tmp_path)
 
     # > Forcefield files contain the expected number of atoms
     assert (tmp_path / "solute.H_DIST.prms").is_file()
