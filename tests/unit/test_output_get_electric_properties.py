@@ -3,7 +3,7 @@ import pytest
 from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
 from opi.output.models.json.property.properties.polarizability import Polarizability
 from opi.output.models.json.property.properties.quadrupole_moment import QuadrupoleMoment
-from opi.output.models.json.property.properties.spectrum import Spectrum
+from opi.output.models.json.property.properties.spectrum import AbsorptionSpectrum
 
 """
 Unit tests for Output electric property getters 
@@ -124,7 +124,7 @@ def test_get_absorption_spectrum_returns_spectra(output_object_factory, task: st
     spectra = output_object.get_absorption_spectrum()
     assert [spectrum.representation for spectrum in spectra] == ["Length", "Velocity"]
     for spectrum in spectra:
-        assert isinstance(spectrum, Spectrum)
+        assert isinstance(spectrum, AbsorptionSpectrum)
         assert len(spectrum.excitationenergies) == spectrum.ntrans
 
 

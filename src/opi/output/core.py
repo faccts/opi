@@ -65,7 +65,7 @@ from opi.output.models.json.property.properties.population_analysis import (
 )
 from opi.output.models.json.property.properties.quadrupole_moment import QuadrupoleMoment
 from opi.output.models.json.property.properties.roci_en import RoCisEnergy
-from opi.output.models.json.property.properties.spectrum import Spectrum
+from opi.output.models.json.property.properties.spectrum import AbsorptionSpectrum
 from opi.output.models.json.property.properties.van_der_waals_correction import (
     VdwCorrection,
 )
@@ -2281,7 +2281,7 @@ class Output:
 
         return pol
 
-    def get_absorption_spectrum(self, *, index: int = -1) -> list[Spectrum] | None:
+    def get_absorption_spectrum(self, *, index: int = -1) -> list[AbsorptionSpectrum] | None:
         """
         Easy access to the electronic absorption (UV/Vis) spectrum from the properties results.
         Requires a calculation of electronic excitations (e.g. TD-DFT, CIS, ROCIS or EOM-CCSD).
@@ -2296,7 +2296,7 @@ class Output:
 
         Returns
         ----------
-        absorption_spectrum : list[Spectrum] | None
+        absorption_spectrum : list[AbsorptionSpectrum] | None
             Returns the spectra or None if there is none in the output for the requested index.
         """
 
@@ -2305,7 +2305,7 @@ class Output:
         )
 
         if absorption_spectrum is not None:
-            absorption_spectrum = cast(list[Spectrum], absorption_spectrum)
+            absorption_spectrum = cast(list[AbsorptionSpectrum], absorption_spectrum)
 
         return absorption_spectrum
 
