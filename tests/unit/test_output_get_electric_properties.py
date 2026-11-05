@@ -133,3 +133,18 @@ def test_get_absorption_spectrum_returns_spectra(output_object_factory, task: st
 def test_get_absorption_spectrum_returns_none(empty_output_object):
     """Test if `Output.get_absorption_spectrum()` returns None when expected."""
     assert not empty_output_object.get_absorption_spectrum()
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["uvvis", "roci"])
+def test_absorption_spectrum_transition_moments_consistent(output_object_factory, task: str):
+    """Test that the squared transition moments match the (x, y, z) transition moments."""
+    output_object = output_object_factory(task)
+    for spectrum in output_object.get_absorption_spectrum():
+        for moment, squared in zip(
+            spectrum.transition_moments, spectrum.transition_moments_squared, strict=True
+        ):
+            assert sum(abs(component) ** 2 for component in moment) == pytest.approx(
+                squared, abs=1e-6
+            )
