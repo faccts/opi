@@ -755,6 +755,11 @@ class OrcaMmRunner(BaseRunner):
             If the input file is missing or the expected output is not generated.
         OrcaMmError
             If `orca_mm` exits with a nonzero return code.
+
+        Notes
+        -----
+        With the `PBE*` and `XTB*` charge options, `orca_mm` deletes `structure_file`
+        after generating the forcefield. Keep a copy if the structure is needed afterwards.
         """
         structure_file = self._resolve_path(structure_file)
         self._assert_files_exist(structure_file)
