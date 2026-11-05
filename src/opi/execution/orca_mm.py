@@ -5,12 +5,15 @@ Attributes
 ----------
 OrcaMmCommand:
     Helper type for supported `orca_mm` commands.
+PathLike:
+    Helper type for file paths accepted by the command-specific methods.
 ForcefieldType:
     Helper type for supported forcefield input formats used by `-convff`.
 ChargeOption:
     Helper type for supported charge calculation options used by `-makeff`.
 """
 
+import os
 import subprocess
 from contextlib import contextmanager
 from pathlib import Path
@@ -25,6 +28,8 @@ OrcaMmCommand = Literal[
     "convff", "splitff", "mergeff", "repeatff", "splitpdb", "mergepdb", "makeff", "getHDist"
 ]
 ForcefieldType = Literal["amber", "charmm", "openmm"]
+
+PathLike = Path | str | os.PathLike[str]
 
 ChargeOption = Literal[
     "PBE",
@@ -89,9 +94,32 @@ class OrcaMmRunner(BaseRunner):
     Each command-specific method follows the same execution pattern: validate its
     command options, derive the expected output paths, assemble the command-line
     arguments, execute `orca_mm`, and verify that the expected files were generated.
+
+    File paths passed to the command-specific methods may be relative. They are
+    resolved against `working_dir`, which is where `orca_mm` is executed.
     """
 
     _orca_ff_suffix = ".ORCAFF.prms"
+
+    def _resolve_path(self, path: PathLike) -> Path:
+        """
+        Resolve a file path the same way `orca_mm` will see it.
+
+        `orca_mm` is executed inside `self.working_dir`, so relative paths are
+        interpreted relative to `self.working_dir`, not the Python process CWD.
+        Absolute paths are left pointing to the same file.
+
+        Parameters
+        ----------
+        path : PathLike
+            File path to resolve.
+
+        Returns
+        -------
+        Path
+            Absolute path to the file.
+        """
+        return (self.working_dir / Path(path).expanduser()).resolve()
 
     @staticmethod
     def _assert_files_exist(*files: Path) -> None:
@@ -267,7 +295,7 @@ class OrcaMmRunner(BaseRunner):
     def run_convff(
         self,
         ffinput: ForcefieldType,
-        ff_files: Iterable[Path],
+        ff_files: Iterable[PathLike],
         *,
         force: bool = False,
         stdout: StreamTargetSpec = (),
@@ -283,7 +311,7 @@ class OrcaMmRunner(BaseRunner):
         ----------
         ffinput : ForcefieldType
             Input forcefield format (`amber`, `charmm`, or `openmm`).
-        ff_files : Iterable[Path]
+        ff_files : Iterable[PathLike]
             Input forcefield file(s) to convert.
         force : bool, default: False
             Overwrite existing output file if present.
@@ -311,12 +339,12 @@ class OrcaMmRunner(BaseRunner):
             If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
         # > `convff` requires at least one source forcefield file.
-        ff_files = tuple(ff_files)
+        ff_paths = tuple(self._resolve_path(f) for f in ff_files)
 
-        if len(ff_files) == 0:
+        if len(ff_paths) == 0:
             raise ValueError("Must supply at least 1 forcefield file.")
 
-        self._assert_files_exist(*ff_files)
+        self._assert_files_exist(*ff_paths)
 
         # > Derive the output path generated from the first forcefield file.
         # > `orca_mm -convff` replaces its ending with `.ORCAFF.prms`.
@@ -324,7 +352,7 @@ class OrcaMmRunner(BaseRunner):
         # > - `orca_mm -convff -CHARMM 1C1E.psf par_all36_prot.prm toppar_water_ions_namd.str` -> `1C1E.ORCAFF.prms`
         # > - `orca_mm -convff -AMBER complex.prmtop` -> `complex.ORCAFF.prms`
         # > - `orca_mm -convff -OPENMM complex.xml` -> `complex.ORCAFF.prms`
-        expected_output = ff_files[0].with_suffix(self._orca_ff_suffix)
+        expected_output = ff_paths[0].with_suffix(self._orca_ff_suffix)
 
         # > Reuse an existing forcefield unless the caller explicitly requests regeneration using `force`.
         if expected_output.is_file() and not force:
@@ -334,7 +362,7 @@ class OrcaMmRunner(BaseRunner):
         expected_output.unlink(missing_ok=True)
 
         # > Assemble the format option followed by the forcefield input paths.
-        arguments = [f"-{ffinput}"] + [str(f) for f in ff_files]
+        arguments = [f"-{ffinput}"] + [str(f) for f in ff_paths]
 
         # > Execute the command and verify that it generated the expected forcefield.
         self._run_orca_mm_and_expect(
@@ -351,7 +379,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_splitff(
         self,
-        orcaff_file: Path,
+        orcaff_file: PathLike,
         *atoms: int,
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
@@ -363,7 +391,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        orcaff_file : Path
+        orcaff_file : PathLike
             Path to ORCA forcefield file (`*.ORCAFF.prms`) that will be split.
         *atoms : int
             1-based atom indices used as split points.
@@ -390,6 +418,7 @@ class OrcaMmRunner(BaseRunner):
         OrcaMmError
             If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
+        orcaff_file = self._resolve_path(orcaff_file)
         self._assert_files_exist(orcaff_file)
 
         # > Normalize the split points before validating and passing them to `orca_mm`.
@@ -425,7 +454,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_mergeff(
         self,
-        *orcaff_files: Path,
+        *orcaff_files: PathLike,
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
@@ -436,7 +465,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        *orcaff_files : Path
+        *orcaff_files : PathLike
             ORCA forcefield files (`*.ORCAFF.prms`) to merge.
         stdout : StreamTargetSpec, default: ()
             One or more target streams to pipe the subprocess STDOUT to.
@@ -465,13 +494,14 @@ class OrcaMmRunner(BaseRunner):
         if len(orcaff_files) < 2:
             raise ValueError("Must provide at least 2 orca ff files to merge")
 
-        self._assert_files_exist(*orcaff_files)
+        orcaff_paths = tuple(self._resolve_path(f) for f in orcaff_files)
+        self._assert_files_exist(*orcaff_paths)
 
         # > `orca_mm` derives the merged output name from the first input file.
-        expected_output = _add_infix_to_path(orcaff_files[0], "_merged", self._orca_ff_suffix)
+        expected_output = _add_infix_to_path(orcaff_paths[0], "_merged", self._orca_ff_suffix)
 
         # > Assemble the forcefield paths in the order supplied by the caller.
-        arguments = [str(f) for f in orcaff_files]
+        arguments = [str(f) for f in orcaff_paths]
 
         # > Execute the command and verify that the merged forcefield was generated.
         self._run_orca_mm_and_expect(
@@ -488,7 +518,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_repeatff(
         self,
-        orcaff_file: Path,
+        orcaff_file: PathLike,
         repeat: int,
         *,
         stdout: StreamTargetSpec = (),
@@ -501,7 +531,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        orcaff_file : Path
+        orcaff_file : PathLike
             ORCA forcefield file (`*.ORCAFF.prms`) to repeat.
         repeat : int
             Number of repetitions. Must be a positive integer.
@@ -528,6 +558,7 @@ class OrcaMmRunner(BaseRunner):
         OrcaMmError
             If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
+        orcaff_file = self._resolve_path(orcaff_file)
         self._assert_files_exist(orcaff_file)
 
         # > Validate `repeat` is a positive integer.
@@ -555,7 +586,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_splitpdb(
         self,
-        pdb_file: Path,
+        pdb_file: PathLike,
         *atoms: int,
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
@@ -567,7 +598,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        pdb_file : Path
+        pdb_file : PathLike
             Path to PDB file that will be split.
         *atoms : int
             1-based atom indices used as split points.
@@ -594,6 +625,7 @@ class OrcaMmRunner(BaseRunner):
         OrcaMmError
             If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
+        pdb_file = self._resolve_path(pdb_file)
         self._assert_files_exist(pdb_file)
 
         # > Normalize the split points before validating and passing them to `orca_mm`.
@@ -629,7 +661,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_mergepdb(
         self,
-        *pdb_files: Path,
+        *pdb_files: PathLike,
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
@@ -640,7 +672,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        *pdb_files : Path
+        *pdb_files : PathLike
             PDB files to merge.
         stdout : StreamTargetSpec, default: ()
             One or more target streams to pipe the subprocess STDOUT to.
@@ -669,13 +701,14 @@ class OrcaMmRunner(BaseRunner):
         if len(pdb_files) < 2:
             raise ValueError("Must provide at least 2 PDB files to merge")
 
-        self._assert_files_exist(*pdb_files)
+        pdb_paths = tuple(self._resolve_path(f) for f in pdb_files)
+        self._assert_files_exist(*pdb_paths)
 
         # > `orca_mm` derives the merged output name from the first input file.
-        expected_output = _add_infix_to_path(pdb_files[0], "_merged", ".pdb")
+        expected_output = _add_infix_to_path(pdb_paths[0], "_merged", ".pdb")
 
         # > Assemble the PDB paths in the order supplied by the caller.
-        arguments = [str(f) for f in pdb_files]
+        arguments = [str(f) for f in pdb_paths]
 
         # > Execute the command and verify that the merged PDB was generated.
         self._run_orca_mm_and_expect(
@@ -692,7 +725,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_makeff(
         self,
-        structure_file: Path,
+        structure_file: PathLike,
         *,
         charge: int | None = None,
         multiplicity: int | None = None,
@@ -709,7 +742,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        structure_file : Path
+        structure_file : PathLike
             Input structure file for forcefield generation.
         charge : int | None, default: None
             Total molecular charge passed via `-C`.
@@ -744,6 +777,7 @@ class OrcaMmRunner(BaseRunner):
         OrcaMmError
             If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
+        structure_file = self._resolve_path(structure_file)
         self._assert_files_exist(structure_file)
 
         # > Derive the forcefield path generated from the input structure filename.
@@ -788,7 +822,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_get_h_dist(
         self,
-        structure_file: Path,
+        structure_file: PathLike,
         *,
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
@@ -800,7 +834,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        structure_file : Path
+        structure_file : PathLike
             Input structure file for hydrogen-distance analysis.
         stdout : StreamTargetSpec, default: ()
             One or more target streams to pipe the subprocess STDOUT to.
@@ -823,6 +857,7 @@ class OrcaMmRunner(BaseRunner):
         OrcaMmError
             If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
         """
+        structure_file = self._resolve_path(structure_file)
         self._assert_files_exist(structure_file)
 
         # > Derive the hydrogen-distance parameter path from the input structure filename.

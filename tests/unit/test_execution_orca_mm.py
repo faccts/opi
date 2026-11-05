@@ -125,3 +125,20 @@ def test_command_raises_when_expected_output_is_missing(
         runner.run_get_h_dist(structure_file)
 
     mock_run.assert_called_once()
+
+
+@pytest.mark.unit
+def test_command_resolves_relative_paths_against_working_dir(
+    orca_mm_runner_factory: RunnerFactory,
+    tmp_path: Path,
+) -> None:
+    """Test that relative input paths are resolved against `working_dir`, not the process CWD."""
+    runner, mock_run = orca_mm_runner_factory()
+    runner.working_dir = tmp_path
+    (tmp_path / "structure.xyz").touch()
+    (tmp_path / "structure.H_DIST.prms").touch()
+
+    result = runner.run_get_h_dist("structure.xyz")
+
+    assert result == tmp_path / "structure.H_DIST.prms"
+    assert mock_run.call_args.args[1] == ("-getHDist", str(tmp_path / "structure.xyz"))
