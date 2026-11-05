@@ -186,3 +186,153 @@ def test_splitff_deduplicates_and_sorts_split_points(
 
     assert result == expected
     assert mock_run.call_args.args[1] == ("-splitff", str(source), "4", "7")
+
+
+def _touch(*paths: Path) -> None:
+    """Create empty files standing in for `orca_mm` inputs or outputs."""
+    for path in paths:
+        path.touch()
+
+
+# > The expected output names below were checked against the real `orca_mm` binary.
+
+
+@pytest.mark.unit
+def test_makeff_assembles_options(orca_mm_runner_factory: RunnerFactory, tmp_path: Path) -> None:
+    """Test that `run_makeff` passes all options in `orca_mm` syntax."""
+    runner, mock_run = orca_mm_runner_factory()
+    structure = tmp_path / "complex.xyz"
+    _touch(structure, tmp_path / "complex.ORCAFF.prms")
+
+    result = runner.run_makeff(
+        structure,
+        charge=-1,
+        multiplicity=2,
+        nproc=4,
+        charge_option="XTB",
+        oxidation_states={"Fe": 3},
+    )
+
+    assert result == tmp_path / "complex.ORCAFF.prms"
+    assert mock_run.call_args.args[1] == (
+        "-makeff",
+        str(structure),
+        "-C",
+        "-1",
+        "-M",
+        "2",
+        "-nproc",
+        "4",
+        "-XTB",
+        "-CEL",
+        "Fe",
+        "3.0",
+    )
+
+
+@pytest.mark.unit
+def test_convff_derives_output_from_first_file(
+    orca_mm_runner_factory: RunnerFactory, tmp_path: Path
+) -> None:
+    """Test that `run_convff` names its output after the first forcefield file."""
+    runner, mock_run = orca_mm_runner_factory()
+    psf = tmp_path / "1C1E.psf"
+    prm = tmp_path / "par_all36_prot.prm"
+    _touch(psf, prm)
+
+    def create_output(*_args: object, **_kwargs: object) -> RunResult:
+        _touch(tmp_path / "1C1E.ORCAFF.prms")
+        return RunResult(binary="orca_mm", args=(), returncode=0, stdout="", stderr="")
+
+    mock_run.side_effect = create_output
+
+    result = runner.run_convff("charmm", [psf, prm])
+
+    assert result == tmp_path / "1C1E.ORCAFF.prms"
+    assert mock_run.call_args.args[1] == ("-convff", "-charmm", str(psf), str(prm))
+
+
+@pytest.mark.unit
+def test_convff_reuses_existing_output_unless_forced(
+    orca_mm_runner_factory: RunnerFactory, tmp_path: Path
+) -> None:
+    """Test that an existing forcefield is reused, and regenerated only with `force=True`."""
+    runner, mock_run = orca_mm_runner_factory()
+    prmtop = tmp_path / "complex.prmtop"
+    output = tmp_path / "complex.ORCAFF.prms"
+    _touch(prmtop, output)
+
+    assert runner.run_convff("amber", [prmtop]) == output
+    mock_run.assert_not_called()
+
+    # > The stale output is removed first, so a run that creates nothing must fail.
+    with pytest.raises(FileNotFoundError, match="Expected output file"):
+        runner.run_convff("amber", [prmtop], force=True)
+    mock_run.assert_called_once()
+
+
+@pytest.mark.unit
+def test_repeatff_output_name(orca_mm_runner_factory: RunnerFactory, tmp_path: Path) -> None:
+    """Test that `run_repeatff` passes the repeat count and expects `_repeat<N>` output."""
+    runner, mock_run = orca_mm_runner_factory()
+    source = tmp_path / "water.ORCAFF.prms"
+    _touch(source, tmp_path / "water_repeat3.ORCAFF.prms")
+
+    result = runner.run_repeatff(source, 3)
+
+    assert result == tmp_path / "water_repeat3.ORCAFF.prms"
+    assert mock_run.call_args.args[1] == ("-repeatff", str(source), "3")
+
+
+@pytest.mark.unit
+def test_mergeff_output_name(orca_mm_runner_factory: RunnerFactory, tmp_path: Path) -> None:
+    """Test that `run_mergeff` keeps the input order and names the output after the first file."""
+    runner, mock_run = orca_mm_runner_factory()
+    first = tmp_path / "water_split1.ORCAFF.prms"
+    second = tmp_path / "water_split2.ORCAFF.prms"
+    _touch(first, second, tmp_path / "water_split1_merged.ORCAFF.prms")
+
+    result = runner.run_mergeff(first, second)
+
+    assert result == tmp_path / "water_split1_merged.ORCAFF.prms"
+    assert mock_run.call_args.args[1] == ("-mergeff", str(first), str(second))
+
+
+@pytest.mark.unit
+def test_splitpdb_output_names(orca_mm_runner_factory: RunnerFactory, tmp_path: Path) -> None:
+    """Test that `run_splitpdb` expects one `_split<N>.pdb` file per part."""
+    runner, mock_run = orca_mm_runner_factory()
+    pdb = tmp_path / "protein.pdb"
+    expected = [tmp_path / "protein_split1.pdb", tmp_path / "protein_split2.pdb"]
+    _touch(pdb, *expected)
+
+    result = runner.run_splitpdb(pdb, 5)
+
+    assert result == expected
+    assert mock_run.call_args.args[1] == ("-splitpdb", str(pdb), "5")
+
+
+@pytest.mark.unit
+def test_mergepdb_output_name(orca_mm_runner_factory: RunnerFactory, tmp_path: Path) -> None:
+    """Test that `run_mergepdb` names the output after the first file."""
+    runner, mock_run = orca_mm_runner_factory()
+    first = tmp_path / "protein.pdb"
+    second = tmp_path / "ligand.pdb"
+    _touch(first, second, tmp_path / "protein_merged.pdb")
+
+    result = runner.run_mergepdb(first, second)
+
+    assert result == tmp_path / "protein_merged.pdb"
+    assert mock_run.call_args.args[1] == ("-mergepdb", str(first), str(second))
+
+
+@pytest.mark.unit
+def test_get_h_dist_keeps_dots_in_stem(
+    orca_mm_runner_factory: RunnerFactory, tmp_path: Path
+) -> None:
+    """Test that only the last suffix is replaced for filenames containing dots."""
+    runner, _ = orca_mm_runner_factory()
+    structure = tmp_path / "my.mol.xyz"
+    _touch(structure, tmp_path / "my.mol.H_DIST.prms")
+
+    assert runner.run_get_h_dist(structure) == tmp_path / "my.mol.H_DIST.prms"
