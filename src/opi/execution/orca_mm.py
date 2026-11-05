@@ -5,8 +5,6 @@ Attributes
 ----------
 OrcaMmCommand:
     Helper type for supported `orca_mm` commands.
-PathLike:
-    Helper type for file paths accepted by the command-specific methods.
 ForcefieldType:
     Helper type for supported forcefield input formats used by `-convff`.
 ChargeOption:
@@ -28,8 +26,6 @@ OrcaMmCommand = Literal[
     "convff", "splitff", "mergeff", "repeatff", "splitpdb", "mergepdb", "makeff", "getHDist"
 ]
 ForcefieldType = Literal["amber", "charmm", "openmm"]
-
-PathLike = Path | str | os.PathLike[str]
 
 ChargeOption = Literal[
     "PBE",
@@ -101,7 +97,7 @@ class OrcaMmRunner(BaseRunner):
 
     _orca_ff_suffix = ".ORCAFF.prms"
 
-    def _resolve_path(self, path: PathLike) -> Path:
+    def _resolve_path(self, path: Path | str | os.PathLike[str]) -> Path:
         """
         Resolve a file path the same way `orca_mm` will see it.
 
@@ -111,7 +107,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        path : PathLike
+        path : Path | str | os.PathLike[str]
             File path to resolve.
 
         Returns
@@ -293,7 +289,7 @@ class OrcaMmRunner(BaseRunner):
     def run_convff(
         self,
         ffinput: ForcefieldType,
-        ff_files: Iterable[PathLike],
+        ff_files: Iterable[Path | str | os.PathLike[str]],
         *,
         force: bool = False,
         stdout: StreamTargetSpec = (),
@@ -308,7 +304,7 @@ class OrcaMmRunner(BaseRunner):
         ----------
         ffinput : ForcefieldType
             Input forcefield format (`amber`, `charmm`, or `openmm`).
-        ff_files : Iterable[PathLike]
+        ff_files : Iterable[Path | str | os.PathLike[str]]
             Input forcefield file(s) to convert.
         force : bool, default: False
             Overwrite existing output file if present.
@@ -373,7 +369,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_splitff(
         self,
-        orcaff_file: PathLike,
+        orcaff_file: Path | str | os.PathLike[str],
         *atoms: int,
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
@@ -384,7 +380,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        orcaff_file : PathLike
+        orcaff_file : Path | str | os.PathLike[str]
             Path to ORCA forcefield file (`*.ORCAFF.prms`) that will be split.
         *atoms : int
             1-based indices of the first atom of each new part. Must be greater than 1.
@@ -448,7 +444,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_mergeff(
         self,
-        *orcaff_files: PathLike,
+        *orcaff_files: Path | str | os.PathLike[str],
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
@@ -458,7 +454,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        *orcaff_files : PathLike
+        *orcaff_files : Path | str | os.PathLike[str]
             ORCA forcefield files (`*.ORCAFF.prms`) to merge.
         stdout : StreamTargetSpec, default: ()
             One or more target streams to pipe the subprocess STDOUT to.
@@ -508,7 +504,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_repeatff(
         self,
-        orcaff_file: PathLike,
+        orcaff_file: Path | str | os.PathLike[str],
         repeat: int,
         *,
         stdout: StreamTargetSpec = (),
@@ -520,7 +516,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        orcaff_file : PathLike
+        orcaff_file : Path | str | os.PathLike[str]
             ORCA forcefield file (`*.ORCAFF.prms`) to repeat.
         repeat : int
             Number of repetitions. Must be a positive integer.
@@ -572,7 +568,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_splitpdb(
         self,
-        pdb_file: PathLike,
+        pdb_file: Path | str | os.PathLike[str],
         *atoms: int,
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
@@ -583,7 +579,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        pdb_file : PathLike
+        pdb_file : Path | str | os.PathLike[str]
             Path to PDB file that will be split.
         *atoms : int
             1-based indices of the first atom of each new part. Must be greater than 1.
@@ -647,7 +643,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_mergepdb(
         self,
-        *pdb_files: PathLike,
+        *pdb_files: Path | str | os.PathLike[str],
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
@@ -657,7 +653,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        *pdb_files : PathLike
+        *pdb_files : Path | str | os.PathLike[str]
             PDB files to merge.
         stdout : StreamTargetSpec, default: ()
             One or more target streams to pipe the subprocess STDOUT to.
@@ -707,7 +703,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_makeff(
         self,
-        structure_file: PathLike,
+        structure_file: Path | str | os.PathLike[str],
         *,
         charge: int | None = None,
         multiplicity: int | None = None,
@@ -723,7 +719,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        structure_file : PathLike
+        structure_file : Path | str | os.PathLike[str]
             Input structure file for forcefield generation.
         charge : int | None, default: None
             Total molecular charge passed via `-C`.
@@ -805,7 +801,7 @@ class OrcaMmRunner(BaseRunner):
 
     def run_get_h_dist(
         self,
-        structure_file: PathLike,
+        structure_file: Path | str | os.PathLike[str],
         *,
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
@@ -816,7 +812,7 @@ class OrcaMmRunner(BaseRunner):
 
         Parameters
         ----------
-        structure_file : PathLike
+        structure_file : Path | str | os.PathLike[str]
             Input structure file for hydrogen-distance analysis.
         stdout : StreamTargetSpec, default: ()
             One or more target streams to pipe the subprocess STDOUT to.
