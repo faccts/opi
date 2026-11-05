@@ -1,18 +1,7 @@
-import subprocess
-from pathlib import Path
-from typing import Protocol, Sequence
-from unittest.mock import Mock
-
-import pytest
-
-from opi.execution.base import RunResult
-from opi.execution.orca_mm import OrcaMmError, OrcaMmRunner
-from opi.lib.orca_binary import OrcaBinary
-
 """
 This module contains tests for `OrcaMmRunner` command execution such as:
 - Returning successful execution results
-- Raising `OrcaMmError` after unsuccessful execution
+- Raising `OrcaMmError` with the captured STDERR after unsuccessful execution
 - Passing command arguments and stream targets to `BaseRunner.run`
 - Rejecting missing input files
 - Verifying that expected output files are generated
@@ -20,6 +9,18 @@ This module contains tests for `OrcaMmRunner` command execution such as:
 ORCA discovery and binary execution are mocked so that these tests do not
 depend on external ORCA or Open MPI installations or subprocess execution.
 """
+
+import subprocess
+from pathlib import Path
+from typing import Protocol, Sequence
+from unittest.mock import Mock
+
+import pytest
+
+from opi.exceptions import OrcaMmError
+from opi.execution.base import RunResult
+from opi.execution.orca_mm import OrcaMmRunner
+from opi.lib.orca_binary import OrcaBinary
 
 
 class RunnerFactory(Protocol):
@@ -90,10 +91,16 @@ def test_run_orca_mm_raises_on_nonzero_returncode(
     orca_mm_runner_factory: RunnerFactory,
 ) -> None:
     """Test that unsuccessful binary execution raises `OrcaMmError`."""
-    runner, _ = orca_mm_runner_factory(returncode=1, stderr="orca_mm failed")
+    # > Real `orca_mm` error output, distinct from the fixed text of the error message.
+    stderr = "Error (ORCA_MM): Forcefield filename not assigned."
+    runner, _ = orca_mm_runner_factory(returncode=1, stderr=stderr)
 
-    with pytest.raises(OrcaMmError, match="orca_mm failed"):
+    with pytest.raises(OrcaMmError) as exc_info:
         runner.run_orca_mm("convff", ["-amber", "test.prm"])
+
+    message = str(exc_info.value)
+    assert stderr in message
+    assert "orca_mm -convff -amber test.prm" in message
 
 
 @pytest.mark.unit
