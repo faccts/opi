@@ -142,3 +142,40 @@ def test_command_resolves_relative_paths_against_working_dir(
 
     assert result == tmp_path / "structure.H_DIST.prms"
     assert mock_run.call_args.args[1] == ("-getHDist", str(tmp_path / "structure.xyz"))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("method", ["run_splitff", "run_splitpdb"])
+def test_split_rejects_split_point_at_first_atom(
+    orca_mm_runner_factory: RunnerFactory,
+    tmp_path: Path,
+    method: str,
+) -> None:
+    """Test that splitting at atom 1, which would leave an empty first part, is rejected."""
+    runner, mock_run = orca_mm_runner_factory()
+    source = tmp_path / "system.ORCAFF.prms"
+    source.touch()
+
+    with pytest.raises(ValueError, match="greater than 1"):
+        getattr(runner, method)(source, 1, 4)
+
+    mock_run.assert_not_called()
+
+
+@pytest.mark.unit
+def test_splitff_deduplicates_and_sorts_split_points(
+    orca_mm_runner_factory: RunnerFactory,
+    tmp_path: Path,
+) -> None:
+    """Test that duplicate split points are removed and the rest are passed in order."""
+    runner, mock_run = orca_mm_runner_factory()
+    source = tmp_path / "system.ORCAFF.prms"
+    source.touch()
+    expected = [tmp_path / f"system_split{i}.ORCAFF.prms" for i in (1, 2, 3)]
+    for path in expected:
+        path.touch()
+
+    result = runner.run_splitff(source, 7, 4, 7)
+
+    assert result == expected
+    assert mock_run.call_args.args[1] == ("-splitff", str(source), "4", "7")

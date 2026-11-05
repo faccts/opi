@@ -388,7 +388,8 @@ class OrcaMmRunner(BaseRunner):
         orcaff_file : PathLike
             Path to ORCA forcefield file (`*.ORCAFF.prms`) that will be split.
         *atoms : int
-            1-based atom indices used as split points.
+            1-based indices of the first atom of each new part. Must be greater than 1.
+            Duplicates are ignored.
         stdout : StreamTargetSpec, default: ()
             One or more target streams to pipe the subprocess STDOUT to.
         stderr : StreamTargetSpec, default: ()
@@ -404,7 +405,7 @@ class OrcaMmRunner(BaseRunner):
         Raises
         ------
         ValueError
-            If no split points are supplied or an atom index is not positive.
+            If no split points are supplied or an atom index is not greater than 1.
         FileNotFoundError
             If the input file is missing or an expected output is not generated.
         OrcaMmError
@@ -414,13 +415,16 @@ class OrcaMmRunner(BaseRunner):
         self._assert_files_exist(orcaff_file)
 
         # > Normalize the split points before validating and passing them to `orca_mm`.
-        sorted_atoms = list(sorted(atoms))
+        # > Duplicates are removed because `orca_mm` rejects them.
+        sorted_atoms = sorted(set(atoms))
 
         if len(sorted_atoms) == 0:
             raise ValueError("Must supply at least 1 atom.")
 
-        if any(atom < 1 for atom in sorted_atoms):
-            raise ValueError("All atoms must be positive integers.")
+        # > A split point is the first atom of a new part, so splitting at atom 1
+        # > would leave the first part empty.
+        if any(atom < 2 for atom in sorted_atoms):
+            raise ValueError("All atoms must be integers greater than 1.")
 
         # > A split at N atom indices produces N + 1 forcefield files.
         expected_outputs = [
@@ -583,7 +587,8 @@ class OrcaMmRunner(BaseRunner):
         pdb_file : PathLike
             Path to PDB file that will be split.
         *atoms : int
-            1-based atom indices used as split points.
+            1-based indices of the first atom of each new part. Must be greater than 1.
+            Duplicates are ignored.
         stdout : StreamTargetSpec, default: ()
             One or more target streams to pipe the subprocess STDOUT to.
         stderr : StreamTargetSpec, default: ()
@@ -599,7 +604,7 @@ class OrcaMmRunner(BaseRunner):
         Raises
         ------
         ValueError
-            If no split points are supplied or an atom index is not positive.
+            If no split points are supplied or an atom index is not greater than 1.
         FileNotFoundError
             If the input file is missing or an expected output is not generated.
         OrcaMmError
@@ -609,13 +614,16 @@ class OrcaMmRunner(BaseRunner):
         self._assert_files_exist(pdb_file)
 
         # > Normalize the split points before validating and passing them to `orca_mm`.
-        sorted_atoms = list(sorted(atoms))
+        # > Duplicates are removed because `orca_mm` rejects them.
+        sorted_atoms = sorted(set(atoms))
 
         if len(sorted_atoms) == 0:
             raise ValueError("Must supply at least 1 atom.")
 
-        if any(atom < 1 for atom in sorted_atoms):
-            raise ValueError("All atoms must be positive integers.")
+        # > A split point is the first atom of a new part, so splitting at atom 1
+        # > would leave the first part empty.
+        if any(atom < 2 for atom in sorted_atoms):
+            raise ValueError("All atoms must be integers greater than 1.")
 
         # > A split at N atom indices produces N + 1 PDB files.
         expected_outputs = [
