@@ -37,6 +37,10 @@
 - `Structure.from_ase()` now falls back to the `charge` and `spin` entries of `Atoms.info` if ASE's per-atom `initial_charges` / `initial_magnetic_moments` arrays are unset (#273)
 - Add `Block` to allow for creation of arbitrary blocks. (#276)
 - Add functionality to fetch, search or remove a block using the ORCA name of the block. (#276)
+- Added `OrcaMmRunner` with typed helpers for supported `orca_mm` commands. (#224)
+- Added `OrcaBinary.ORCA_MM`. (#224)
+- Added `OpiError`, `OpiExecutionError`, and `OrcaMmError`. (#224)
+- Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
