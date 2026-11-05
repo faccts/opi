@@ -159,10 +159,9 @@ class OrcaMmRunner(BaseRunner):
         FileNotFoundError
             If one or more expected output files do not exist after execution.
         """
-        try:
-            yield
-        except Exception:
-            raise
+        # > An exception raised by the wrapped command propagates from `yield`,
+        # > so the output check only runs after successful execution.
+        yield
 
         missing_outputs = [path for path in expected_outputs if not path.exists()]
         if len(missing_outputs) == 0:
