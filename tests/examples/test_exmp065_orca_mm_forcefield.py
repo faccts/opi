@@ -15,21 +15,26 @@ def _count_ff_atoms(orcaff_file: Path) -> int:
 @pytest.mark.examples
 @pytest.mark.orca
 def test_exmp065_orca_mm_forcefield(example_input_file, tmp_path) -> None:
-    """Ensure the generated, repeated, merged and split forcefields contain the expected atoms."""
+    """Ensure the forcefield files are generated and the QM/MM calculation uses the merged one."""
     input_file = example_input_file(run_exmp065)
     structure = Structure.from_xyz(input_file)
     n_solute = len(structure)
     n_solvent = 3 * 3
 
-    files = run_exmp065(structure=structure, working_dir=tmp_path)
+    output = run_exmp065(structure=structure, working_dir=tmp_path)
 
-    assert files["h_dist"].is_file()
-    assert _count_ff_atoms(files["solute_ff"]) == n_solute
-    assert _count_ff_atoms(files["water_ff"]) == 3
-    assert _count_ff_atoms(files["solvent_ff"]) == n_solvent
-    assert _count_ff_atoms(files["merged_ff"]) == n_solute + n_solvent
+    # > Forcefield files contain the expected number of atoms
+    assert (tmp_path / "solute.H_DIST.prms").is_file()
+    assert _count_ff_atoms(tmp_path / "solute.ORCAFF.prms") == n_solute
+    assert _count_ff_atoms(tmp_path / "water.ORCAFF.prms") == 3
+    assert _count_ff_atoms(tmp_path / "water_repeat3.ORCAFF.prms") == n_solvent
+    assert _count_ff_atoms(tmp_path / "solute_merged.ORCAFF.prms") == n_solute + n_solvent
 
     # > Splitting after the solute recovers solute and solvent
-    solute_part, solvent_part = files["split_ffs"]
-    assert _count_ff_atoms(solute_part) == n_solute
-    assert _count_ff_atoms(solvent_part) == n_solvent
+    assert _count_ff_atoms(tmp_path / "solute_merged_split1.ORCAFF.prms") == n_solute
+    assert _count_ff_atoms(tmp_path / "solute_merged_split2.ORCAFF.prms") == n_solvent
+
+    # > The QM/MM calculation ran with the solute as QM region
+    assert output.terminated_normally()
+    assert output.get_final_energy() < 0
+    assert len(output.get_structure()) == n_solute
