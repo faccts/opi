@@ -245,7 +245,6 @@ class OrcaMmRunner(BaseRunner):
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
-        raise_on_error: bool = True,
     ) -> RunResult:
         """
         Execute an `orca_mm` command and verify that its expected outputs were generated.
@@ -264,8 +263,6 @@ class OrcaMmRunner(BaseRunner):
             One or more target streams to pipe the subprocess STDERR to.
         timeout : float | None, default: None
             Optional timeout in seconds to wait for the process to complete.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -275,13 +272,15 @@ class OrcaMmRunner(BaseRunner):
         Raises
         ------
         OrcaMmError
-            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
+            If `orca_mm` exits with a nonzero return code.
         FileNotFoundError
             If one or more expected output files do not exist after execution.
         """
         if isinstance(expected_outputs, Path):
             expected_outputs = (expected_outputs,)
 
+        # > Always raise on a nonzero return code: a failed run never produces the
+        # > expected outputs, so the output check below could not succeed anyway.
         with self._expect_output_files(*expected_outputs):
             return self.run_orca_mm(
                 command,
@@ -289,7 +288,7 @@ class OrcaMmRunner(BaseRunner):
                 stdout=stdout,
                 stderr=stderr,
                 timeout=timeout,
-                raise_on_error=raise_on_error,
+                raise_on_error=True,
             )
 
     def run_convff(
@@ -301,7 +300,6 @@ class OrcaMmRunner(BaseRunner):
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
-        raise_on_error: bool = True,
     ) -> Path:
         """
         Executes the `orca_mm` binary with the `-convff` flag and passes in the
@@ -321,8 +319,6 @@ class OrcaMmRunner(BaseRunner):
             One or more target streams to pipe the subprocess STDERR to.
         timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -336,7 +332,7 @@ class OrcaMmRunner(BaseRunner):
         FileNotFoundError
             If an input file is missing or the expected output is not generated.
         OrcaMmError
-            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
+            If `orca_mm` exits with a nonzero return code.
         """
         # > `convff` requires at least one source forcefield file.
         ff_paths = tuple(self._resolve_path(f) for f in ff_files)
@@ -371,7 +367,6 @@ class OrcaMmRunner(BaseRunner):
             expected_output,
             stdout=stdout,
             stderr=stderr,
-            raise_on_error=raise_on_error,
             timeout=timeout,
         )
 
@@ -384,7 +379,6 @@ class OrcaMmRunner(BaseRunner):
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
-        raise_on_error: bool = True,
     ) -> list[Path]:
         """
         Execute `orca_mm -splitff` and split an ORCA forcefield file at selected atom indices.
@@ -401,8 +395,6 @@ class OrcaMmRunner(BaseRunner):
             One or more target streams to pipe the subprocess STDERR to.
         timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -416,7 +408,7 @@ class OrcaMmRunner(BaseRunner):
         FileNotFoundError
             If the input file is missing or an expected output is not generated.
         OrcaMmError
-            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
+            If `orca_mm` exits with a nonzero return code.
         """
         orcaff_file = self._resolve_path(orcaff_file)
         self._assert_files_exist(orcaff_file)
@@ -446,7 +438,6 @@ class OrcaMmRunner(BaseRunner):
             expected_outputs,
             stdout=stdout,
             stderr=stderr,
-            raise_on_error=raise_on_error,
             timeout=timeout,
         )
 
@@ -458,7 +449,6 @@ class OrcaMmRunner(BaseRunner):
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
-        raise_on_error: bool = True,
     ) -> Path:
         """
         Execute `orca_mm -mergeff` to merge multiple ORCA forcefield files.
@@ -473,8 +463,6 @@ class OrcaMmRunner(BaseRunner):
             One or more target streams to pipe the subprocess STDERR to.
         timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -488,7 +476,7 @@ class OrcaMmRunner(BaseRunner):
         FileNotFoundError
             If an input file is missing or the expected output is not generated.
         OrcaMmError
-            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
+            If `orca_mm` exits with a nonzero return code.
         """
         # > A merge requires at least two source forcefields.
         if len(orcaff_files) < 2:
@@ -510,7 +498,6 @@ class OrcaMmRunner(BaseRunner):
             expected_output,
             stdout=stdout,
             stderr=stderr,
-            raise_on_error=raise_on_error,
             timeout=timeout,
         )
 
@@ -524,7 +511,6 @@ class OrcaMmRunner(BaseRunner):
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
-        raise_on_error: bool = True,
     ) -> Path:
         """
         Execute `orca_mm -repeatff` to repeat a forcefield topology a fixed number of times.
@@ -541,8 +527,6 @@ class OrcaMmRunner(BaseRunner):
             One or more target streams to pipe the subprocess STDERR to.
         timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -556,7 +540,7 @@ class OrcaMmRunner(BaseRunner):
         FileNotFoundError
             If the input file is missing or the expected output is not generated.
         OrcaMmError
-            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
+            If `orca_mm` exits with a nonzero return code.
         """
         orcaff_file = self._resolve_path(orcaff_file)
         self._assert_files_exist(orcaff_file)
@@ -578,7 +562,6 @@ class OrcaMmRunner(BaseRunner):
             expected_output,
             stdout=stdout,
             stderr=stderr,
-            raise_on_error=raise_on_error,
             timeout=timeout,
         )
 
@@ -591,7 +574,6 @@ class OrcaMmRunner(BaseRunner):
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
-        raise_on_error: bool = True,
     ) -> list[Path]:
         """
         Execute `orca_mm -splitpdb` and split a PDB structure at selected atom indices.
@@ -608,8 +590,6 @@ class OrcaMmRunner(BaseRunner):
             One or more target streams to pipe the subprocess STDERR to.
         timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -623,7 +603,7 @@ class OrcaMmRunner(BaseRunner):
         FileNotFoundError
             If the input file is missing or an expected output is not generated.
         OrcaMmError
-            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
+            If `orca_mm` exits with a nonzero return code.
         """
         pdb_file = self._resolve_path(pdb_file)
         self._assert_files_exist(pdb_file)
@@ -653,7 +633,6 @@ class OrcaMmRunner(BaseRunner):
             expected_outputs,
             stdout=stdout,
             stderr=stderr,
-            raise_on_error=raise_on_error,
             timeout=timeout,
         )
 
@@ -665,7 +644,6 @@ class OrcaMmRunner(BaseRunner):
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
-        raise_on_error: bool = True,
     ) -> Path:
         """
         Execute `orca_mm -mergepdb` to merge multiple PDB files.
@@ -680,8 +658,6 @@ class OrcaMmRunner(BaseRunner):
             One or more target streams to pipe the subprocess STDERR to.
         timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -695,7 +671,7 @@ class OrcaMmRunner(BaseRunner):
         FileNotFoundError
             If an input file is missing or the expected output is not generated.
         OrcaMmError
-            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
+            If `orca_mm` exits with a nonzero return code.
         """
         # > A merge requires at least two source PDB files.
         if len(pdb_files) < 2:
@@ -717,7 +693,6 @@ class OrcaMmRunner(BaseRunner):
             expected_output,
             stdout=stdout,
             stderr=stderr,
-            raise_on_error=raise_on_error,
             timeout=timeout,
         )
 
@@ -735,7 +710,6 @@ class OrcaMmRunner(BaseRunner):
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
-        raise_on_error: bool = True,
     ) -> Path:
         """
         Execute `orca_mm -makeff` to generate an ORCA forcefield file from a structure file.
@@ -760,8 +734,6 @@ class OrcaMmRunner(BaseRunner):
             One or more target streams to pipe the subprocess STDERR to.
         timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -775,7 +747,7 @@ class OrcaMmRunner(BaseRunner):
         FileNotFoundError
             If the input file is missing or the expected output is not generated.
         OrcaMmError
-            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
+            If `orca_mm` exits with a nonzero return code.
         """
         structure_file = self._resolve_path(structure_file)
         self._assert_files_exist(structure_file)
@@ -814,7 +786,6 @@ class OrcaMmRunner(BaseRunner):
             expected_output,
             stdout=stdout,
             stderr=stderr,
-            raise_on_error=raise_on_error,
             timeout=timeout,
         )
 
@@ -827,7 +798,6 @@ class OrcaMmRunner(BaseRunner):
         stdout: StreamTargetSpec = (),
         stderr: StreamTargetSpec = (),
         timeout: float | None = None,
-        raise_on_error: bool = True,
     ) -> Path:
         """
         Execute `orca_mm -getHDist` to generate hydrogen-distance parameters from a structure.
@@ -842,8 +812,6 @@ class OrcaMmRunner(BaseRunner):
             One or more target streams to pipe the subprocess STDERR to.
         timeout : float | None, by default None
             Optional timeout in seconds to wait for process to complete.
-        raise_on_error : bool, default: True
-            Raise `OrcaMmError` if `orca_mm` exits with a nonzero return code.
 
         Returns
         -------
@@ -855,7 +823,7 @@ class OrcaMmRunner(BaseRunner):
         FileNotFoundError
             If the input file is missing or the expected output is not generated.
         OrcaMmError
-            If `raise_on_error` is set and `orca_mm` exits with a nonzero return code.
+            If `orca_mm` exits with a nonzero return code.
         """
         structure_file = self._resolve_path(structure_file)
         self._assert_files_exist(structure_file)
@@ -871,7 +839,6 @@ class OrcaMmRunner(BaseRunner):
             expected_output,
             stdout=stdout,
             stderr=stderr,
-            raise_on_error=raise_on_error,
             timeout=timeout,
         )
 
