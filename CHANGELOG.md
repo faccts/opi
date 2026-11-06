@@ -51,9 +51,9 @@
 - Split `Scf`, `Opt`, `Dlpno` and `Wft` into subgroups such as `ScfThreshold` and `OptThreshold`. (#218)
 - Added `Solvent.find_keyword()` and `BlockABC.get_subclass_by_name()`. (#218)
 - Added `Output.get_final_energy_components()` which resolves the final energy contributions. (#290)
-- Added `scripts/run_notebook.py` and `scripts/run_notebooks.py` to execute the documentation notebooks headlessly as a smoke test: each notebook runs in a process of its own and in a temporary directory, stops at the first cell that raises, and is limited in wall-clock time per notebook and per cell. A
+- Added `scripts/run_notebook.py` and `scripts/sweep_notebooks.py` to execute the documentation notebooks: each notebook runs in a process of its own and in a temporary directory, stops at the first cell that raises, and is limited in time per notebook and per cell. A
   summary reports every notebook as `OK`, `FAILED` or `KILLED`, and the exit status is non-zero if any did not run through. (#310)
-- Added the nox sessions `notebooks`, which runs the notebooks named after `--` (by name or glob) or else the whitelist in `scripts/run_notebooks.py`, and `all_notebooks`, which runs the whitelist. Neither runs on a bare `nox`. (#310)                                
+- Added the nox sessions `notebooks`, which runs the notebooks named after `--` (by name or glob) or else the whitelist in `scripts/sweep_notebooks.py`, and `all_notebooks`, which runs every notebook in `docs/contents/notebooks/`, whitelisted or not. Neither runs on a bare `nox`. (#310)                                
 - Added the `notebooks` dependency group, which holds the notebook runner's dependencies and the packages the whitelisted notebooks install for themselves. (#310)
 
 ### Changed

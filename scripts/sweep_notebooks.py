@@ -14,11 +14,11 @@ Examples
 --------
 ::
 
-    scripts/run_notebooks.py                  # the whitelist below
-    scripts/run_notebooks.py how_to_opi led   # by name, whitelisted or not
-    scripts/run_notebooks.py 'extrapolate_*'  # by glob
-    scripts/run_notebooks.py '*'              # every notebook there is
-    scripts/run_notebooks.py --list           # what would run?
+    scripts/sweep_notebooks.py                  # the whitelist below
+    scripts/sweep_notebooks.py how_to_opi led   # by name, whitelisted or not
+    scripts/sweep_notebooks.py 'extrapolate_*'  # by glob
+    scripts/sweep_notebooks.py '*'              # every notebook there is
+    scripts/sweep_notebooks.py --list           # what would run?
 
 Exit status is 0 if every notebook ran, and 1 otherwise.
 """
@@ -40,7 +40,7 @@ from run_notebook import DEFAULT_TIMEOUT, NOTEBOOKS_DIR
 RUNNER = Path(__file__).resolve().parent / "run_notebook.py"
 
 # > The notebooks a plain run works through, in this order. This list is the one place
-# > that decides what "all of them" means: a notebook that cannot run here -- one that
+# > that decides what a plain run covers: a notebook that cannot run here -- one that
 # > needs a GPU, a licence or a machine with more patience -- is taken off it. Naming a
 # > notebook on the command line runs it whether it is on this list or not.
 WHITELIST = (

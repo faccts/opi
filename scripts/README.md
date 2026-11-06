@@ -13,9 +13,9 @@ Two scripts do the work, and two nox sessions drive them:
 | | |
 |---|---|
 | `scripts/run_notebook.py` | executes **one** notebook |
-| `scripts/run_notebooks.py` | executes a list of them, one process each, and reports |
-| `nox -s notebooks` | the above, with the notebooks you name |
-| `nox -s all_notebooks` | the full whitelisted sweep, no arguments |
+| `scripts/sweep_notebooks.py` | executes a list of them, one process each, and reports |
+| `nox -s notebooks` | the above, with the notebooks you name, or else the whitelist |
+| `nox -s all_notebooks` | the above, with every notebook, whitelisted or not |
 
 Both sessions are non-default, so a bare `nox` never starts a notebook run.
 
@@ -25,21 +25,26 @@ editing the scripts.
 
 ## Running them
 
-Everything after `--` is passed on to `scripts/run_notebooks.py`:
+Everything after `--` is passed on to `scripts/sweep_notebooks.py`:
 
 ```bash
+uv run nox -s notebooks                    # the whitelist
 uv run nox -s notebooks -- --list          # what would run, without running it
 uv run nox -s notebooks -- how_to_opi      # one notebook, by name
 uv run nox -s notebooks -- how_to_opi led  # several, in the order given
 uv run nox -s notebooks -- 'extrapolate_*' # by glob, quoted so the shell keeps out
-uv run nox -s notebooks -- '*'             # every notebook in the directory
-uv run nox -s notebooks                    # the whitelist (same as all_notebooks)
-uv run nox -s all_notebooks                # the whitelist; takes no arguments
+uv run nox -s all_notebooks                # every notebook, whitelisted or not
+uv run nox -s all_notebooks -- --list      # ...and which ones that is
 ```
 
 A name is the notebook's stem (`how_to_opi`, not `how_to_opi.ipynb`); a path works too.
 A notebook named on the command line runs whether or not it is whitelisted, so the ones
 left off the whitelist can still be tried by hand.
+
+`all_notebooks` is `notebooks -- '*'` under a name of its own: it ignores the whitelist
+and runs everything in `docs/contents/notebooks/`. The notebooks off the whitelist are off
+it for a reason, so expect some of that run to fail; several also need packages the
+`notebooks` group does not hold, and `PIP_NO_INDEX=0` (see below) gives them a chance.
 
 The session installs OPI and the `notebooks` dependency group into `.nox/notebooks` and
 runs the notebooks in it. The group holds `nbclient`, `nbformat`, `nbconvert` and
@@ -76,16 +81,16 @@ session puts the locked versions back and removes whatever is not in the lock fi
 
 ## The whitelist
 
-`WHITELIST` at the top of `scripts/run_notebooks.py` is the one place that decides what
-"all of them" means. A notebook that cannot run unattended — one that needs a GPU, a
-licence or more patience than a sweep has — is left off it. `nox -s notebooks -- --list`
-prints what is on it. A whitelisted notebook that no longer exists is an error, not a
-silent skip.
+`WHITELIST` at the top of `scripts/sweep_notebooks.py` is the one place that decides what
+a plain run (`nox -s notebooks`) works through. A notebook that cannot run unattended —
+one that needs a GPU, a licence or more patience than a sweep has — is left off it.
+`nox -s notebooks -- --list` prints what is on it. A whitelisted notebook that no longer
+exists is an error, not a silent skip.
 
 ## Timeouts
 
 A notebook gets 60 minutes of wall clock, and no single cell more than 45 minutes;
-whichever comes first ends it. `run_notebooks.py` waits 120 s beyond the notebook's own
+whichever comes first ends it. `sweep_notebooks.py` waits 120 s beyond the notebook's own
 budget, then asks the runner to stop, gives it 30 s to clean up, and kills whatever is
 left of it (a kernel, an ORCA).
 
@@ -119,7 +124,7 @@ they are running in, and concurrent installs into one environment corrupt it.
 The scripts are standalone — in an environment that has the `notebooks` group installed:
 
 ```bash
-scripts/run_notebooks.py how_to_opi
+scripts/sweep_notebooks.py how_to_opi
 scripts/run_notebook.py docs/contents/notebooks/how_to_opi.ipynb
 scripts/run_notebook.py --help
 ```

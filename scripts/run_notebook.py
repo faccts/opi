@@ -187,7 +187,7 @@ def main(argv: list[str] | None = None) -> int:
     # > `notebooks` dependency group, and cannot move past the versions in uv.lock.
     # > `PIP_NO_INDEX=0` lets them reach PyPI again.
     os.environ.setdefault("PIP_NO_INDEX", "1")
-    # > Whoever stops this run -- `run_notebooks.py`, a batch system -- gets a clean exit.
+    # > Whoever stops this run -- `sweep_notebooks.py`, a batch system -- gets a clean exit.
     signal.signal(signal.SIGTERM, terminate)
 
     print(f"notebook : {notebook}")
