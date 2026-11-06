@@ -19,5 +19,14 @@ def test_exmp010_uvvis(example_input_file, tmp_path, json_files_exporter) -> Non
     # Assert negative final energy
     assert output.get_final_energy() < 0
 
+    # Plot the hole NTO of the dominant NTO pair of the first excited state, which is the
+    # highest occupied NTO
+    nelectrons, _ = output.get_nelectrons()
+    nto = output.plot_nto(nelectrons // 2 - 1, state=1, resolution=20)
+
+    # Assert that the cube file exists
+    assert nto is not None
+    assert nto.path.exists()
+
     # optional export of json files
     json_files_exporter.export_jsons_from(tmp_path)

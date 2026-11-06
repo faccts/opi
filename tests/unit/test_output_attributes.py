@@ -55,6 +55,7 @@ class TestOutputAttributes:
             "PropertyResults.geometries.energy.root.corrst",
             "PropertyResults.geometries.energy.root.corrds",
             "GbwResults.molecule.td_dft.xy",
+            "GbwResults.molecule.td_dft.x_minus_y",
             "PropertyResults.geometries.energy.root.corrss",
             "GbwResults.molecule.twoelintegrals",
         }

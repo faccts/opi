@@ -12,6 +12,13 @@ ANGST_TO_AU: float = 1.0 / AU_TO_ANGST
 AU_TO_KCAL: float = 627.5096080305927
 # Atomic unit of energy (Hartree) to eV
 AU_TO_EV: float = 27.2113834
+# eV to wavenumbers (cm**-1)
+EV_TO_CM: float = 8065.54477
+# Wavenumbers (cm**-1) to MHz
+CM_TO_MHZ: float = 29979.2458
+# Product of an energy in eV and the corresponding wavelength in nm (h * c in eV nm),
+# i.e., wavelength / nm = EV_TO_NM / (energy / eV). Derived from `EV_TO_CM` to be consistent with ORCA.
+EV_TO_NM: float = 1.0e7 / EV_TO_CM
 # Angstrom to meter
 ANGST_TO_M = 1.0e-10
 # Atomic unit of mass (Dalton) to kilogram (kg)
