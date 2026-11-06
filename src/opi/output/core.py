@@ -972,6 +972,93 @@ class Output:
             Returns the cube output object or returns None if the cube file cannot be retrieved.
         """
 
+        if isinstance(gbw_type, str):
+            gbw_type = GbwSuffix(gbw_type)
+
+        # > determine which gbw file to plot
+        suffix = gbw_type.value
+        gbw_file = self.gbw_json_files[gbw_index].with_suffix(suffix)
+
+        return self._plot_orbital(
+            gbw_file, index, operator=operator, resolution=resolution, timeout=timeout
+        )
+
+    def plot_nto(
+        self,
+        index: StrictNonNegativeInt,
+        /,
+        *,
+        state: StrictPositiveInt,
+        resolution: StrictNonNegativeInt = 40,
+        timeout: int = 300,
+    ) -> CubeOutput | None:
+        """
+        Generates and returns the cube file for a natural transition orbital (NTO) of an excited
+        state by running the orca_plot binary.
+        Requires a calculation of excited states (e.g. TD-DFT or CIS) in which the NTOs were
+        requested with `donto` in the `%tddft`/`%cis` block. ORCA then saves the NTOs of the singlet
+        state `state` in the file `<basename>.s<state>.nto`.
+        **Attention:** will terminate orca_plot after 300 seconds by default. If you plot something large you will have
+        to adapt this threshold or set it to -1 for waiting indefinitely!
+
+        Parameters
+        ----------
+        index: StrictNonNegativeInt
+            Index of the NTO to plot. The NTO pairs are listed in the ORCA output, e.g. `20a -> 21a`
+            for the hole NTO 20 and the particle NTO 21.
+        state: StrictPositiveInt
+            Excited state whose NTOs are plotted, counting from 1 as in the ORCA output.
+        resolution: StrictNonNegativeInt, default = 40
+            Resolution of the generated cube file. Higher numbers result in smoother plots, but also in longer orca_plot
+            run time and a larger cube file.
+        timeout: int, default = 300
+            Time after which orca_plot will be stopped. 300 seconds should be sufficient for most NTOs but when
+            something large is plotted set this to a larger value or to -1 for waiting indefinitely long.
+
+        Returns
+        -------
+        CubeOutput | None
+            Returns the cube output object or returns None if the cube file cannot be retrieved.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the NTO file of the requested state does not exist.
+        """
+        nto_file = self.get_file(f".s{state}.nto")
+        return self._plot_orbital(nto_file, index, resolution=resolution, timeout=timeout)
+
+    def _plot_orbital(
+        self,
+        orbital_file: Path,
+        index: StrictNonNegativeInt,
+        /,
+        *,
+        operator: StrictNonNegativeInt = 0,
+        resolution: StrictNonNegativeInt = 40,
+        timeout: int = 300,
+    ) -> CubeOutput | None:
+        """
+        Runs orca_plot to generate the cube file of an orbital stored in `orbital_file`.
+
+        Parameters
+        ----------
+        orbital_file: Path
+            File holding the orbitals, e.g. a .gbw, .loc or .nto file.
+        index: StrictNonNegativeInt
+            Index of the orbital to plot.
+        operator : StrictNonNegativeInt, default = 0
+            Operator of the orbital, alpha orbitals are indicated by 0 and beta orbitals by 1.
+        resolution: StrictNonNegativeInt, default = 40
+            Resolution of the generated cube file.
+        timeout: int, default = 300
+            Time after which orca_plot will be stopped, -1 for waiting indefinitely long.
+
+        Returns
+        -------
+        CubeOutput | None
+            Returns the cube output object or returns None if the cube file cannot be retrieved.
+        """
         operator_list = ["a", "b"]
 
         # > Define input string for orca_plot.
@@ -991,19 +1078,12 @@ class Output:
             "12",  # Exit the program
         ]
 
-        if isinstance(gbw_type, str):
-            gbw_type = GbwSuffix(gbw_type)
+        self.run_orca_plot(stdin_list, timeout=timeout, gbw_file=orbital_file)
 
-        # > determine which gbw file to plot
-        suffix = gbw_type.value
-        gbw_file = self.gbw_json_files[gbw_index].with_suffix(suffix)
-
-        self.run_orca_plot(stdin_list, timeout=timeout, gbw_file=gbw_file)
-
-        # > get the resulting cube file as string
+        # > orca_plot names the cube file after the orbital file, e.g. `job.s3.mo20a.cube`
+        # > for the orbital file `job.s3.nto`
         cube_file = self.get_file(
-            f".mo{index}{operator_list[operator]}.cube",
-            basename=self.gbw_json_files[gbw_index].stem,
+            f".mo{index}{operator_list[operator]}.cube", basename=orbital_file.stem
         )
 
         if not cube_file.is_file():

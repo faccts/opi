@@ -62,6 +62,7 @@
 - Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
 - Added `Output.get_absorption_spectrum()` which returns the calculated electronic absorption (UV/Vis) spectrum (#XXX).
 - Added `AbsorptionSpectrum` and `EcdSpectrum` with properties (e.g. `energies_ev`, `oscillator_strengths`, `rotatory_strengths`) that access the columns of `excitationenergies` by name (#XXX).
+- Added `Output.plot_nto()` which generates the cube file of a natural transition orbital (NTO) of an excited state (#XXX).
 - Added a tutorial notebook on the calculation of a UV/Vis spectrum (#XXX).
 
 ### Changed
