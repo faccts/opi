@@ -63,6 +63,7 @@
 - Added `Output.get_absorption_spectrum()` which returns the calculated electronic absorption (UV/Vis) spectrum (#309).
 - Added `AbsorptionSpectrum` and `EcdSpectrum` with properties (e.g. `energies_ev`, `oscillator_strengths`, `rotatory_strengths`) that access the columns of `excitationenergies` by name (#309).
 - Added `Output.plot_nto()` which generates the cube file of a natural transition orbital (NTO) of an excited state (#309).
+- Added the unit conversion constants `EV_TO_CM`, `EV_TO_NM` and `CM_TO_MHZ` to `opi.utils.units` (#309).
 - Added a tutorial notebook on the calculation of a UV/Vis spectrum (#309).
 
 ### Changed
