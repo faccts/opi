@@ -55,6 +55,11 @@
   summary reports every notebook as `OK`, `FAILED` or `KILLED`, and the exit status is non-zero if any did not run through. (#310)
 - Added the nox sessions `notebooks`, which runs the notebooks named after `--` (by name or glob) or else the whitelist in `scripts/sweep_notebooks.py`, and `all_notebooks`, which runs every notebook in `docs/contents/notebooks/`, whitelisted or not. Neither runs on a bare `nox`. (#310)                                
 - Added the `notebooks` dependency group, which holds the notebook runner's dependencies and the packages the whitelisted notebooks install for themselves. (#310)
+- Added another fallback to `Output.get_structure()` where the charge and multiplicity are grepped from the echoed input in the output (#307).
+- Added `OrcaMmRunner` with typed helpers for supported `orca_mm` commands. (#224)
+- Added `OrcaBinary.ORCA_MM`. (#224)
+- Added `OpiError`, `OpiExecutionError`, and `OrcaMmError`. (#224)
+- Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
@@ -64,6 +69,7 @@
 - `Input.add_arbitrary_string()` now also accepts an `ArbitraryString` instance next to a plain `str`, so that an arbitrary string can be added together with the position it carries. (#288)
 - `ORCAKeyword` now compares equal case-insensitively, matching `ORCAKeyword.format_orca()`, which lowercases the keyword, and ORCA itself, which ignores the case. Hence keywords that only differ in case count as duplicates of each other in `Input.add_simple_keywords()`, `Input.remove_simple_keywords()`, `Input.has_simple_keywords()` and `Input.get_simple_keywords()`. (#288)
 - The gbw-JSON files redumped by `Output` (`do_redump_jsons`) now use the keys of the original ORCA JSON files instead of the field names of the models (#289).
+- `Structure.charge` and `Structure.multiplicity` can now be `None` for cases where they are unknown (#307).
 
 ### Deprecated
 ### Removed
@@ -79,6 +85,8 @@
 - Negative calculation timings occasionally reported by ORCA are now clamped to zero instead of raising a `ValidationError` (#284).
 - Made OPI runner thread safe by copying the env for each run (#293).
 - Fixed `BlockIce()` requiring `integrals` to be set. (#218)
+- The pydantic output fields `EfgTensor.nuc`, `SpinSpinCoupling.pairsinfo` and `Tensor.nuc` now accept zero as valid output values (#305).
+- Allow direct initialization of `Scan` input object from the class instead of producing malformed input (#308).
 
 ## [2.0.0] - 2026-02-10
 

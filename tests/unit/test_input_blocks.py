@@ -5,10 +5,12 @@ from opi.input.blocks import (
     Block,
     BlockABC,
     BlockEprnmr,
+    BlockGeom,
     BlockMethod,
     BlockScf,
     Nuclei,
     NucleiFlag,
+    Scan,
 )
 from opi.utils.element import Element
 
@@ -553,3 +555,26 @@ def test_add_blocks_merge_does_not_mutate_previously_stored_block(calc: Calculat
 
     assert previously_stored.d3s6 == 0.64
     assert calc.input.blocks["method"] is not previously_stored
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize(
+    "scan",
+    [
+        Scan(mode="B", atom1=0, atom2=1, valuelist=[1, 2, 3]),
+        "B 0 1 [1.0 2.0 3.0]",
+    ],
+)
+def test_scan_valuelist_format(scan: Scan | str):
+    """Test for `Scan`: a valuelist is written space-separated and terminated with `end`."""
+    assert "scan B 0 1 [1.0 2.0 3.0] end\n" in BlockGeom(scan=scan).format_orca()
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize("scan", ["B 0 1 = 1.0, 2.0, 3.5", "B 0 1 [1.0, 2.0]", "B 0 1 = 1, 2, 3 x"])
+def test_scan_from_string_rejects_invalid(scan: str):
+    """Test for `Scan.from_string()`: malformed or trailing input is rejected, not truncated."""
+    with pytest.raises(ValueError, match="Invalid scan string"):
+        BlockGeom(scan=scan)

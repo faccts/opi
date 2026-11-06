@@ -82,6 +82,24 @@ def test_get_mult_no_fallback(output_no_json):
 @pytest.mark.unit
 @pytest.mark.output
 @pytest.mark.parametrize(
+    "coord_line, expected",
+    [
+        ("* xyz -1 2", (-1, 2)),
+        ("*xyzfile 1 3 inp.xyz", (1, 3)),
+        ("* GZMT 0 1", (0, 1)),
+    ],
+)
+def test_get_charge_mult_input_fallback(tmp_path, coord_line: str, expected: tuple[int, int]):
+    """Test that `get_charge()`/`get_mult()` fall back to the input file echoed in the .out file."""
+    (tmp_path / "job.out").write_text(f"|  1> ! b3lyp def2-svp\n|  2> {coord_line}\n|  3> *\n")
+    output = Output("job", version_check=False)
+    output.working_dir = tmp_path
+    assert (output.get_charge(), output.get_mult()) == expected
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize(
     "task, expected_values",
     [("opt", 8), ("roci", 11)],
 )

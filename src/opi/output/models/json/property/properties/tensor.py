@@ -4,6 +4,7 @@ from opi.output.models.base.get_item import GetItem
 from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
     StrictNonNegativeFloat,
+    StrictNonNegativeInt,
     StrictPositiveFloat,
     StrictPositiveInt,
 )
@@ -27,7 +28,7 @@ class Tensor(GetItem):
         Irreducible representation of the electronic state
     numofnucs: StrictPositiveInt | None, default = None
         Number of calculated nuclei
-    nuc: list[StrictPositiveInt] | None, default = None
+    nuc: list[StrictNonNegativeInt] | None, default = None
         list of used nuclei
     elem: list[StrictPositiveInt] | None, default = None
         Atomic number of the nucleus
@@ -53,7 +54,7 @@ class Tensor(GetItem):
     state: StrictInt | None = None
     irrep: StrictInt | None = None
     numofnucs: StrictPositiveInt | None = None
-    nuc: list[StrictPositiveInt] | None = None
+    nuc: list[StrictNonNegativeInt] | None = None
     elem: list[StrictPositiveInt] | None = None
     isotope: list[StrictPositiveFloat] | None = None
     i: list[StrictNonNegativeFloat] | None = None

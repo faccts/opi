@@ -19,6 +19,7 @@ from opi.output.cube import CubeOutput
 from opi.output.fcidump import Fcidump
 from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
+    get_charge_and_mult_from_input,
     get_error_message,
     get_error_messages,
     get_float_from_line,
@@ -1202,7 +1203,9 @@ class Output:
             If True and the JSON output is unavailable, attempt to parse the charge from the
             plain-text `.out` file by grepping for "Total Charge           Charge".
             This line is present in standard ORCA output but not for external methods
-            such as GFN-FF, where None is returned.
+            such as GFN-FF or runs that failed early. In that case the charge is taken from the
+            coordinate line of the input file echoed in the `.out` file (e.g. "* xyz 0 1").
+            None is returned if this fails as well.
 
         Returns
         -------
@@ -1219,7 +1222,11 @@ class Output:
         raw = get_float_from_line(
             self.get_outfile(), "Total Charge           Charge", 0, -1, strict=False
         )
-        return int(raw) if raw is not None else None
+        if raw is not None:
+            return int(raw)
+
+        charge_mult = get_charge_and_mult_from_input(self.get_outfile())
+        return charge_mult[0] if charge_mult is not None else None
 
     def get_mult(self, *, fallback: bool = True) -> StrictPositiveInt | None:
         """
@@ -1231,7 +1238,9 @@ class Output:
             If True and the JSON output is unavailable, attempt to parse the multiplicity
             from the plain-text `.out` file by grepping for "Multiplicity           Mult".
             This line is present in standard ORCA output but not for external methods
-            such as GFN-FF, where None is returned.
+            such as GFN-FF or runs that failed early. In that case the multiplicity is taken from
+            the coordinate line of the input file echoed in the `.out` file (e.g. "* xyz 0 1").
+            None is returned if this fails as well.
 
         Returns
         -------
@@ -1248,7 +1257,11 @@ class Output:
         raw = get_float_from_line(
             self.get_outfile(), "Multiplicity           Mult", 0, -1, strict=False
         )
-        return int(raw) if raw is not None else None
+        if raw is not None:
+            return int(raw)
+
+        charge_mult = get_charge_and_mult_from_input(self.get_outfile())
+        return charge_mult[1] if charge_mult is not None else None
 
     def get_nelectrons(
         self, *, spin_resolved: bool = False
@@ -1654,6 +1667,7 @@ class Output:
         ----------
         structure: Structure | None
             Returns structure object generated from the output for the given index or None if no structure is available.
+            Its charge and multiplicity are None if they cannot be determined from the output.
         """
 
         atoms: list[Atom] = []
@@ -1683,18 +1697,9 @@ class Output:
                 for atom, frag in zip(atoms, fragments):
                     atom.fragment_id = frag[0]
 
-        structure = Structure(atoms)
-
-        # > Add charge data
-        charge = self.get_charge()
-        if charge is not None:
-            structure.charge = charge
-
-        # > Add multiplicity data
-        mult = self.get_mult()
-        if mult is not None:
-            structure.multiplicity = mult
-        return structure
+        # > Charge and multiplicity stay None if they cannot be determined, instead of
+        # > silently falling back to the `Structure` defaults
+        return Structure(atoms, charge=self.get_charge(), multiplicity=self.get_mult())
 
     def get_structure_from_gbw(self, *, index: int = 0) -> Structure | None:
         """
@@ -1813,20 +1818,8 @@ class Output:
         if not atoms:
             return None
 
-        # > Assemble the structure
-        structure = Structure(atoms)
-
-        # > Add molecular charge if present
-        charge = self.get_charge()
-        if charge is not None:
-            structure.charge = charge
-
-        # > Add molecular multiplicity if present
-        mult = self.get_mult()
-        if mult is not None:
-            structure.multiplicity = mult
-
-        return structure
+        # > Assemble the structure, charge and multiplicity stay None if they cannot be determined
+        return Structure(atoms, charge=self.get_charge(), multiplicity=self.get_mult())
 
     def _grep_gradient(self, index: int, /) -> list[StrictFiniteFloat] | None:
         """Parse gradient from "CARTESIAN GRADIENT" block in the .out file (Eh/Bohr)."""
