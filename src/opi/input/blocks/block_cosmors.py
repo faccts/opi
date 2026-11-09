@@ -2,7 +2,7 @@ from pydantic import field_validator
 
 from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputFilePath
-from opi.input.simple_keywords import SimpleKeyword, Solvent
+from opi.input.simple_keywords import ORCAKeyword, Solvent
 
 __all__ = ("BlockCosmors",)
 
@@ -25,8 +25,8 @@ class BlockCosmors(BlockABC):
     dgsolv_eta: float | None = None
     dgsolv_omegaring: float | None = None
     temp: float | None = None
-    dftfunc: SimpleKeyword | None = None
-    dftbas: SimpleKeyword | None = None
+    dftfunc: ORCAKeyword | None = None
+    dftbas: ORCAKeyword | None = None
     solvent: Solvent | None = None
     solventfilename: InputFilePath | None = None
 

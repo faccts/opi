@@ -6,7 +6,7 @@ from pydantic_core.core_schema import ValidationInfo
 from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputFilePath
 from opi.input.simple_keywords import (
-    SimpleKeyword,
+    ORCAKeyword,
 )
 from opi.utils.element import Element
 
@@ -31,14 +31,14 @@ class NewBasis(BaseModel):
     -----------
     element: `Element`
         Element for which basis is defined
-    basis: `SimpleKeyword`
+    basis: `ORCAKeyword`
         Basis set keyword to be defined
 
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
     element: Element
-    basis: SimpleKeyword
+    basis: ORCAKeyword
 
     def __str__(self) -> str:
         return f'{str(self.element)} "{self.basis.format_orca()}" end'
@@ -51,7 +51,7 @@ class FragBasis(BaseModel):
 
     Attributes
     ----------
-    frag : dict[int, SimpleKeyword]
+    frag : dict[int, ORCAKeyword]
         A dictionary mapping atomic indices to basis set keywords.
     name: str
         Used to identify the class for the ORCA input
@@ -59,16 +59,16 @@ class FragBasis(BaseModel):
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    frag: dict[int, SimpleKeyword]
+    frag: dict[int, ORCAKeyword]
     name: str = "fragbasis"
 
     @field_validator("frag")
     @classmethod
-    def check_fragments(cls, values: dict[int, SimpleKeyword]) -> dict[int, SimpleKeyword]:
+    def check_fragments(cls, values: dict[int, ORCAKeyword]) -> dict[int, ORCAKeyword]:
         """
         Parameters
         ----------
-        values : dict[int | SimpleKeyword]
+        values : dict[int | ORCAKeyword]
         """
         if any(k <= 0 for k in values.keys()):
             raise ValueError("All integers must be positive")
@@ -117,7 +117,7 @@ class FragBasis(BaseModel):
         # Build dict[int, str]
         frag_dict = {int(k): v.strip() for k, v in pairs}
         for v in frag_dict:
-            frag_dict[v] = SimpleKeyword(frag_dict[v])
+            frag_dict[v] = ORCAKeyword(frag_dict[v])
 
         return cls(frag=frag_dict)
 
@@ -217,18 +217,18 @@ class BlockBasis(BlockABC):
         None  # whether to make sure basis sets stay the same over unique groups of atoms
     )
     allowghostecp: bool | None = None  # allow ecps for for ghostatoms
-    basis: SimpleKeyword | None = None
-    auxj: SimpleKeyword | None = None
-    gtoaux: SimpleKeyword | None = None
-    auxbasis: SimpleKeyword | None = None
-    aux: SimpleKeyword | None = None
-    auxc: SimpleKeyword | None = None  # **
-    auxx: SimpleKeyword | None = None  # **
-    ecp: SimpleKeyword | None = None
-    auxjk: SimpleKeyword | None = None
-    cabs: SimpleKeyword | None = None
-    gtocabs: SimpleKeyword | None = None
-    cabsbasis: SimpleKeyword | None = None
+    basis: ORCAKeyword | None = None
+    auxj: ORCAKeyword | None = None
+    gtoaux: ORCAKeyword | None = None
+    auxbasis: ORCAKeyword | None = None
+    aux: ORCAKeyword | None = None
+    auxc: ORCAKeyword | None = None  # **
+    auxx: ORCAKeyword | None = None  # **
+    ecp: ORCAKeyword | None = None
+    auxjk: ORCAKeyword | None = None
+    cabs: ORCAKeyword | None = None
+    gtocabs: ORCAKeyword | None = None
+    cabsbasis: ORCAKeyword | None = None
     gtoname: InputFilePath | None = None
     gtoauxname: InputFilePath | None = None
     gtoauxjname: InputFilePath | None = None

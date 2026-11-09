@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from opi.output.grepper.core import Grepper
@@ -13,6 +14,13 @@ from opi.output.grepper.patterns import (
     NEB_CONVERGED,
     SCF_CONVERGED,
     TERMINATED_NORMALLY,
+)
+
+# > Coordinate line of the input file as echoed in the output, e.g. "| 10> * xyz 0 1"
+# > Group 1 is the charge, group 2 the multiplicity
+_INPUT_COORDS_CHARGE_MULT = re.compile(
+    r"^\|\s*\d+>\s*\*\s*(?:xyz|int|internal|gzmt|xyzfile|gzmtfile|pdbfile)\s+([+-]?\d+)\s+(\d+)",
+    re.IGNORECASE,
 )
 
 
@@ -129,6 +137,35 @@ def get_float_from_line(
             raise
         else:
             return None
+
+
+def get_charge_and_mult_from_input(file_name: Path, /) -> tuple[int, int] | None:
+    """
+    Get charge and multiplicity from the coordinate line (e.g. "* xyz 0 1") of the input file
+    as echoed in the ORCA output. If the output contains several jobs, the last one is used.
+
+    Parameters
+    ----------
+    file_name : Path
+        Path to the ORCA output file.
+
+    Returns
+    -------
+    tuple[int, int] | None
+        Charge and multiplicity, or None if the file does not exist or no coordinate line is found.
+    """
+    try:
+        lines = Grepper(file_name).search(_INPUT_COORDS_CHARGE_MULT, fallback=[])
+    except FileNotFoundError:
+        return None
+
+    if not lines:
+        return None
+
+    match = _INPUT_COORDS_CHARGE_MULT.search(lines[-1])
+    if match is None:
+        return None
+    return int(match.group(1)), int(match.group(2))
 
 
 def get_lines_from_block(

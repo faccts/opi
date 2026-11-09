@@ -6,7 +6,7 @@ from opi.input.simple_keywords.approximation import Approximation
 from opi.input.simple_keywords.atomic_charge import AtomicCharge
 from opi.input.simple_keywords.aux_basis_set import AuxBasisSet
 from opi.input.simple_keywords.avas import Avas
-from opi.input.simple_keywords.base import SimpleKeyword, SimpleKeywordBox
+from opi.input.simple_keywords.base import ORCAKeyword, SimpleKeywordBox
 from opi.input.simple_keywords.basis_set import BasisSet
 from opi.input.simple_keywords.basisoption import BasisOption
 from opi.input.simple_keywords.dft import Dft
@@ -31,6 +31,7 @@ from opi.input.simple_keywords.qmmm import Qmmm
 from opi.input.simple_keywords.relativistic_correction import RelativisticCorrection
 from opi.input.simple_keywords.scf import Scf
 from opi.input.simple_keywords.shell_type import ShellType
+from opi.input.simple_keywords.simple_keyword import SimpleKeyword
 from opi.input.simple_keywords.solvation import Solvation
 from opi.input.simple_keywords.solvation_model import SolvationModel
 from opi.input.simple_keywords.solvent import Solvent
@@ -43,6 +44,7 @@ __all__ = [
     "AtomicCharge",
     "AuxBasisSet",
     "Avas",
+    "ORCAKeyword",
     "SimpleKeyword",
     "SimpleKeywordBox",
     "BasisSet",

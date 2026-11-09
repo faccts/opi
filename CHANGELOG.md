@@ -4,8 +4,11 @@
 
 ### Breaking Changes
 - Refactor base `Block` class to `BlockABC` - also cannot be initialized anymore. `Block` is now used to create an arbitrary block.(#276)
+- Rename the class representing a single simple keyword from `SimpleKeyword` to `ORCAKeyword`. `SimpleKeyword` is now the collection of all implemented simple keywords; calling `SimpleKeyword("keyword")` still creates an ad-hoc keyword, but `isinstance(keyword, SimpleKeyword)` is now `False` - use `ORCAKeyword` instead. (#218)
+- Move `POPDISP` from `DispersionCorrection` to `OutputControl`. (#218)
 
 ### Added
+- The ORCA version check now accepts pre-release versions (#301).
 - Improve support for OpenCOSMO-RS (#205)
 - Add missing pydantic fields for calculation timings (#211)
 - Added `scalmp2c` to `BlockMethod` (#212)
@@ -41,7 +44,23 @@
 - Added `Output.neb_converged()` and `mode="neb"` for `Properties` to check NEB convergence and read the MEP energies (#285)
 - Add merge logic for two blocks that model the same ORCA block, via `BlockABC.__or__()`: fields and arbitrary options of both blocks are combined, with the right-hand block taking precedence. Merging two blocks that model different ORCA blocks raises a `ValueError`. (#274)
 - Add merge logic for two `Input` objects, via `Input.__or__()`: simple keywords are concatenated without duplicates, keeping their order with those of the left-hand input first, blocks that model the same ORCA block are merged, arbitrary strings are concatenated, and `ncores`, `memory` and `moinp` are taken from the right-hand input if set. The right-hand input takes precedence throughout, blocks are copied into the result, and neither operand is modified. (#288)
+- Added `SimpleKeyword`, which inherits all simple keyword groups except `LibXC`, so that every implemented keyword can be accessed as an attribute (e.g. `SimpleKeyword.TIGHTSCF`) or looked up with `SimpleKeyword.find_keyword()`. (#218)
 - Added `GbwResults.to_gbw_file()` which writes a gbw file from the parsed data by converting it with `orca_2json <json-file> -gbw` (#289).
+- Added `SimpleTask` (`opi.simple_tasks`) for simple validated ORCA workflows, with `SinglePointTask`, `EngradTask`, `OptTask`, `FreqTask` and `GoatTask`. (#218)
+- Added `SimpleKeywordBox.find_keyword()`, `from_string()` and `validate_keyword()` to look up a keyword in a group by name or alias, e.g. `Scf.find_keyword("tight")`. (#218)
+- Split `Scf`, `Opt`, `Dlpno` and `Wft` into subgroups such as `ScfThreshold` and `OptThreshold`. (#218)
+- Added `Solvent.find_keyword()` and `BlockABC.get_subclass_by_name()`. (#218)
+- Added `Output.get_final_energy_components()` which resolves the final energy contributions. (#290)
+- Added `scripts/run_notebook.py` and `scripts/sweep_notebooks.py` to execute the documentation notebooks: each notebook runs in a process of its own and in a temporary directory, stops at the first cell that raises, and is limited in time per notebook and per cell. A
+  summary reports every notebook as `OK`, `FAILED` or `KILLED`, and the exit status is non-zero if any did not run through. (#310)
+- Added the nox sessions `notebooks`, which runs the notebooks named after `--` (by name or glob) or else the whitelist in `scripts/sweep_notebooks.py`, and `all_notebooks`, which runs every notebook in `docs/contents/notebooks/`, whitelisted or not. Neither runs on a bare `nox`. (#310)                                
+- Added the `notebooks` dependency group, which holds the notebook runner's dependencies and the packages the whitelisted notebooks install for themselves. (#310)
+- Added another fallback to `Output.get_structure()` where the charge and multiplicity are grepped from the echoed input in the output (#307).
+- Added `OrcaMmRunner` with typed helpers for supported `orca_mm` commands. (#224)
+- Added `OrcaBinary.ORCA_MM`. (#224)
+- Added `OpiError`, `OpiExecutionError`, and `OrcaMmError`. (#224)
+- Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
+- Added `csf` and `det` as Literals to `printwf` in the `%casscf` block. (#311)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
@@ -49,11 +68,14 @@
 - `Input` now stores blocks under the name of the ORCA block they model instead of under their `BlockABC` class. Hence `Input.blocks` and the dictionary returned by `Input.get_blocks()` are keyed by that name, e.g. `calc.input.get_blocks(BlockScf)["scf"]`. (#276)
 - Change `Input.add_blocks()` to merge two block instances of same type by default, instead of being a no-op. (#274)
 - `Input.add_arbitrary_string()` now also accepts an `ArbitraryString` instance next to a plain `str`, so that an arbitrary string can be added together with the position it carries. (#288)
-- `SimpleKeyword` now compares equal case-insensitively, matching `SimpleKeyword.format_orca()`, which lowercases the keyword, and ORCA itself, which ignores the case. Hence keywords that only differ in case count as duplicates of each other in `Input.add_simple_keywords()`, `Input.remove_simple_keywords()`, `Input.has_simple_keyword()` and `Input.get_simple_keyword()`. (#288)
+- `ORCAKeyword` now compares equal case-insensitively, matching `ORCAKeyword.format_orca()`, which lowercases the keyword, and ORCA itself, which ignores the case. Hence keywords that only differ in case count as duplicates of each other in `Input.add_simple_keywords()`, `Input.remove_simple_keywords()`, `Input.has_simple_keywords()` and `Input.get_simple_keywords()`. (#288)
 - The gbw-JSON files redumped by `Output` (`do_redump_jsons`) now use the keys of the original ORCA JSON files instead of the field names of the models (#289).
+- `Structure.charge` and `Structure.multiplicity` can now be `None` for cases where they are unknown (#307).
 
 ### Deprecated
 ### Removed
+- Removed the unused `ORCAKeyword.name` attribute. (#218)
+
 ### Fixed
 - The block methods of `Input` now raise a `TypeError` when passed something that is neither a block, a block class nor a block name, instead of failing with an `AttributeError`. `Input.add_blocks()` also rejects block classes, as only an instance carries the options of a block (#276).
 - `BlockABC` can no longer be instantiated, as it is abstract and models no ORCA block. `BlockABC.name` now reports that a block defines no ORCA block name instead of failing on the missing private attribute `_name` (#276).
@@ -63,6 +85,9 @@
 - Fixed `_orca_environment()` which now makes changes to `os.environ` in-place without breaking any reference to that dict (#279).
 - Negative calculation timings occasionally reported by ORCA are now clamped to zero instead of raising a `ValidationError` (#284).
 - Made OPI runner thread safe by copying the env for each run (#293).
+- Fixed `BlockIce()` requiring `integrals` to be set. (#218)
+- The pydantic output fields `EfgTensor.nuc`, `SpinSpinCoupling.pairsinfo` and `Tensor.nuc` now accept zero as valid output values (#305).
+- Allow direct initialization of `Scan` input object from the class instead of producing malformed input (#308).
 
 ## [2.0.0] - 2026-02-10
 

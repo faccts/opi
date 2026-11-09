@@ -135,8 +135,8 @@ class GbwResults(JSONLoadable):
 
         structure = Structure(
             atoms,
-            charge=molecule.charge if molecule.charge is not None else 0,
-            multiplicity=molecule.multiplicity if molecule.multiplicity is not None else 1,
+            charge=molecule.charge,
+            multiplicity=molecule.multiplicity,
         )
         if molecule.basename:
             structure.origin = molecule.basename

@@ -222,25 +222,36 @@ class Scan(GeomWrapper):
               \s*(?P<endvalue>{FLOAT_REGEX})\s*,                                 # endvalue (must be float)
               \s*(?P<steps>\d+)                                                   # steps
            )|                   
-           \s*(?P<valuelist>\[\s*({FLOAT_REGEX})(\s+{FLOAT_REGEX})*]))         # optional valuelist
+           \s*(?P<valuelist>\[\s*({FLOAT_REGEX})(\s+{FLOAT_REGEX})*\s*]))      # optional valuelist
+           (\s+END)?                                                              # optional end
            """,
             re.VERBOSE,
         )
-        match = re_scan.match(string.upper().strip())
+        match = re_scan.fullmatch(string.upper().strip())
         if not match:
-            raise ValueError("String not valid")
+            raise ValueError(
+                f"Invalid scan string {string!r}. Expected '<mode> <atoms> = <start>, <end>, <steps>'"
+                " (e.g. 'B 0 1 = 1.0, 2.0, 5') or '<mode> <atoms> [<v1> <v2> ...]'"
+                " (e.g. 'B 0 1 [1.0 1.5 2.0]'), with mode one of A, B, D."
+            )
 
         groups = match.groupdict()
+        if groups["valuelist"] is not None:
+            groups["valuelist"] = groups["valuelist"].strip("[]").split()
         return cls(**groups)
 
     def __str__(self) -> str:
+        atoms = " ".join(
+            str(getattr(self, field))
+            for field in ["mode", "atom1", "atom2", "atom3", "atom4"]
+            if getattr(self, field) is not None
+        )
         if all(x is not None for x in [self.startvalue, self.endvalue, self.steps]):
-            return (
-                f"{' '.join(str(getattr(self, field)) for field in ['mode', 'atom1', 'atom2', 'atom3', 'atom4'] if getattr(self, field) is not None)} "
-                + f"= {self.startvalue}, {self.endvalue}, {self.steps} end"
-            )
+            values = f"= {self.startvalue}, {self.endvalue}, {self.steps}"
         else:
-            return f"{' '.join(str(val) for key, val in self.__dict__.items() if val is not None)}"
+            values = f"[{' '.join(str(v) for v in self.valuelist or [])}]"
+        # > ORCA requires every scan definition to be terminated with `end`
+        return f"{atoms} {values} end"
 
 
 class TSMode(GeomWrapper):

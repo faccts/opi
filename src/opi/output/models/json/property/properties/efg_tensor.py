@@ -4,6 +4,7 @@ from opi.output.models.base.get_item import GetItem
 from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
     StrictNonNegativeFloat,
+    StrictNonNegativeInt,
     StrictPositiveFloat,
     StrictPositiveInt,
 )
@@ -21,7 +22,7 @@ class EfgTensor(GetItem):
         Type and relaxation of density
     numofnucs: StrictPositiveInt | None, default = None
         Number of calculated nuclei
-    nuc: list[StrictPositiveInt] | None, default = None
+    nuc: list[StrictNonNegativeInt] | None, default = None
         list of used nuclei
     elems: list[StrictPositiveInt] | None, default = None
         Atomic number of the nucleus
@@ -44,7 +45,7 @@ class EfgTensor(GetItem):
     method: StrictStr | None = None
     level: StrictStr | None = None
     numofnucs: StrictPositiveInt | None = None
-    nuc: list[StrictPositiveInt] | None = None
+    nuc: list[StrictNonNegativeInt] | None = None
     elems: list[StrictPositiveInt] | None = None
     isotope: list[StrictPositiveFloat] | None = None
     i: list[StrictNonNegativeFloat] | None = None
