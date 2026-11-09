@@ -312,7 +312,9 @@ class Calculator:
         runner = self._create_runner()
         runner.create_jsons(self.basename, force=force)
 
-    def get_output(self, *, version_check: bool | None = None) -> "Output":
+    def get_output(
+        self, *, version_check: bool | None = None, raise_on_missing: bool = False
+    ) -> "Output":
         """
         Get an instance of `Output` setup for the current job.
         Can be called before execution of job.
@@ -322,6 +324,9 @@ class Calculator:
         version_check : bool | None, default=None
             Whether to perform a version check on the output.
             If `None`, the value of `self.version_check` is used.
+        raise_on_missing : bool, default=False
+            If True, the getters of the `Output` raise a `OpiOutputMissingValueError` instead of
+            returning None if a value is not available.
         """
         vc = self.version_check if version_check is None else version_check
 
@@ -329,6 +334,7 @@ class Calculator:
             basename=self.basename,
             working_dir=self.working_dir,
             version_check=vc,
+            raise_on_missing=raise_on_missing,
         )
 
     def check_version(self) -> None:

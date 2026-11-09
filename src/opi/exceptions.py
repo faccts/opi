@@ -35,3 +35,27 @@ class OrcaMmError(OpiExecutionError):
             f"orca_mm failed with the following error:\n{error.strip()}"
         )
         super().__init__(message)
+
+
+class OpiOutputError(OpiError):
+    """Base class for errors raised while accessing results of an `Output` object."""
+
+    pass
+
+
+class OpiOutputNotParsedError(OpiOutputError, RuntimeError):
+    """Raised when results are requested from an `Output` whose JSON was not parsed."""
+
+    pass
+
+
+class OpiOutputIndexError(OpiOutputError, IndexError):
+    """Raised when an `Output` getter is called with a geometry or gbw index that does not exist."""
+
+    pass
+
+
+class OpiOutputMissingValueError(OpiOutputError, LookupError):
+    """Raised by `Output` getters in `raise_on_missing` mode when a value is not available."""
+
+    pass

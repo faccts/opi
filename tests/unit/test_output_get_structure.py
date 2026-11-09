@@ -1,5 +1,6 @@
 import pytest
 
+from opi.exceptions import OpiOutputNotParsedError
 from opi.input.structures import Structure
 from opi.output.core import Output
 
@@ -90,8 +91,9 @@ def test_get_structure_fallback_index(output_no_json):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_structure_no_fallback(output_no_json):
-    """Test that `get_structure(fallback=False)` returns None when no JSON is present."""
-    assert output_no_json.get_structure(fallback=False) is None
+    """Test that `get_structure(fallback=False)` raises `OpiOutputNotParsedError` when no JSON is present."""
+    with pytest.raises(OpiOutputNotParsedError):
+        output_no_json.get_structure(fallback=False)
 
 
 @pytest.mark.unit
@@ -106,5 +108,6 @@ def test_get_gradient_fallback(output_no_json):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_gradient_no_fallback(output_no_json):
-    """Test that `get_gradient(fallback=False)` returns None when no JSON is present."""
-    assert output_no_json.get_gradient(index=0, fallback=False) is None
+    """Test that `get_gradient(fallback=False)` raises `OpiOutputNotParsedError` when no JSON is present."""
+    with pytest.raises(OpiOutputNotParsedError):
+        output_no_json.get_gradient(index=0, fallback=False)

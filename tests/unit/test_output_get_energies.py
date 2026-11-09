@@ -1,5 +1,6 @@
 import pytest
 
+from opi.exceptions import OpiOutputIndexError, OpiOutputNotParsedError
 from opi.output.core import Output
 from opi.output.energy_type import EnergyType
 from opi.output.models.json.property.properties.ci_psi import CiPsi
@@ -25,11 +26,12 @@ This module contains tests for the getter methods of energy-related attributes s
 @pytest.mark.output
 @pytest.mark.parametrize("task", ["mp2", "rama"])
 def test_get_final_energy_invalid_index(output_object_factory, task: str):
-    """Test to check if `Output.get_final_energy()` returns None when given invalid index."""
+    """Test to check if `Output.get_final_energy()` raises `OpiOutputIndexError` when given invalid index."""
     output_object = output_object_factory(task)
-    assert not output_object.get_final_energy(
-        index=len(output_object.results_properties.geometries)
-    )
+    with pytest.raises(OpiOutputIndexError):
+        output_object.get_final_energy(
+            index=len(output_object.results_properties.geometries), fallback=False
+        )
 
 
 @pytest.mark.unit
@@ -115,11 +117,15 @@ def test_get_corrections(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_energies_outside_energy_list_nonexistent(empty_output_object: Output):
-    """Test that the getters for the energies outside of the energy list return None when expected."""
-    assert empty_output_object.get_vdw_correction() is None
-    assert empty_output_object.get_gcp_correction() is None
-    assert empty_output_object.get_rocis_energies() is None
-    assert empty_output_object.get_cipsi_energies() is None
+    """Test that the getters for the energies outside of the energy list raise `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_vdw_correction()
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_gcp_correction()
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_rocis_energies()
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_cipsi_energies()
 
 
 @pytest.mark.unit
@@ -174,8 +180,9 @@ def test_get_zpe_returns_correct_type(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_zpe_returns_correct_none(empty_output_object):
-    """Test if `Output.get_zpe()` returns None when expected."""
-    assert not empty_output_object.get_zpe()
+    """Test if `Output.get_zpe()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_zpe()
 
 
 @pytest.mark.unit
@@ -200,5 +207,6 @@ def test_get_final_energy_fallback_index(output_no_json):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_final_energy_no_fallback(output_no_json):
-    """Test that `get_final_energy(fallback=False)` returns None when no JSON is present."""
-    assert output_no_json.get_final_energy(fallback=False) is None
+    """Test that `get_final_energy(fallback=False)` raises `OpiOutputNotParsedError` when no JSON is present."""
+    with pytest.raises(OpiOutputNotParsedError):
+        output_no_json.get_final_energy(fallback=False)
