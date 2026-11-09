@@ -60,6 +60,7 @@
 - Added `OrcaBinary.ORCA_MM`. (#224)
 - Added `OpiError`, `OpiExecutionError`, and `OrcaMmError`. (#224)
 - Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
+- Added `csf` and `det` as Literals to `printwf` in the `%casscf` block. (#311)
 - Added `Output.get_chemical_shift()` and `Output.get_spin_spin_coupling()` which return the calculated NMR shielding tensors and spin-spin coupling constants (#313).
 - Added the missing `siso`, `saniso`, `sdso`, `spso`, `mult`, `irrep` and `state` fields to `ChemicalShift` and `numofnucpairssd_fc` to `SpinSpinCoupling` (#313).
 - Added a tutorial notebook on the calculation of an NMR spectrum (#313).
