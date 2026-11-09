@@ -1,5 +1,6 @@
 import pytest
 
+from opi.exceptions import OpiOutputIndexError, OpiOutputNotParsedError
 from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
 from opi.output.models.json.property.properties.polarizability import Polarizability
 from opi.output.models.json.property.properties.quadrupole_moment import QuadrupoleMoment
@@ -30,10 +31,11 @@ def test_get_dipole_returns_list_of_dipole_moment(output_object_factory, task: s
     "task, index",
     [("led", 1), ("nmr", 3)],
 )
-def test_get_dipole_returns_none(output_object_factory, task: str, index: int):
-    """Test if `Output.get_dipole()` returns `None` when expected."""
+def test_get_dipole_invalid_index(output_object_factory, task: str, index: int):
+    """Test if `Output.get_dipole()` raises `OpiOutputIndexError` for a geometry index out of range."""
     output_object = output_object_factory(task)
-    assert not output_object.get_dipole(index=index)
+    with pytest.raises(OpiOutputIndexError):
+        output_object.get_dipole(index=index)
 
 
 @pytest.mark.unit
@@ -59,12 +61,22 @@ def test_get_quadrupole_returns_list_of_correct_length(output_object_factory, ta
 @pytest.mark.output
 @pytest.mark.parametrize(
     "task, index",
-    [("opt", 0), ("pop_analysis", 3)],
+    [("opt", 0)],
 )
 def test_get_quadrupole_returns_none(output_object_factory, task: str, index: int):
     """Test if `Output.get_quadrupole()` returns `None` when expected."""
     output_object = output_object_factory(task)
     assert not output_object.get_quadrupole(index=index)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task, index", [("pop_analysis", 3)])
+def test_get_quadrupole_invalid_index(output_object_factory, task: str, index: int):
+    """Test if `Output.get_quadrupole()` raises `OpiOutputIndexError` for a geometry index out of range."""
+    output_object = output_object_factory(task)
+    with pytest.raises(OpiOutputIndexError):
+        output_object.get_quadrupole(index=index)
 
 
 @pytest.mark.unit
@@ -82,8 +94,9 @@ def test_get_polarizability_returns_list(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_polarizability_returns_none(empty_output_object):
-    """Test if `Output.get_polarizability()` returns None when expected."""
-    assert not empty_output_object.get_polarizability()
+    """Test if `Output.get_polarizability()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_polarizability()
 
 
 @pytest.mark.unit
