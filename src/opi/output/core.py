@@ -43,6 +43,7 @@ from opi.output.models.base.strict_types import (
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.output.models.json.gbw.properties.mo import MO
 from opi.output.models.json.property.properties.calc_time import CalculationTiming
+from opi.output.models.json.property.properties.chem_shift import ChemicalShift
 from opi.output.models.json.property.properties.ci_psi import CiPsi
 from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
 from opi.output.models.json.property.properties.energy import Energy
@@ -65,6 +66,7 @@ from opi.output.models.json.property.properties.population_analysis import (
 )
 from opi.output.models.json.property.properties.quadrupole_moment import QuadrupoleMoment
 from opi.output.models.json.property.properties.roci_en import RoCisEnergy
+from opi.output.models.json.property.properties.spin_coupling import SpinSpinCoupling
 from opi.output.models.json.property.properties.van_der_waals_correction import (
     VdwCorrection,
 )
@@ -2279,6 +2281,64 @@ class Output:
             pol = cast(list[Polarizability], pol)
 
         return pol
+
+    def get_chemical_shift(self, *, index: int = -1) -> list[ChemicalShift] | None:
+        """
+        Easy access to the NMR chemical shielding tensors from the properties results.
+        Requires an NMR calculation (`Property.NMR` or `%eprnmr` with the `shift` flag).
+        ORCA reports one entry per method and density type, e.g. an SCF and an MP2 entry for an
+        MP2 calculation, so the entry of interest has to be selected via `method` and `level`.
+
+        Note that these are shielding constants, not shifts relative to a reference compound.
+        A chemical shift is obtained as the difference to the shielding of a reference calculated
+        at the same level of theory.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the shieldings should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        chemical_shift : list[ChemicalShift] | None
+            Returns the shieldings or None if there is none in the output for the requested index.
+        """
+
+        chemical_shift = self._safe_get("results_properties", "geometries", index, "chemical_shift")
+
+        if chemical_shift is not None:
+            chemical_shift = cast(list[ChemicalShift], chemical_shift)
+
+        return chemical_shift
+
+    def get_spin_spin_coupling(self, *, index: int = -1) -> list[SpinSpinCoupling] | None:
+        """
+        Easy access to the NMR spin-spin coupling constants from the properties results.
+        Requires an NMR calculation with the coupling flags enabled, e.g. `ssall` on the `nuclei`
+        option of `BlockEprnmr`. As for the shieldings, ORCA reports one entry per method and
+        density type.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the couplings should be returned. The default -1 refers to the final geometry.
+            Silently ignores if the requested index is not available and returns None.
+
+        Returns
+        ----------
+        spin_spin_coupling : list[SpinSpinCoupling] | None
+            Returns the couplings or None if there is none in the output for the requested index.
+        """
+
+        spin_spin_coupling = self._safe_get(
+            "results_properties", "geometries", index, "spin_spin_coupling"
+        )
+
+        if spin_spin_coupling is not None:
+            spin_spin_coupling = cast(list[SpinSpinCoupling], spin_spin_coupling)
+
+        return spin_spin_coupling
 
     def get_s2(
         self, *, index: int = -1

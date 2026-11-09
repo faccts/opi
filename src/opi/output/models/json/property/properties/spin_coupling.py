@@ -53,6 +53,7 @@ class SpinSpinCoupling(GetItem):
     numofnucpairspso: StrictPositiveInt | None = None
     numofnucpairsfc: StrictPositiveInt | None = None
     numofnucpairssd: StrictPositiveInt | None = None
+    numofnucpairssd_fc: StrictPositiveInt | None = None
     pairsinfo: (
         list[
             tuple[
