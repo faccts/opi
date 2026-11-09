@@ -60,6 +60,7 @@
 - Added `OrcaBinary.ORCA_MM`. (#224)
 - Added `OpiError`, `OpiExecutionError`, and `OrcaMmError`. (#224)
 - Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
+- Added `csf` and `det` as Literals to `printwf` in the `%casscf` block. (#311)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
