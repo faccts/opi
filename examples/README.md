@@ -84,5 +84,6 @@ python3 job.py
 - exmp061_freq_simpletask: TPSS/def2-SVP frequency calculation using the `FreqTask` functionality
 - exmp062_opt_simpletask: B3LYP/def2-SVP geometry optimization with CPCM(water) using the `OptTask` functionality
 - exmp063_engrad_simpletask: r²SCAN-3c energy & gradient calculation using the `EngradTask` functionality
+- exmp064_orca_mm_forcefield: Generate, repeat, merge and split ORCA force field files with `orca_mm` and run a QM/MM calculation
 
 
