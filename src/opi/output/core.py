@@ -3,21 +3,21 @@ This module contains the main class for output handling.
 It's mostly based on the ORCA's two JSONs files.
 """
 
-import functools
 import json
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import Any, Concatenate, ParamSpec, TypeVar, cast
+from typing import Any, ClassVar, cast
 from warnings import warn
 
 import numpy as np
 import numpy.typing as npt
 from pydantic import StrictInt, StrictStr
 
-from opi.exceptions import OpiOutputIndexError, OpiOutputMissingValueError, OpiOutputNotParsedError
+from opi.exceptions import OpiOutputIndexError, OpiOutputNotParsedError
 from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
+from opi.output.decorators import raise_on_missing_value
 from opi.output.fcidump import Fcidump
 from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
@@ -77,54 +77,6 @@ from opi.utils.misc import check_minimal_version, lowercase
 from opi.utils.orca_version import OrcaVersion
 from opi.utils.units import AU_TO_ANGST, AU_TO_EV
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
-
-# > Results that have to be loaded with `Output.parse()`, mapped to their name in error messages
-_PARSED_RESULTS = {
-    "results_properties": "property",
-    "results_gbw": "gbw",
-}
-# > Lists whose index is chosen by the user, mapped to their name in error messages
-_USER_INDEXED_LISTS = {
-    "geometries": "geometries",
-    "results_gbw": "gbw results",
-}
-
-
-def _is_missing(value: Any) -> bool:
-    """Whether a getter result means that no value was found (None or a tuple of only None)."""
-    if value is None:
-        return True
-    return isinstance(value, tuple) and all(v is None for v in value)
-
-
-def _raise_on_missing(
-    getter: Callable[Concatenate["Output", _P], _R],
-) -> Callable[Concatenate["Output", _P], _R]:
-    """
-    Decorator for `Output` getters that raises `OpiOutputMissingValueError` instead of returning None,
-    if `Output.raise_on_missing` is set.
-    Only the getter called by the user raises. Getters called by other getters still return None,
-    so that optional values (e.g. the charge of a structure) do not raise.
-    """
-
-    @functools.wraps(getter)
-    def wrapper(self: "Output", /, *args: _P.args, **kwargs: _P.kwargs) -> _R:
-        self._getter_depth += 1
-        try:
-            result = getter(self, *args, **kwargs)
-        finally:
-            self._getter_depth -= 1
-
-        if self.raise_on_missing and self._getter_depth == 0 and _is_missing(result):
-            raise OpiOutputMissingValueError(
-                f"`Output.{getter.__name__}()` found no value in the output of '{self.basename}'."
-            )
-        return result
-
-    return wrapper
-
 
 class Output:
     """
@@ -167,6 +119,17 @@ class Output:
       called. Getters with an active `.out` file fallback use the fallback instead.
     - `OpiOutputIndexError`: The requested geometry or gbw index does not exist.
     """
+
+    # > Results that have to be loaded with `Output.parse()`, mapped to their name in error messages
+    _PARSED_RESULTS: ClassVar[dict[str, str]] = {
+        "results_properties": "property",
+        "results_gbw": "gbw",
+    }
+    # > Lists whose index is chosen by the user, mapped to their name in error messages
+    _USER_INDEXED_LISTS: ClassVar[dict[str, str]] = {
+        "geometries": "geometries",
+        "results_gbw": "gbw results",
+    }
 
     def __init__(
         self,
@@ -237,7 +200,7 @@ class Output:
 
         # > // GETTER BEHAVIOR
         self.raise_on_missing: bool = raise_on_missing
-        # > Nesting depth of getter calls, see `_raise_on_missing()`
+        # > Nesting depth of getter calls, see `raise_on_missing_value()`
         self._getter_depth: int = 0
 
         # // CREATE AND PARSE JSONS FILES
@@ -1250,9 +1213,9 @@ class Output:
             self.results_properties.geometries[index].geometry
             but returns None if any part of the chain is missing or None, in a mypy-friendly way.
         """
-        if attrs and attrs[0] in _PARSED_RESULTS and getattr(self, str(attrs[0])) is None:
+        if attrs and attrs[0] in self._PARSED_RESULTS and getattr(self, str(attrs[0])) is None:
             raise OpiOutputNotParsedError(
-                f"No {_PARSED_RESULTS[str(attrs[0])]} results of '{self.basename}' are loaded."
+                f"No {self._PARSED_RESULTS[str(attrs[0])]} results of '{self.basename}' are loaded."
                 " Call `Output.parse()` first."
             )
 
@@ -1265,12 +1228,12 @@ class Output:
                 isinstance(attr, int)
                 and isinstance(current, list)
                 and current
-                and previous in _USER_INDEXED_LISTS
+                and previous in self._USER_INDEXED_LISTS
                 and not -len(current) <= attr < len(current)
             ):
                 raise OpiOutputIndexError(
                     f"Index {attr} is out of range: the output of '{self.basename}' contains"
-                    f" {len(current)} {_USER_INDEXED_LISTS[str(previous)]}."
+                    f" {len(current)} {self._USER_INDEXED_LISTS[str(previous)]}."
                 )
             try:
                 if isinstance(attr, int) and isinstance(current, list):
@@ -1316,7 +1279,7 @@ class Output:
                 raise
             return None, error
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_hftype(self, index: int = 0) -> Hftyp | None:
         """
         Get the HFType from GBW json file.
@@ -1341,7 +1304,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_charge(self, *, fallback: bool = True) -> StrictInt | None:
         """
         Get the molecular charge.
@@ -1379,7 +1342,7 @@ class Output:
         charge_mult = get_charge_and_mult_from_input(self.get_outfile())
         return charge_mult[0] if charge_mult is not None else None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_mult(self, *, fallback: bool = True) -> StrictPositiveInt | None:
         """
         Get the molecular electron multiplicity.
@@ -1417,7 +1380,7 @@ class Output:
         charge_mult = get_charge_and_mult_from_input(self.get_outfile())
         return charge_mult[1] if charge_mult is not None else None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_nelectrons(
         self, *, spin_resolved: bool = False
     ) -> tuple[int, int | None] | tuple[None, None]:
@@ -1466,7 +1429,7 @@ class Output:
         # > Return spin resolved number of electrons
         return nalpha, nbeta
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_nbf(self) -> StrictNonNegativeInt | None:
         """
         Get the number of basis functions (nbf) from the json properties file.
@@ -1482,7 +1445,7 @@ class Output:
 
         return nbf
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_timings(self) -> CalculationTiming | None:
         """
         Get the timings (in seconds) of the individual calculation steps and their total.
@@ -1499,7 +1462,7 @@ class Output:
 
         return timings
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_final_energy(
         self, *, index: int = -1, fallback: bool = True
     ) -> StrictFiniteFloat | None:
@@ -1545,7 +1508,7 @@ class Output:
             raise index_error
         return final_energy
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_energies(self, *, index: int = -1) -> dict[str, Energy] | None:
         """
         Return a dictionary with different energy types for the geometry at a given index.
@@ -1606,7 +1569,7 @@ class Output:
 
         return energy_dict
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_final_energy_components(self, *, index: int = -1) -> dict[str, Energy] | None:
         """
         Return a dictionary with all energy components that contribute to the final energy of the
@@ -1671,7 +1634,7 @@ class Output:
 
         return energy_components or None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_vdw_correction(self, *, index: int = -1) -> VdwCorrection | None:
         """
         Easy access to the dispersion correction (in Eh).
@@ -1697,7 +1660,7 @@ class Output:
 
         return vdw_correction
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_gcp_correction(self, *, index: int = -1) -> GcpEnergy | None:
         """
         Easy access to the geometrical counterpoise correction (in Eh).
@@ -1723,7 +1686,7 @@ class Output:
 
         return gcp_correction
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_rocis_energies(self, *, index: int = -1) -> RoCisEnergy | None:
         """
         Easy access to the energies (in Eh) of a restricted open-shell CI calculation.
@@ -1749,7 +1712,7 @@ class Output:
 
         return rocis_energies
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_cipsi_energies(self, *, index: int = -1) -> CiPsi | None:
         """
         Easy access to the energies (in Eh) of an iterative CI calculation.
@@ -1774,7 +1737,7 @@ class Output:
 
         return cipsi_energies
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_gradient(
         self, *, index: int = -1, fallback: bool = True
     ) -> list[StrictFiniteFloat] | None:
@@ -1827,7 +1790,7 @@ class Output:
             raise index_error
         return grepped_gradient
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_structure(
         self, *, index: int = -1, with_fragments: bool = True, fallback: bool = True
     ) -> Structure | None:
@@ -1887,7 +1850,7 @@ class Output:
         # > silently falling back to the `Structure` defaults
         return Structure(atoms, charge=self.get_charge(), multiplicity=self.get_mult())
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_structure_from_gbw(self, *, index: int = 0) -> Structure | None:
         """
         Returns the structure stored in a gbw file as `Structure` object.
@@ -2051,7 +2014,7 @@ class Output:
         # > Return gradient or None
         return gradient if gradient else None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_mos(self, gbw_index: int = 0) -> dict[str, list[MO]] | None:
         """
         Returns a dictionary with list(s) of molecular orbitals.
@@ -2116,7 +2079,7 @@ class Output:
 
         return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_homo(self, gbw_index: int = 0) -> MOData | None:
         """
         Returns the highest occupied molecular orbital (HOMO, or SOMO for UHF).
@@ -2182,7 +2145,7 @@ class Output:
 
         return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_lumo(self, gbw_index: int = 0) -> MOData | None:
         """
         Returns the lowest unoccupied molecular orbital (LUMO).
@@ -2228,7 +2191,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_hl_gap(self, gbw_index: int = 0) -> float | None:
         """
         Returns the HOMO-LUMO gap in eV
@@ -2259,7 +2222,7 @@ class Output:
 
         return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_mulliken(self, *, index: int = -1) -> list[MullikenPopulationAnalysis] | None:
         """
         Easy access to the Mulliken population(s) from the properties results.
@@ -2286,7 +2249,7 @@ class Output:
 
         return mulliken
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_loewdin(self, *, index: int = -1) -> list[LoewdinPopulationAnalysis] | None:
         """
         Easy access to the Loewdin population(s) from the properties results.
@@ -2313,7 +2276,7 @@ class Output:
 
         return loewdin
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_chelpg(self, *, index: int = -1) -> list[ChelpgPopulationAnalysis] | None:
         """
         Easy access to the CHarges from ELectrostatic Potentials using a Grid-based method (CHELPG) from the properties
@@ -2342,7 +2305,7 @@ class Output:
 
         return chelpg
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_mayer(self, *, index: int = -1) -> list[MayerPopulationAnalysis] | None:
         """
         Easy access to the Mayer population(s) from the properties results.
@@ -2369,7 +2332,7 @@ class Output:
 
         return mayer
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_hirshfeld(self, *, index: int = -1) -> list[HirshfeldPopulationAnalysis] | None:
         """
         Easy access to the Hirshfeld population(s) from the properties results.
@@ -2396,7 +2359,7 @@ class Output:
 
         return hirshfeld
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_mbis(self, *, index: int = -1) -> list[MbisPopulationAnalysis] | None:
         """
         Easy access to the MBIS population(s) from the properties results.
@@ -2421,7 +2384,7 @@ class Output:
 
         return mbis
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_dipole(self, *, index: int = -1) -> list[DipoleMoment] | None:
         """
         Get a list of the dipole moments from property results.
@@ -2445,7 +2408,7 @@ class Output:
 
         return dipole
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_quadrupole(self, *, index: int = -1) -> list[QuadrupoleMoment] | None:
         """
         Get a list of the quadrupole moments from property results.
@@ -2469,7 +2432,7 @@ class Output:
 
         return quadrupole
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_polarizability(self, *, index: int = -1) -> list[Polarizability] | None:
         """
         Get a list of the polarizabilities from property results.
@@ -2493,7 +2456,7 @@ class Output:
 
         return pol
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_s2(
         self, *, index: int = -1
     ) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | tuple[None, None]:
@@ -2548,7 +2511,7 @@ class Output:
         else:
             return None, None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_zpe(self, *, index: int = -1) -> StrictPositiveFloat | None:
         """
         Returns the zero-point energy (in a.u.) from the thermochemistry key in properties results.
@@ -2575,7 +2538,7 @@ class Output:
 
         return zpe
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_inner_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Returns the inner energy (in a.u.) from the thermochemistry key in properties results.
@@ -2602,7 +2565,7 @@ class Output:
 
         return inner_energy
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_enthalpy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Returns the enthalpy (in a.u.) from the thermochemistry key in properties results.
@@ -2629,7 +2592,7 @@ class Output:
 
         return enthalpy
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_entropy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Returns the entropy (in a.u.) from the thermochemistry key in properties results.
@@ -2656,7 +2619,7 @@ class Output:
 
         return entropy
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_free_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Returns the free energy (in a.u.) from the thermochemistry key in properties results.
@@ -2683,7 +2646,7 @@ class Output:
 
         return free_energy
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_el_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Returns the electronic energy (in a.u.) from the thermochemistry key in properties results.
@@ -2710,7 +2673,7 @@ class Output:
 
         return el_energy
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_free_energy_delta(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Returns the thermostatistical contributions to the free energy by subtracting the electronic energy from the
@@ -2736,7 +2699,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_frequencies(
         self, *, index: int = -1, threshold: float | None = None
     ) -> dict[int, float] | None:
@@ -2775,7 +2738,7 @@ class Output:
             if threshold is None or inner[0] < -threshold
         }
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_imaginary_frequencies(self, *, threshold: float = 0.0) -> dict[int, float] | None:
         """
         Returns only the imaginary (negative) vibrational frequencies (in cm⁻¹). Requires a frequency
@@ -2794,7 +2757,7 @@ class Output:
         """
         return self.get_frequencies(threshold=threshold)
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def is_pes_minimum(self, *, threshold: float = 0.0) -> bool | None:
         """
         Returns True if the structure is a PES minimum, i.e. all vibrational frequencies are real
@@ -2821,7 +2784,7 @@ class Output:
         # > Minimum if no imaginary_frequency is present
         return not bool(imaginary_frequencies)
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def is_pes_transition_state(self, *, threshold: float = 0.0) -> bool | None:
         """
         Returns True if the structure is a first-order saddle point (transition state), i.e.
@@ -2870,7 +2833,7 @@ class Output:
                 if self.results_gbw is not None and 0 <= gbw_index < self.num_results_gbw:
                     self.results_gbw[gbw_index] = GbwResults(**self.gbw_json_data[gbw_index])
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_int_overlap(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -2907,7 +2870,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_int_hcore(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -2943,7 +2906,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_int_kinetic(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -2979,7 +2942,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_int_nuc_attr(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3015,7 +2978,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_int_hmo(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3051,7 +3014,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_int_f(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3086,7 +3049,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_int_j(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3121,7 +3084,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_int_k(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3156,7 +3119,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_scf_density(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3190,7 +3153,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_scf_spin_density(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3224,7 +3187,7 @@ class Output:
         else:
             return None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_ir(self) -> dict[int, IrMode] | None:
         """
         Returns the IR Spectrum from the ORCA output file
@@ -3251,7 +3214,7 @@ class Output:
 
         return ir_dict or None
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_free_solvation_energy_opencosmors(self) -> float | None:
         """
         Returns the free solvation energy
@@ -3274,7 +3237,7 @@ class Output:
             return None
         return float(free_solv_energy)
 
-    @_raise_on_missing
+    @raise_on_missing_value
     def get_fcidump(self) -> Fcidump | None:
         """
         Parse the FCIDUMP file generated by ORCA and return its data in the `Fcidump` data class.
