@@ -753,6 +753,13 @@ class Output:
         """
         return self.get_file(".out")
 
+    def get_errfile(self) -> Path:
+        """
+        The full path to the ".err" file.
+        The file only exists if ORCA or one of its helper programs wrote to stderr.
+        """
+        return self.get_file(".err")
+
     def terminated_normally(self) -> bool:
         """
         Determine if ORCA terminated normally, by looking for "ORCA TERMINATED NORMALLY" in the ".out" file.
@@ -775,6 +782,8 @@ class Output:
     def error_messages(self) -> list[str]:
         """
         Return all known error messages found in the ORCA output file.
+        Messages that ORCA and its helper programs write to stderr, e.g. of the MPI launcher,
+        are looked up in the ".err" file, if it exists.
         Scanning stops early when a critical pattern is matched. Critical patterns are patterns that directly terminate ORCA.
         If the output file does not exist a corresponding error message is returned.
 
@@ -785,13 +794,15 @@ class Output:
         """
         outfile = self.get_outfile()
         try:
-            return get_error_messages(outfile)
+            return get_error_messages(outfile, self.get_errfile())
         except FileNotFoundError:
             return [f"Could not find output file: {outfile}"]
 
     def error_message(self) -> str:
         """
         Return the most important error message found in the ORCA output file or an empty string if no known error was detected.
+        Messages that ORCA and its helper programs write to stderr, e.g. of the MPI launcher,
+        are looked up in the ".err" file, if it exists.
         If the output file does not exist a corresponding error message is returned.
 
         Returns
@@ -801,7 +812,7 @@ class Output:
         """
         outfile = self.get_outfile()
         try:
-            return get_error_message(outfile)
+            return get_error_message(outfile, self.get_errfile())
         except FileNotFoundError:
             return f"Could not find output file: {outfile}"
 

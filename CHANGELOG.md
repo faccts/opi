@@ -51,6 +51,8 @@
 - Split `Scf`, `Opt`, `Dlpno` and `Wft` into subgroups such as `ScfThreshold` and `OptThreshold`. (#218)
 - Added `Solvent.find_keyword()` and `BlockABC.get_subclass_by_name()`. (#218)
 - Added `Output.get_final_energy_components()` which resolves the final energy contributions. (#290)
+- Added error patterns for impossible multiplicities, overlapping atoms, missing basis sets, xyz files with an atomic number instead of an element symbol, coupled-cluster calculations without virtuals or electron pairs, orbitals read in with `moinp` for another geometry, Open MPI failures (missing `mpirun`, missing shared libraries, too few slots, MPI processes killed by a signal), and any other error termination of an ORCA module (#303).
+- `Output.error_message()` and `Output.error_messages()` now also report messages of the MPI launcher and of the dynamic linker. They are looked up in the `.err` file if it exists, and in the `.out` file otherwise, e.g. if stderr was redirected into it. `Output.get_errfile()` returns the path of the `.err` file (#303).
 - Added `scripts/run_notebook.py` and `scripts/sweep_notebooks.py` to execute the documentation notebooks: each notebook runs in a process of its own and in a temporary directory, stops at the first cell that raises, and is limited in time per notebook and per cell. A
   summary reports every notebook as `OK`, `FAILED` or `KILLED`, and the exit status is non-zero if any did not run through. (#310)
 - Added the nox sessions `notebooks`, which runs the notebooks named after `--` (by name or glob) or else the whitelist in `scripts/sweep_notebooks.py`, and `all_notebooks`, which runs every notebook in `docs/contents/notebooks/`, whitelisted or not. Neither runs on a bare `nox`. (#310)                                
@@ -70,11 +72,13 @@
 - `Input.add_arbitrary_string()` now also accepts an `ArbitraryString` instance next to a plain `str`, so that an arbitrary string can be added together with the position it carries. (#288)
 - `ORCAKeyword` now compares equal case-insensitively, matching `ORCAKeyword.format_orca()`, which lowercases the keyword, and ORCA itself, which ignores the case. Hence keywords that only differ in case count as duplicates of each other in `Input.add_simple_keywords()`, `Input.remove_simple_keywords()`, `Input.has_simple_keywords()` and `Input.get_simple_keywords()`. (#288)
 - The gbw-JSON files redumped by `Output` (`do_redump_jsons`) now use the keys of the original ORCA JSON files instead of the field names of the models (#289).
+- A failing ORCA module is now reported as "Error in <MODULE> part of the calculation" for every module, not only MDCI and MP2. It no longer stops the error scan, so `Output.error_messages()` also lists its cause, e.g. an MPI process killed by the out-of-memory killer (#303).
 - `Structure.charge` and `Structure.multiplicity` can now be `None` for cases where they are unknown (#307).
 
 ### Deprecated
 ### Removed
 - Removed the unused `ORCAKeyword.name` attribute. (#218)
+- Removed `MDCI_ERROR`, `MP2_ERROR` and `MPI_ERROR` from `opi.output.grepper.patterns`. Failures of any ORCA module are now covered by `ErrorTerminationError`, and Open MPI failures by dedicated patterns (#303).
 
 ### Fixed
 - The block methods of `Input` now raise a `TypeError` when passed something that is neither a block, a block class nor a block name, instead of failing with an `AttributeError`. `Input.add_blocks()` also rejects block classes, as only an instance carries the options of a block (#276).
@@ -86,6 +90,8 @@
 - Negative calculation timings occasionally reported by ORCA are now clamped to zero instead of raising a `ValidationError` (#284).
 - Made OPI runner thread safe by copying the env for each run (#293).
 - Fixed `BlockIce()` requiring `integrals` to be set. (#218)
+- Fixed `Calculator.write_input()` ending the `*xyzfile`/`*pdbfile`/`*gzmtfile` line with a space instead of a newline, which made ORCA reject every calculation using `XyzFile`, `PdbFile` or `GzmtFile` (#303).
+- The "ORCA aborted the run" error is now also detected for ORCA's lower-case "aborting the run" message (#303).
 - The pydantic output fields `EfgTensor.nuc`, `SpinSpinCoupling.pairsinfo` and `Tensor.nuc` now accept zero as valid output values (#305).
 - Allow direct initialization of `Scan` input object from the class instead of producing malformed input (#308).
 

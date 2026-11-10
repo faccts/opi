@@ -24,22 +24,47 @@ _INPUT_COORDS_CHARGE_MULT = re.compile(
 )
 
 
-def get_error_messages(file_name: Path) -> list[str]:
-    """Return all errors from the output files until a critical error is found."""
+def get_error_messages(file_name: Path, err_file_name: Path | None = None) -> list[str]:
+    """
+    Return all errors from the output files until a critical error is found.
+
+    Parameters
+    ----------
+    file_name : Path
+        Path to the ORCA ".out" file.
+    err_file_name : Path | None, default: None
+        Path to the ORCA ".err" file. Patterns of messages that ORCA and its helper programs
+        write to stderr are looked up in this file, if it exists, and then in the ".out" file,
+        which also holds them when stderr was redirected into it (e.g. `orca job.inp > job.out 2>&1`).
+    """
+    err_file = err_file_name if err_file_name is not None and err_file_name.is_file() else None
     hits: list[str] = []
     for pattern in ERROR_PATTERNS:
-        msg = pattern.extract(file_name)
+        msg = ""
+        if pattern.stderr and err_file is not None:
+            msg = pattern.extract(err_file)
+        if not msg:
+            msg = pattern.extract(file_name)
         if msg:
             hits.append(msg)
             if pattern.critical:
                 break
-    return hits if hits else []
+    return hits
 
 
-def get_error_message(file_name: Path) -> str:
-    """Return the most important extracted error message."""
-    messages = get_error_messages(file_name)
-    return next(iter(messages or []), "")
+def get_error_message(file_name: Path, err_file_name: Path | None = None) -> str:
+    """
+    Return the most important extracted error message.
+
+    Parameters
+    ----------
+    file_name : Path
+        Path to the ORCA ".out" file.
+    err_file_name : Path | None, default: None
+        Path to the ORCA ".err" file.
+    """
+    messages = get_error_messages(file_name, err_file_name)
+    return next(iter(messages), "")
 
 
 def has_string_in_file(file_name: Path, search_for: str, /, *, strict: bool = True) -> bool:
