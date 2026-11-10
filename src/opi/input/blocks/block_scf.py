@@ -179,44 +179,59 @@ class Rotate(BaseModel):
 
     Attributes
     ------------
-    rotate: list[int | float]
+    rotate: list[list[int | float]]
+        One or several rotations; a single rotation is a flat list
     """
 
-    rotate: list[int | float]
+    rotate: list[list[int | float]]
 
-    @field_validator("rotate")
+    @field_validator("rotate", mode="before")
     @classmethod
-    def validate_rotate(cls, v: list[int | float]) -> list[int | float]:
+    def wrap_single(cls, v: Any) -> Any:
         """
         Parameters
         ----------
-        v : list[int | float]
+        v : Any
+            A single rotation as a flat list, or a list of rotations.
         """
-        # Check valid lengths (2, 3, or 5 elements)
-        if len(v) not in (2, 3, 5):
-            raise ValueError("Rotate must have either 2, 3, or 5 elements")
+        if isinstance(v, list) and not (v and isinstance(v[0], list)):
+            return [v]
+        return v
 
-        # For all formats, first two elements must be integers
-        if not isinstance(v[0], int):
-            raise TypeError("First element must be an integer")
-        if not isinstance(v[1], int):
-            raise TypeError("Second element must be an integer")
+    @field_validator("rotate")
+    @classmethod
+    def validate_rotate(cls, v: list[list[int | float]]) -> list[list[int | float]]:
+        """
+        Parameters
+        ----------
+        v : list[list[int | float]]
+        """
+        for rot in v:
+            # Check valid lengths (2, 3, or 5 elements)
+            if len(rot) not in (2, 3, 5):
+                raise ValueError("Rotate must have either 2, 3, or 5 elements")
 
-        # If we have at least 3 elements, third must be of type float
-        if len(v) >= 3 and not isinstance(v[2], float):
-            raise TypeError("Third element must be a float")
+            # For all formats, first two elements must be integers
+            if not isinstance(rot[0], int):
+                raise TypeError("First element must be an integer")
+            if not isinstance(rot[1], int):
+                raise TypeError("Second element must be an integer")
 
-        # If we have 5 elements, fourth and fifth must be integers
-        if len(v) == 5:
-            if not isinstance(v[3], int):
-                raise TypeError("Fourth element must be an integer")
-            if not isinstance(v[4], int):
-                raise TypeError("Fifth element must be an integer")
+            # If we have at least 3 elements, third must be of type float
+            if len(rot) >= 3 and not isinstance(rot[2], float):
+                raise TypeError("Third element must be a float")
+
+            # If we have 5 elements, fourth and fifth must be integers
+            if len(rot) == 5:
+                if not isinstance(rot[3], int):
+                    raise TypeError("Fourth element must be an integer")
+                if not isinstance(rot[4], int):
+                    raise TypeError("Fifth element must be an integer")
 
         return v
 
     def __str__(self) -> str:
-        return "{" + ", ".join(str(val) for val in self.rotate if val is not None) + "} end"
+        return " ".join("{" + ", ".join(str(x) for x in rot) + "}" for rot in self.rotate) + " end"
 
 
 class BlockScf(BlockABC):
@@ -467,11 +482,11 @@ class BlockScf(BlockABC):
 
     @field_validator("rotate", mode="before")
     @classmethod
-    def init_rotate(cls, val: list[int | float] | Rotate) -> Rotate:
+    def init_rotate(cls, val: list[int | float] | list[list[int | float]] | Rotate) -> Rotate:
         """
         Parameters
         ----------
-        val : list[int | float] | Rotate
+        val : list[int | float] | list[list[int | float]] | Rotate
         """
         if isinstance(val, list):
             return Rotate(rotate=val)
