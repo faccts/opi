@@ -187,9 +187,16 @@ class Rotate(BaseModel):
 
     @field_validator("rotate", mode="before")
     @classmethod
-    def wrap_single(cls, v: list[int | float] | list[list[int | float]]) -> list[list[int | float]]:
-        return v if v and isinstance(v[0], list) else [v]
-
+    def wrap_single(cls, v: Any) -> Any:
+        """
+        Parameters
+        ----------
+        v : Any
+            A single rotation as a flat list, or a list of rotations.
+        """
+        if isinstance(v, list) and not (v and isinstance(v[0], list)):
+            return [v]
+        return v
 
     @field_validator("rotate")
     @classmethod
@@ -475,11 +482,11 @@ class BlockScf(BlockABC):
 
     @field_validator("rotate", mode="before")
     @classmethod
-    def init_rotate(cls, val: list[int | float] | Rotate) -> Rotate:
+    def init_rotate(cls, val: list[int | float] | list[list[int | float]] | Rotate) -> Rotate:
         """
         Parameters
         ----------
-        val : list[int | float] | Rotate
+        val : list[int | float] | list[list[int | float]] | Rotate
         """
         if isinstance(val, list):
             return Rotate(rotate=val)

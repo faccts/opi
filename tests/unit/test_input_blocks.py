@@ -579,9 +579,11 @@ def test_scan_from_string_rejects_invalid(scan: str):
     with pytest.raises(ValueError, match="Invalid scan string"):
         BlockGeom(scan=scan)
 
+
 # ---------------------------------------------------------------------------
 # `Rotate` (formatting of `BlockScf.rotate`)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 @pytest.mark.input
