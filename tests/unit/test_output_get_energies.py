@@ -36,9 +36,10 @@ def test_get_final_energy_invalid_index(output_object_factory, task: str):
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_get_final_energy_nonexistent(empty_output_object: Output):
-    """Test to check if `Output.get_final_energy()` returns None when expected."""
-    assert not empty_output_object.get_final_energy()
+def test_get_final_energy_not_parsed(empty_output_object: Output):
+    """Test that `Output.get_final_energy()` raises if there is neither parsed JSON nor a `.out` file."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_final_energy()
 
 
 @pytest.mark.unit

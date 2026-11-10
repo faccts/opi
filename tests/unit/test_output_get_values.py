@@ -41,16 +41,18 @@ def test_get_hftype_nonexistent(empty_output_object):
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_get_charge_nonexistent(empty_output_object: Output):
-    """Test to check if `Output.get_charge()` returns None when expected."""
-    assert not empty_output_object.get_charge()
+def test_get_charge_not_parsed(empty_output_object: Output):
+    """Test that `Output.get_charge()` raises if there is neither parsed JSON nor a `.out` file."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_charge()
 
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_get_mult_nonexistent(empty_output_object: Output):
-    """Test to check if `Output.get_mult()` returns None when expected."""
-    assert not empty_output_object.get_mult()
+def test_get_mult_not_parsed(empty_output_object: Output):
+    """Test that `Output.get_mult()` raises if there is neither parsed JSON nor a `.out` file."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_mult()
 
 
 @pytest.mark.unit
