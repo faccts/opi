@@ -4,6 +4,7 @@ It's mostly based on the ORCA's two JSONs files.
 """
 
 import json
+import operator
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 from typing import Any, ClassVar, cast
@@ -13,11 +14,10 @@ import numpy as np
 import numpy.typing as npt
 from pydantic import StrictInt, StrictStr
 
-from opi.exceptions import OpiOutputIndexError, OpiOutputNotParsedError
+from opi.exceptions import OpiOutputError, OpiOutputIndexError, OpiOutputNotParsedError
 from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
-from opi.output.decorators import raise_on_missing_value
 from opi.output.fcidump import Fcidump
 from opi.output.gbw_suffix import GbwSuffix
 from opi.output.grepper.recipes import (
@@ -109,23 +109,28 @@ class Output:
         Redump JSONs files after parsing. This is mostly meant for debugging.
     config_dict : dict[str, Any] | None, default: None
         Config dict class used in getter functions for creating json files with desired integrals.
-    raise_on_missing: bool, default: False
-        If True, the getters raise a `OpiOutputMissingValueError` instead of returning None.
 
     Notes
     -----
     The getters (e.g. `get_final_energy()`) return None if a value is not in the output,
-    e.g. because it was not calculated. They raise an error if they are used incorrectly:
+    e.g. because it was not calculated. Empty containers (e.g. no imaginary frequencies) are
+    returned as such. The getters raise an error if they are used incorrectly:
 
     - `OpiOutputNotParsedError`: The JSON files were not parsed, i.e., `Output.parse()` was not
-      called. Getters with an active `.out` file fallback use the fallback instead.
-    - `OpiOutputIndexError`: The requested geometry or gbw index does not exist.
+      called. Getters with an active `.out` file fallback read the `.out` file instead and only
+      raise if that file does not exist either. Getters that read other files (e.g. `get_ir()`
+      or `get_fcidump()`) do not need parsed JSON files.
+    - `OpiOutputIndexError`: The requested geometry or gbw index does not exist. Getters with an
+      active `.out` file fallback only raise if the fallback finds no value for the index either.
+    - `TypeError`: The geometry or gbw index is not an integer.
     """
 
-    # > Results that have to be loaded with `Output.parse()`, mapped to their name in error messages
+    # > Results that have to be loaded with `Output.parse()`, mapped to their error message
     _PARSED_RESULTS: ClassVar[dict[str, str]] = {
-        "results_properties": "property",
-        "results_gbw": "gbw",
+        "results_properties": "No property results of '{basename}' are loaded."
+        " Call `Output.parse()` first.",
+        "results_gbw": "No gbw results of '{basename}' are loaded."
+        " Call `Output.parse()` with `read_gbw_json=True` first.",
     }
     # > Lists whose index is chosen by the user, mapped to their name in error messages
     _USER_INDEXED_LISTS: ClassVar[dict[str, str]] = {
@@ -141,7 +146,6 @@ class Output:
         version_check: bool = True,
         parse: bool = False,
         strict: bool = True,
-        raise_on_missing: bool = False,
     ):
         """
         ORCA output parser that is mainly based on the JSON-property and JSON-GBW file.
@@ -166,9 +170,6 @@ class Output:
             If `True`, a `ValidationError` is raised when any field in the parsed output cannot be validated.
             If `False`, fields that fail validation are silently set to `None` and a `UserWarning` is emitted.
             Only takes effect when `parse=True`; otherwise pass `strict` directly to `Output.parse()`.
-        raise_on_missing: bool, default: False
-            If True, the getters raise a `OpiOutputMissingValueError` instead of returning None
-            if a value is not available in the output.
 
         Raises
         ----------
@@ -199,11 +200,6 @@ class Output:
 
         # > // CONFIG DICT
         self.config_dict: dict[str, Any] | None = None
-
-        # > // GETTER BEHAVIOR
-        self.raise_on_missing: bool = raise_on_missing
-        # > Nesting depth of getter calls, see `raise_on_missing_value()`
-        self._getter_depth: int = 0
 
         # // CREATE AND PARSE JSONS FILES
         if parse:
@@ -1280,6 +1276,7 @@ class Output:
         - An index into a list whose index is chosen by the user (`geometries` or `results_gbw`)
           is out of range. An empty list still returns None, as it only means that no data is
           available.
+        - An index into such a list is not an integer.
 
         Parameters
         ----------
@@ -1299,6 +1296,8 @@ class Output:
             If the requested results were not parsed.
         OpiOutputIndexError
             If a user-chosen index is out of range.
+        TypeError
+            If a user-chosen index is not an integer.
 
         Examples
         --------
@@ -1309,26 +1308,29 @@ class Output:
         """
         if attrs and attrs[0] in self._PARSED_RESULTS and getattr(self, str(attrs[0])) is None:
             raise OpiOutputNotParsedError(
-                f"No {self._PARSED_RESULTS[str(attrs[0])]} results of '{self.basename}' are loaded."
-                " Call `Output.parse()` first."
+                self._PARSED_RESULTS[str(attrs[0])].format(basename=self.basename)
             )
 
         current: Any = self
         previous: str | int | None = None
+        attr: Any
         for attr in attrs:
             if current is None:
                 return None
-            if (
-                isinstance(attr, int)
-                and isinstance(current, list)
-                and current
-                and previous in self._USER_INDEXED_LISTS
-                and not -len(current) <= attr < len(current)
-            ):
-                raise OpiOutputIndexError(
-                    f"Index {attr} is out of range: the output of '{self.basename}' contains"
-                    f" {len(current)} {self._USER_INDEXED_LISTS[str(previous)]}."
-                )
+            if isinstance(current, list) and previous in self._USER_INDEXED_LISTS:
+                # > Accept any integer type (e.g. `numpy.int64`), but nothing else
+                try:
+                    attr = operator.index(attr)
+                except TypeError:
+                    raise TypeError(
+                        f"Index into the {self._USER_INDEXED_LISTS[str(previous)]} has to be an"
+                        f" integer, got {attr!r}."
+                    ) from None
+                if current and not -len(current) <= attr < len(current):
+                    raise OpiOutputIndexError(
+                        f"Index {attr} is out of range: the output of '{self.basename}' contains"
+                        f" {len(current)} {self._USER_INDEXED_LISTS[str(previous)]}."
+                    )
             try:
                 if isinstance(attr, int) and isinstance(current, list):
                     current = current[attr]
@@ -1343,12 +1345,12 @@ class Output:
 
     def _safe_get_with_fallback(
         self, *attrs: str | int, fallback: bool
-    ) -> tuple[Any | None, OpiOutputIndexError | None]:
+    ) -> tuple[Any | None, OpiOutputError | None]:
         """
         `_safe_get()` for getters with a `.out` file fallback.
         If `fallback` is True, the errors of `_safe_get()` are not raised, so the getter can use the
-        fallback instead. An index error is returned, so that the getter can raise it if the
-        fallback does not find a value either.
+        fallback instead. The error is returned, so that the getter can pass it to
+        `_raise_fallback_error()` if the fallback does not find a value either.
 
         Parameters
         ----------
@@ -1359,21 +1361,32 @@ class Output:
 
         Returns
         -------
-        tuple[Any | None, OpiOutputIndexError | None]
-            The value (or None) and the index error, if one occurred.
+        tuple[Any | None, OpiOutputError | None]
+            The value (or None) and the error, if one occurred.
         """
         try:
             return self._safe_get(*attrs), None
-        except OpiOutputNotParsedError:
-            if not fallback:
-                raise
-            return None, None
-        except OpiOutputIndexError as error:
+        except (OpiOutputNotParsedError, OpiOutputIndexError) as error:
             if not fallback:
                 raise
             return None, error
 
-    @raise_on_missing_value
+    def _raise_fallback_error(self, error: OpiOutputError | None) -> None:
+        """
+        Raise the error of `_safe_get_with_fallback()` after the `.out` file fallback found no value.
+        An index error is always raised. A not-parsed error is only raised if there is no `.out`
+        file either, since a value missing from an existing `.out` file is just not available.
+
+        Parameters
+        ----------
+        error : OpiOutputError | None
+            Error returned by `_safe_get_with_fallback()`.
+        """
+        if isinstance(error, OpiOutputIndexError):
+            raise error
+        if error is not None and not self.get_outfile().is_file():
+            raise error
+
     def get_hftype(self, index: int = 0) -> Hftyp | None:
         """
         Get the HFType from GBW json file.
@@ -1398,7 +1411,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_charge(self, *, fallback: bool = True) -> StrictInt | None:
         """
         Get the molecular charge.
@@ -1417,7 +1429,7 @@ class Output:
         -------
         charge : StrictInt | None
         """
-        charge, _ = self._safe_get_with_fallback(
+        charge, error = self._safe_get_with_fallback(
             "results_properties", "calculation_info", "charge", fallback=fallback
         )
 
@@ -1434,9 +1446,11 @@ class Output:
             return int(raw)
 
         charge_mult = get_charge_and_mult_from_input(self.get_outfile())
-        return charge_mult[0] if charge_mult is not None else None
+        if charge_mult is None:
+            self._raise_fallback_error(error)
+            return None
+        return charge_mult[0]
 
-    @raise_on_missing_value
     def get_mult(self, *, fallback: bool = True) -> StrictPositiveInt | None:
         """
         Get the molecular electron multiplicity.
@@ -1455,7 +1469,7 @@ class Output:
         -------
         mult : StrictPositiveInt | None
         """
-        mult, _ = self._safe_get_with_fallback(
+        mult, error = self._safe_get_with_fallback(
             "results_properties", "calculation_info", "mult", fallback=fallback
         )
 
@@ -1472,9 +1486,11 @@ class Output:
             return int(raw)
 
         charge_mult = get_charge_and_mult_from_input(self.get_outfile())
-        return charge_mult[1] if charge_mult is not None else None
+        if charge_mult is None:
+            self._raise_fallback_error(error)
+            return None
+        return charge_mult[1]
 
-    @raise_on_missing_value
     def get_nelectrons(
         self, *, spin_resolved: bool = False
     ) -> tuple[int, int | None] | tuple[None, None]:
@@ -1523,7 +1539,6 @@ class Output:
         # > Return spin resolved number of electrons
         return nalpha, nbeta
 
-    @raise_on_missing_value
     def get_nbf(self) -> StrictNonNegativeInt | None:
         """
         Get the number of basis functions (nbf) from the json properties file.
@@ -1539,7 +1554,6 @@ class Output:
 
         return nbf
 
-    @raise_on_missing_value
     def get_timings(self) -> CalculationTiming | None:
         """
         Get the timings (in seconds) of the individual calculation steps and their total.
@@ -1556,7 +1570,6 @@ class Output:
 
         return timings
 
-    @raise_on_missing_value
     def get_final_energy(
         self, *, index: int = -1, fallback: bool = True
     ) -> StrictFiniteFloat | None:
@@ -1579,7 +1592,7 @@ class Output:
         """
 
         # > Get the final energy
-        final_energy, index_error = self._safe_get_with_fallback(
+        final_energy, error = self._safe_get_with_fallback(
             "results_properties",
             "geometries",
             index,
@@ -1598,11 +1611,10 @@ class Output:
         final_energy = get_float_from_line(
             self.get_outfile(), "FINAL SINGLE POINT ENERGY", index, -1, strict=False
         )
-        if final_energy is None and index_error is not None:
-            raise index_error
+        if final_energy is None:
+            self._raise_fallback_error(error)
         return final_energy
 
-    @raise_on_missing_value
     def get_energies(self, *, index: int = -1) -> dict[str, Energy] | None:
         """
         Return a dictionary with different energy types for the geometry at a given index.
@@ -1663,7 +1675,6 @@ class Output:
 
         return energy_dict
 
-    @raise_on_missing_value
     def get_final_energy_components(self, *, index: int = -1) -> dict[str, Energy] | None:
         """
         Return a dictionary with all energy components that contribute to the final energy of the
@@ -1728,7 +1739,6 @@ class Output:
 
         return energy_components or None
 
-    @raise_on_missing_value
     def get_vdw_correction(self, *, index: int = -1) -> VdwCorrection | None:
         """
         Easy access to the dispersion correction (in Eh).
@@ -1754,7 +1764,6 @@ class Output:
 
         return vdw_correction
 
-    @raise_on_missing_value
     def get_gcp_correction(self, *, index: int = -1) -> GcpEnergy | None:
         """
         Easy access to the geometrical counterpoise correction (in Eh).
@@ -1780,7 +1789,6 @@ class Output:
 
         return gcp_correction
 
-    @raise_on_missing_value
     def get_rocis_energies(self, *, index: int = -1) -> RoCisEnergy | None:
         """
         Easy access to the energies (in Eh) of a restricted open-shell CI calculation.
@@ -1806,7 +1814,6 @@ class Output:
 
         return rocis_energies
 
-    @raise_on_missing_value
     def get_cipsi_energies(self, *, index: int = -1) -> CiPsi | None:
         """
         Easy access to the energies (in Eh) of an iterative CI calculation.
@@ -1831,7 +1838,6 @@ class Output:
 
         return cipsi_energies
 
-    @raise_on_missing_value
     def get_gradient(
         self, *, index: int = -1, fallback: bool = True
     ) -> list[StrictFiniteFloat] | None:
@@ -1857,7 +1863,7 @@ class Output:
             or None if it cannot be obtained.
         """
         # > Safely get the gradient
-        gradient, index_error = self._safe_get_with_fallback(
+        gradient, error = self._safe_get_with_fallback(
             "results_properties",
             "geometries",
             index,
@@ -1880,11 +1886,10 @@ class Output:
             return None
 
         grepped_gradient = self._grep_gradient(index)
-        if grepped_gradient is None and index_error is not None:
-            raise index_error
+        if grepped_gradient is None:
+            self._raise_fallback_error(error)
         return grepped_gradient
 
-    @raise_on_missing_value
     def get_structure(
         self, *, index: int = -1, with_fragments: bool = True, fallback: bool = True
     ) -> Structure | None:
@@ -1912,14 +1917,14 @@ class Output:
 
         atoms: list[Atom] = []
         # > Get Cartesian coordinates
-        cartesians, index_error = self._get_cartesians(index, fallback=fallback)
+        cartesians, error = self._get_cartesians(index, fallback=fallback)
 
         if cartesians is None:
             if not fallback:
                 return None
             grepped_structure = self._grep_structure(index)
-            if grepped_structure is None and index_error is not None:
-                raise index_error
+            if grepped_structure is None:
+                self._raise_fallback_error(error)
             return grepped_structure
 
         for line in cartesians:
@@ -1944,7 +1949,6 @@ class Output:
         # > silently falling back to the `Structure` defaults
         return Structure(atoms, charge=self.get_charge(), multiplicity=self.get_mult())
 
-    @raise_on_missing_value
     def get_structure_from_gbw(self, *, index: int = 0) -> Structure | None:
         """
         Returns the structure stored in a gbw file as `Structure` object.
@@ -1979,7 +1983,7 @@ class Output:
         self, index: int, /, *, fallback: bool
     ) -> tuple[
         list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None,
-        OpiOutputIndexError | None,
+        OpiOutputError | None,
     ]:
         """
         Returns cartesian coordinates from the output object for a specified index.
@@ -1995,11 +1999,11 @@ class Output:
         ----------
         cartesians: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None
             List containing the cartesian coordinates or None.
-        index_error: OpiOutputIndexError | None
-            The index error, if one occurred.
+        error: OpiOutputError | None
+            The error of `_safe_get_with_fallback()`, if one occurred.
         """
         # > Safely get the cartesian coordinates
-        cartesians, index_error = self._safe_get_with_fallback(
+        cartesians, error = self._safe_get_with_fallback(
             "results_properties",
             "geometries",
             index,
@@ -2015,7 +2019,7 @@ class Output:
                 cartesians,
             )
 
-        return cartesians, index_error
+        return cartesians, error
 
     def _get_fragments(self, index: int, /) -> list[list[StrictPositiveInt]] | None:
         """
@@ -2108,7 +2112,6 @@ class Output:
         # > Return gradient or None
         return gradient if gradient else None
 
-    @raise_on_missing_value
     def get_mos(self, gbw_index: int = 0) -> dict[str, list[MO]] | None:
         """
         Returns a dictionary with list(s) of molecular orbitals.
@@ -2173,7 +2176,6 @@ class Output:
 
         return None
 
-    @raise_on_missing_value
     def get_homo(self, gbw_index: int = 0) -> MOData | None:
         """
         Returns the highest occupied molecular orbital (HOMO, or SOMO for UHF).
@@ -2239,7 +2241,6 @@ class Output:
 
         return None
 
-    @raise_on_missing_value
     def get_lumo(self, gbw_index: int = 0) -> MOData | None:
         """
         Returns the lowest unoccupied molecular orbital (LUMO).
@@ -2285,7 +2286,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_hl_gap(self, gbw_index: int = 0) -> float | None:
         """
         Returns the HOMO-LUMO gap in eV
@@ -2316,7 +2316,6 @@ class Output:
 
         return None
 
-    @raise_on_missing_value
     def get_mulliken(self, *, index: int = -1) -> list[MullikenPopulationAnalysis] | None:
         """
         Easy access to the Mulliken population(s) from the properties results.
@@ -2343,7 +2342,6 @@ class Output:
 
         return mulliken
 
-    @raise_on_missing_value
     def get_loewdin(self, *, index: int = -1) -> list[LoewdinPopulationAnalysis] | None:
         """
         Easy access to the Loewdin population(s) from the properties results.
@@ -2370,7 +2368,6 @@ class Output:
 
         return loewdin
 
-    @raise_on_missing_value
     def get_chelpg(self, *, index: int = -1) -> list[ChelpgPopulationAnalysis] | None:
         """
         Easy access to the CHarges from ELectrostatic Potentials using a Grid-based method (CHELPG) from the properties
@@ -2399,7 +2396,6 @@ class Output:
 
         return chelpg
 
-    @raise_on_missing_value
     def get_mayer(self, *, index: int = -1) -> list[MayerPopulationAnalysis] | None:
         """
         Easy access to the Mayer population(s) from the properties results.
@@ -2426,7 +2422,6 @@ class Output:
 
         return mayer
 
-    @raise_on_missing_value
     def get_hirshfeld(self, *, index: int = -1) -> list[HirshfeldPopulationAnalysis] | None:
         """
         Easy access to the Hirshfeld population(s) from the properties results.
@@ -2453,7 +2448,6 @@ class Output:
 
         return hirshfeld
 
-    @raise_on_missing_value
     def get_mbis(self, *, index: int = -1) -> list[MbisPopulationAnalysis] | None:
         """
         Easy access to the MBIS population(s) from the properties results.
@@ -2478,7 +2472,6 @@ class Output:
 
         return mbis
 
-    @raise_on_missing_value
     def get_dipole(self, *, index: int = -1) -> list[DipoleMoment] | None:
         """
         Get a list of the dipole moments from property results.
@@ -2502,7 +2495,6 @@ class Output:
 
         return dipole
 
-    @raise_on_missing_value
     def get_quadrupole(self, *, index: int = -1) -> list[QuadrupoleMoment] | None:
         """
         Get a list of the quadrupole moments from property results.
@@ -2526,7 +2518,6 @@ class Output:
 
         return quadrupole
 
-    @raise_on_missing_value
     def get_polarizability(self, *, index: int = -1) -> list[Polarizability] | None:
         """
         Get a list of the polarizabilities from property results.
@@ -2550,7 +2541,6 @@ class Output:
 
         return pol
 
-    @raise_on_missing_value
     def get_absorption_spectrum(self, *, index: int = -1) -> list[AbsorptionSpectrum] | None:
         """
         Easy access to the electronic absorption (UV/Vis) spectrum from the properties results.
@@ -2579,7 +2569,6 @@ class Output:
 
         return absorption_spectrum
 
-    @raise_on_missing_value
     def get_s2(
         self, *, index: int = -1
     ) -> tuple[StrictFiniteFloat, StrictFiniteFloat] | tuple[None, None]:
@@ -2634,7 +2623,6 @@ class Output:
         else:
             return None, None
 
-    @raise_on_missing_value
     def get_zpe(self, *, index: int = -1) -> StrictPositiveFloat | None:
         """
         Returns the zero-point energy (in a.u.) from the thermochemistry key in properties results.
@@ -2661,7 +2649,6 @@ class Output:
 
         return zpe
 
-    @raise_on_missing_value
     def get_inner_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Returns the inner energy (in a.u.) from the thermochemistry key in properties results.
@@ -2688,7 +2675,6 @@ class Output:
 
         return inner_energy
 
-    @raise_on_missing_value
     def get_enthalpy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Returns the enthalpy (in a.u.) from the thermochemistry key in properties results.
@@ -2715,7 +2701,6 @@ class Output:
 
         return enthalpy
 
-    @raise_on_missing_value
     def get_entropy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Returns the entropy (in a.u.) from the thermochemistry key in properties results.
@@ -2742,7 +2727,6 @@ class Output:
 
         return entropy
 
-    @raise_on_missing_value
     def get_free_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Returns the free energy (in a.u.) from the thermochemistry key in properties results.
@@ -2769,7 +2753,6 @@ class Output:
 
         return free_energy
 
-    @raise_on_missing_value
     def get_el_energy(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Returns the electronic energy (in a.u.) from the thermochemistry key in properties results.
@@ -2796,7 +2779,6 @@ class Output:
 
         return el_energy
 
-    @raise_on_missing_value
     def get_free_energy_delta(self, *, index: int = -1) -> StrictFiniteFloat | None:
         """
         Returns the thermostatistical contributions to the free energy by subtracting the electronic energy from the
@@ -2822,7 +2804,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_frequencies(
         self, *, index: int = -1, threshold: float | None = None
     ) -> dict[int, float] | None:
@@ -2861,7 +2842,6 @@ class Output:
             if threshold is None or inner[0] < -threshold
         }
 
-    @raise_on_missing_value
     def get_imaginary_frequencies(self, *, threshold: float = 0.0) -> dict[int, float] | None:
         """
         Returns only the imaginary (negative) vibrational frequencies (in cm⁻¹). Requires a frequency
@@ -2880,7 +2860,6 @@ class Output:
         """
         return self.get_frequencies(threshold=threshold)
 
-    @raise_on_missing_value
     def is_pes_minimum(self, *, threshold: float = 0.0) -> bool | None:
         """
         Returns True if the structure is a PES minimum, i.e. all vibrational frequencies are real
@@ -2907,7 +2886,6 @@ class Output:
         # > Minimum if no imaginary_frequency is present
         return not bool(imaginary_frequencies)
 
-    @raise_on_missing_value
     def is_pes_transition_state(self, *, threshold: float = 0.0) -> bool | None:
         """
         Returns True if the structure is a first-order saddle point (transition state), i.e.
@@ -2956,7 +2934,6 @@ class Output:
                 if self.results_gbw is not None and 0 <= gbw_index < self.num_results_gbw:
                     self.results_gbw[gbw_index] = GbwResults(**self.gbw_json_data[gbw_index])
 
-    @raise_on_missing_value
     def get_int_overlap(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -2993,7 +2970,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_int_hcore(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3029,7 +3005,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_int_kinetic(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3065,7 +3040,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_int_nuc_attr(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3101,7 +3075,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_int_hmo(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3137,7 +3110,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_int_f(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3172,7 +3144,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_int_j(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3207,7 +3178,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_int_k(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3242,7 +3212,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_scf_density(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3276,7 +3245,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_scf_spin_density(
         self, recreate_json: bool = False, gbw_index: int = 0
     ) -> npt.NDArray[np.float64] | None:
@@ -3310,7 +3278,6 @@ class Output:
         else:
             return None
 
-    @raise_on_missing_value
     def get_ir(self) -> dict[int, IrMode] | None:
         """
         Returns the IR Spectrum from the ORCA output file
@@ -3337,7 +3304,6 @@ class Output:
 
         return ir_dict or None
 
-    @raise_on_missing_value
     def get_free_solvation_energy_opencosmors(self) -> float | None:
         """
         Returns the free solvation energy
@@ -3360,7 +3326,6 @@ class Output:
             return None
         return float(free_solv_energy)
 
-    @raise_on_missing_value
     def get_fcidump(self) -> Fcidump | None:
         """
         Parse the FCIDUMP file generated by ORCA and return its data in the `Fcidump` data class.

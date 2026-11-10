@@ -36,9 +36,10 @@ def test_get_gradient_with_index(output_object_factory, task: str, index: int):
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_get_gradient_returns_none(empty_output_object: Output):
-    """Test if `Output.get_gradient()` returns `None` when expected."""
-    assert not empty_output_object.get_gradient()
+def test_get_gradient_not_parsed(empty_output_object: Output):
+    """Test that `Output.get_gradient()` raises if there is neither parsed JSON nor a `.out` file."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_gradient()
 
 
 @pytest.mark.unit
@@ -63,9 +64,10 @@ def test_get_structure_with_fragments(output_object_factory, task: str):
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_get_structure_returns_none(empty_output_object: Output):
-    """Test if `Output.get_structure()` returns `None` when expected."""
-    assert not empty_output_object.get_structure()
+def test_get_structure_not_parsed(empty_output_object: Output):
+    """Test that `Output.get_structure()` raises if there is neither parsed JSON nor a `.out` file."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_structure()
 
 
 @pytest.mark.unit

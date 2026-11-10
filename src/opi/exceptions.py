@@ -38,7 +38,7 @@ class OrcaMmError(OpiExecutionError):
 
 
 class OpiOutputError(OpiError):
-    """Base class for errors on the output side (parsing and accessing ORCA results)."""
+    """Base class for errors raised when accessing ORCA results through `Output`."""
 
     pass
 
@@ -51,11 +51,5 @@ class OpiOutputNotParsedError(OpiOutputError, RuntimeError):
 
 class OpiOutputIndexError(OpiOutputError, IndexError):
     """Raised when an `Output` getter is called with a geometry or gbw index that does not exist."""
-
-    pass
-
-
-class OpiOutputMissingValueError(OpiOutputError, LookupError):
-    """Raised by `Output` getters in `raise_on_missing` mode when a value is not available."""
 
     pass
