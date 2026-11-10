@@ -38,7 +38,7 @@ class OrcaMmError(OpiExecutionError):
 
 
 class OpiOutputError(OpiError):
-    """Base class for errors raised while accessing results of an `Output` object."""
+    """Base class for errors on the output side (parsing and accessing ORCA results)."""
 
     pass
 
