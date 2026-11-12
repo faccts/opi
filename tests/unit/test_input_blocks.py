@@ -667,4 +667,14 @@ def test_newecp_rejects_shells():
     with pytest.raises(ValueError, match="newecp"):
         block.format_orca()
     with pytest.raises(ValueError, match="newecp"):
-        BlockBasis(newecp=NewBasis(element=Element.BISMUTH, shells=shells)).format_orca()
+        BlockBasis(newecp=NewBasis(element=Element.BISMUTH, shells=shells))
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_basisshell_accepts_uppercase_angmom():
+    """Test for `BasisShell`: the angular momentum may be given in uppercase, as ORCA prints it."""
+    shell = BasisShell(angmom="G", primitives=[(0.4203, 1.0)])
+
+    assert shell.angmom == "g"
+    assert str(shell) == "G 1\n  1 0.4203 1.0"

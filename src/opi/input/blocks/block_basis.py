@@ -54,6 +54,18 @@ class BasisShell(BaseModel):
     angmom: Literal["s", "p", "d", "f", "g", "h", "i"]
     primitives: list[tuple[float, float]]
 
+    @field_validator("angmom", mode="before")
+    @classmethod
+    def lowercase_angmom(cls, value: object) -> object:
+        """
+        ORCA prints the angular momentum in uppercase, so both cases are accepted.
+
+        Parameters
+        ----------
+        value : object
+        """
+        return value.lower() if isinstance(value, str) else value
+
     @field_validator("primitives")
     @classmethod
     def check_primitives(cls, values: list[tuple[float, float]]) -> list[tuple[float, float]]:
@@ -353,6 +365,20 @@ class BlockBasis(BlockABC):
     newecp: NewBasis | None = None
     delecp: Element | None = None
 
+    @field_validator("newecp")
+    @classmethod
+    def check_newecp(cls, value: NewBasis | None) -> NewBasis | None:
+        """
+        Explicit shells use the syntax of basis sets, which is not valid for ECPs.
+
+        Parameters
+        ----------
+        value : NewBasis | None
+        """
+        if value is not None and value.shells is not None:
+            raise ValueError("`newecp` only supports an ECP keyword, not explicit shells")
+        return value
+
     def format_orca(self) -> str:
         """
         Method to convert the block into string for the ORCA input file.
@@ -360,11 +386,10 @@ class BlockBasis(BlockABC):
         Raises
         ------
         ValueError
-            If `newecp` holds explicit shells. These use the syntax of basis sets, which is not
-            valid for ECPs.
+            If `newecp` holds explicit shells. These are rejected when the block is created, but
+            fields assigned afterwards are not validated.
         """
-        if self.newecp is not None and self.newecp.shells is not None:
-            raise ValueError("`newecp` only supports an ECP keyword, not explicit shells")
+        self.check_newecp(self.newecp)
         return super().format_orca()
 
     @field_validator(
