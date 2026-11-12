@@ -8,6 +8,7 @@
 - Move `POPDISP` from `DispersionCorrection` to `OutputControl`. (#218)
 
 ### Added
+- `NewBasis` in `BlockBasis` (e.g. `addgto`, `newgto`) accepts explicit shells (`BasisShell`) in addition to a basis set keyword (#XXX)
 - The ORCA version check now accepts pre-release versions (#301).
 - Improve support for OpenCOSMO-RS (#205)
 - Add missing pydantic fields for calculation timings (#211)

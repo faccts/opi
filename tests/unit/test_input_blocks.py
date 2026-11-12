@@ -2,16 +2,20 @@ import pytest
 
 from opi.core import Calculator
 from opi.input.blocks import (
+    BasisShell,
     Block,
     BlockABC,
+    BlockBasis,
     BlockEprnmr,
     BlockGeom,
     BlockMethod,
     BlockScf,
+    NewBasis,
     Nuclei,
     NucleiFlag,
     Scan,
 )
+from opi.input.simple_keywords import BasisSet
 from opi.utils.element import Element
 
 """
@@ -578,3 +582,89 @@ def test_scan_from_string_rejects_invalid(scan: str):
     """Test for `Scan.from_string()`: malformed or trailing input is rejected, not truncated."""
     with pytest.raises(ValueError, match="Invalid scan string"):
         BlockGeom(scan=scan)
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_newbasis_shells_format():
+    """Test for `NewBasis`: explicit shells are written in ORCA's basis set syntax and order."""
+    block = BlockBasis(
+        addgto=NewBasis(
+            element=Element.BISMUTH,
+            shells=[
+                BasisShell(angmom="g", primitives=[(0.4203, 1.0)]),
+                BasisShell(angmom="s", primitives=[(10.0, 0.25), (1.5, 0.75)]),
+            ],
+        )
+    )
+
+    assert block.format_orca() == (
+        "%basis\n"
+        "    addgto Bi\n"
+        "      G 1\n"
+        "        1 0.4203 1.0\n"
+        "      S 2\n"
+        "        1 10.0 0.25\n"
+        "        2 1.5 0.75\n"
+        "    end\n"
+        "end"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_newbasis_keyword_format():
+    """Test for `NewBasis`: a basis set keyword is still written as quoted name."""
+    block = BlockBasis(newgto=NewBasis(element=Element.OXYGEN, basis=BasisSet.MA_DEF2_SVP))
+
+    assert block.format_orca() == '%basis\n    newgto O "ma-def2-svp" end\nend'
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        {"basis": BasisSet.DEF2_SVP, "shells": [BasisShell(angmom="g", primitives=[(1.0, 1.0)])]},
+        {"shells": []},
+    ],
+)
+def test_newbasis_requires_basis_or_shells(kwargs: dict):
+    """Test for `NewBasis`: exactly one of `basis` and non-empty `shells` must be given."""
+    with pytest.raises(ValueError):
+        NewBasis(element=Element.BISMUTH, **kwargs)
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize(
+    "primitives",
+    [
+        [],
+        [(-1.0, 1.0)],
+        [(0.0, 1.0)],
+        [(float("nan"), 1.0)],
+        [(float("inf"), 1.0)],
+        [(1.0, float("nan"))],
+        [(1.0, float("inf"))],
+    ],
+)
+def test_basisshell_rejects_invalid_primitives(primitives: list):
+    """Test for `BasisShell`: primitives need a positive, finite exponent and a finite coefficient."""
+    with pytest.raises(ValueError):
+        BasisShell(angmom="s", primitives=primitives)
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_newecp_rejects_shells():
+    """Test for `BlockBasis.newecp`: ECPs cannot be given as basis set shells, also if assigned later."""
+    shells = [BasisShell(angmom="g", primitives=[(1.0, 1.0)])]
+    block = BlockBasis()
+    block.newecp = NewBasis(element=Element.BISMUTH, shells=shells)
+
+    with pytest.raises(ValueError, match="newecp"):
+        block.format_orca()
+    with pytest.raises(ValueError, match="newecp"):
+        BlockBasis(newecp=NewBasis(element=Element.BISMUTH, shells=shells)).format_orca()
