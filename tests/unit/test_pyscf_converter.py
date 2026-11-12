@@ -335,6 +335,81 @@ def test_from_pyscf_unrestricted_object_with_restricted_orbitals() -> None:
 
 @pytest.mark.unit
 @pytest.mark.output
+def test_from_pyscf_open_shell_restricted_orbitals() -> None:
+    """Restricted orbitals of an open-shell molecule must be stored as ROHF type orbitals."""
+    mol = pyscf.gto.M(atom="O 0 0 0; H 0 0 0.97", basis="sto-3g", spin=1, verbose=0)
+    mf = pyscf.scf.UHF(mol)
+    natural_occupations = [2.0, 2.0, 2.0, 2.0, 1.0, 0.0]
+
+    results = GbwResults.from_pyscf(mf, mo_coeff=np.eye(mol.nao), mo_occ=natural_occupations)
+
+    assert results.molecule is not None
+    assert results.molecule.multiplicity == 2
+    assert results.molecule.hftyp == "ROHF"
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_from_pyscf_rejects_periodic_calculation() -> None:
+    """Orbitals at two k-points must not be mistaken for unrestricted orbitals."""
+    from pyscf.pbc import gto as pbc_gto
+    from pyscf.pbc import scf as pbc_scf
+
+    cell = pbc_gto.M(atom="He 0 0 0", a=np.eye(3) * 4.0, basis="sto-3g", verbose=0)
+    mf = pbc_scf.KRHF(cell, kpts=cell.make_kpts([2, 1, 1]))
+    mf.mo_coeff = np.ones((2, 1, 1))
+    mf.mo_occ = np.full((2, 1), 2.0)
+
+    with pytest.raises(ValueError, match="Periodic"):
+        GbwResults.from_pyscf(mf)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_from_pyscf_warns_about_relativistic_hamiltonian() -> None:
+    """The relativistic Hamiltonian of PySCF is not part of the gbw data."""
+    reference = water_rhf()
+    mf = reference.x2c()
+    mf.mo_coeff, mf.mo_occ = reference.mo_coeff, reference.mo_occ
+
+    with pytest.warns(UserWarning, match="relativistic"):
+        GbwResults.from_pyscf(mf)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize(
+    ("modify", "match"),
+    [
+        # > An atom without basis functions
+        (lambda molecule: setattr(molecule.atoms[0], "basis", []), "lacks element"),
+        # > Water cannot be a doublet, which PySCF reports with its own exception
+        (lambda molecule: setattr(molecule, "multiplicity", 2), "PySCF cannot build"),
+    ],
+)
+def test_to_pyscf_rejects_invalid_gbw_data(
+    json_dir: Path, modify: Callable[[Any], None], match: str
+) -> None:
+    """Invalid gbw data must be reported as `ValueError`, also if PySCF detects it."""
+    results = GbwResults.from_json_file(json_dir / "gbw/test_exmp006_mp2_job.json")
+    modify(results.molecule)
+
+    with pytest.raises(ValueError, match=match):
+        results.to_pyscf()
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_to_pyscf_is_not_silenced(json_dir: Path) -> None:
+    """The returned object must report warnings of PySCF, e.g., about an unconverged SCF."""
+    mf = GbwResults.from_json_file(json_dir / "gbw/test_exmp006_mp2_job.json").to_pyscf()
+
+    assert mf.verbose > 0
+    assert mf.mol.verbose > 0
+
+
+@pytest.mark.unit
+@pytest.mark.output
 def test_from_pyscf_rejects_generalized_orbitals() -> None:
     """Generalized (spinor-like) orbitals cannot be stored as RHF, UHF, or ROHF orbitals."""
     mol = water_rhf().mol

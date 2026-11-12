@@ -25,6 +25,7 @@ PySCF is imported locally in each function, as it is an optional dependency of O
 from __future__ import annotations
 
 import re
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -165,17 +166,20 @@ def _match_pyscf_shells(
     list[int]
         Index of the PySCF shell for each ORCA shell.
     """
+    # > PySCF sorts the primitives of a shell by exponent, so sorted exponents are compared
     available = [int(ish) for ish in mol.atom_shell_ids(atom_idx)]
+    pyscf_shells = {
+        ish: (int(mol.bas_angular(ish)), np.sort(mol.bas_exp(ish))) for ish in available
+    }
     matched: list[int] = []
     for ang, exponents in shells:
-        # > PySCF sorts the primitives of a shell by exponent, so sorted exponents are compared
         sorted_exponents = np.sort(exponents)
         for ish in available:
-            pyscf_exponents = mol.bas_exp(ish)
+            pyscf_ang, pyscf_exponents = pyscf_shells[ish]
             if (
-                int(mol.bas_angular(ish)) == ang
+                pyscf_ang == ang
                 and len(pyscf_exponents) == len(sorted_exponents)
-                and np.allclose(np.sort(pyscf_exponents), sorted_exponents, rtol=1e-12, atol=0.0)
+                and np.allclose(pyscf_exponents, sorted_exponents, rtol=1e-12, atol=0.0)
             ):
                 matched.append(ish)
                 available.remove(ish)
@@ -192,6 +196,7 @@ def gbw_to_pyscf(gbw: GbwResults, /) -> Any:
     See `GbwResults.to_pyscf()` for details.
     """
     from pyscf import gto, scf
+    from pyscf.lib import logger
 
     molecule = gbw.molecule
     if molecule is None or not molecule.atoms:
@@ -210,7 +215,7 @@ def gbw_to_pyscf(gbw: GbwResults, /) -> Any:
     ecps: dict[str, list[Any]] = {}
     orca_shells: list[list[tuple[int, list[float]]]] = []
     for idx, atom in enumerate(molecule.atoms):
-        if atom.elementnumber is None or atom.coords is None or atom.basis is None:
+        if atom.elementnumber is None or atom.coords is None or not atom.basis:
             raise ValueError(f"Atom {idx} in gbw data lacks element, coordinates, or basis set")
         element = Element.from_atomic_number(atom.elementnumber)
         # > A unique label per atom keeps the basis set and ECP of each atom exact
@@ -233,16 +238,24 @@ def gbw_to_pyscf(gbw: GbwResults, /) -> Any:
         if atom.ecps is not None and _has_ecp(atom):
             ecps[label] = _ecp_to_pyscf(atom.ecps)
 
-    mol = gto.M(
-        atom=atoms,
-        basis=basis,
-        ecp=ecps,
-        unit=unit,
-        charge=molecule.charge or 0,
-        spin=(molecule.multiplicity or 1) - 1,
-        cart=False,
-        verbose=0,
-    )
+    try:
+        mol = gto.M(
+            atom=atoms,
+            basis=basis,
+            ecp=ecps,
+            unit=unit,
+            charge=molecule.charge or 0,
+            spin=(molecule.multiplicity or 1) - 1,
+            cart=False,
+            verbose=logger.QUIET,
+        )
+    except Exception as err:
+        # > PySCF raises various exceptions, e.g., if charge and multiplicity do not match the
+        # > number of electrons
+        raise ValueError(f"PySCF cannot build the molecule of the gbw data: {err}") from err
+    # > The molecule is built quietly, but PySCF shall report on anything the user does with the
+    # > returned object, e.g., an SCF that does not converge
+    mol.verbose = logger.NOTE
     # > PySCF position and sign of each basis function in ORCA's order
     ao_loc = mol.ao_loc_nr()
     ao_positions: list[npt.NDArray[np.int_]] = []
@@ -330,7 +343,7 @@ def _mo_list(
     """Create the gbw data models of molecular orbitals (coefficients in ORCA's AO order)."""
     return [
         MO(
-            mocoefficients=[float(c) for c in coeff[:, i]],
+            mocoefficients=coeff[:, i].tolist(),
             occupancy=float(occ[i]),
             orbitalenergy=float(energies[i]) if energies is not None else 0.0,
             orbitalsymlabel="A",
@@ -447,11 +460,23 @@ def gbw_from_pyscf(
             "only RHF, UHF, and ROHF type orbitals"
         )
 
+    # > Orbitals at k-points have the same array rank as unrestricted orbitals
+    if hasattr(mf, "cell") or hasattr(mf, "kpts"):
+        raise ValueError("Periodic calculations are not supported")
+    if getattr(mf, "with_x2c", None) is not None:
+        warnings.warn(
+            "The mean-field object uses a relativistic (X2C) Hamiltonian, which is not part of "
+            "the gbw data. Request a corresponding Hamiltonian in ORCA.",
+            stacklevel=2,
+        )
+
     mo_coeff, mo_occ, energies = _orbital_data(mf, mol.nao, mo_coeff, mo_occ, mo_energy)
 
+    # > The HF type has to be consistent with the multiplicity, which is taken from the molecule:
+    # > restricted orbitals of an open-shell molecule are ROHF type orbitals
     if mo_coeff.ndim == 3:
         hftyp = Hftyp.UHF
-    elif isinstance(mf, scf.rohf.ROHF):
+    elif isinstance(mf, scf.rohf.ROHF) or mol.spin != 0:
         hftyp = Hftyp.ROHF
     else:
         hftyp = Hftyp.RHF

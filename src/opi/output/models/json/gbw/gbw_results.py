@@ -160,6 +160,10 @@ class GbwResults(JSONLoadable):
         calculation, also for Kohn-Sham calculations, as the functional is not part of the gbw
         data. CASSCF orbitals are returned as `scf.RHF` object holding the natural orbitals.
 
+        Likewise, a relativistic Hamiltonian (DKH, ZORA, X2C) is not part of the gbw data. For
+        such calculations, the returned object does not reproduce ORCA's energy, unless a
+        corresponding Hamiltonian is set up in PySCF (e.g., `mf.x2c()`), where available.
+
         Returns
         -------
         pyscf.scf.hf.SCF
@@ -202,7 +206,9 @@ class GbwResults(JSONLoadable):
         mo_coeff : array_like | None, default: None
             Molecular orbitals to use instead of `mf.mo_coeff`, e.g., localized or natural
             orbitals, with the shape (n_ao, n_mo), or (2, n_ao, n_mo) for unrestricted orbitals.
-            Requires `mo_occ`.
+            Requires `mo_occ`. Restricted orbitals of an open-shell molecule are stored as ROHF
+            type orbitals. Note that a gbw file can only be written with as many orbitals as
+            basis functions.
         mo_occ : array_like | None, default: None
             Occupation numbers to use instead of `mf.mo_occ`.
         mo_energy : array_like | None, default: None
@@ -221,8 +227,14 @@ class GbwResults(JSONLoadable):
             If PySCF is not installed.
         ValueError
             If the molecule uses Cartesian basis functions or ECPs with spin-orbit terms, if the
-            orbitals are generalized, four-component, or complex, or if orbitals or occupation
-            numbers are missing or of inconsistent shape.
+            calculation is periodic, if the orbitals are generalized, four-component, or complex,
+            or if orbitals or occupation numbers are missing or of inconsistent shape.
+
+        Warns
+        -----
+        UserWarning
+            If the mean-field object uses a relativistic (X2C) Hamiltonian, which is not part of
+            the gbw data.
         """
         from opi.output.models.json.gbw.pyscf_converter import gbw_from_pyscf
 
@@ -314,4 +326,15 @@ class GbwResults(JSONLoadable):
         if any(mo.mocoefficients is None for mo in molecular_orbitals.mos):
             raise ValueError(
                 "Cannot write gbw file: MO coefficients of at least one molecular orbital are missing"
+            )
+        # > `orca_2json` silently writes a corrupt gbw file, if there are fewer orbitals than basis
+        # > functions, e.g., after removing linear dependencies
+        n_ao = len(molecular_orbitals.mos[0].mocoefficients or [])
+        n_spin = 2 if molecule.hftyp.lower() == "uhf" else 1
+        if any(len(mo.mocoefficients or []) != n_ao for mo in molecular_orbitals.mos):
+            raise ValueError("Cannot write gbw file: molecular orbitals differ in size")
+        if len(molecular_orbitals.mos) != n_spin * n_ao:
+            raise ValueError(
+                f"Cannot write gbw file: {len(molecular_orbitals.mos)} molecular orbitals present, "
+                f"but {n_spin * n_ao} are required for {n_ao} basis functions"
             )
