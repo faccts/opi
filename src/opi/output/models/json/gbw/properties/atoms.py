@@ -6,6 +6,7 @@ from opi.output.models.base.strict_types import (
     StrictNonNegativeInt,
 )
 from opi.output.models.json.gbw.properties.base import Base
+from opi.output.models.json.gbw.properties.ecp import Ecp
 
 
 class Atoms(GetItem):
@@ -24,6 +25,9 @@ class Atoms(GetItem):
         Contains the information about the basis auxjk
     coords: list[StrictFiniteFloat]
         Coordinates of the atom
+    ecps: Ecp | None default None
+        Effective core potential of the atom. Note that ORCA may list an ECP also for atoms
+        without one; only if `elementnumber - nuclearcharge` equals `ecps.n_core`, it is in use.
     elementlabel: StrictStr
         Label of the element according to the PSE
     elementnumber: StrictNonNegativeInt
@@ -43,6 +47,7 @@ class Atoms(GetItem):
     basisauxj: list[Base] | None = Field(default=None, serialization_alias="BasisAuxJ")
     basisauxjk: list[Base] | None = Field(default=None, serialization_alias="BasisAuxJK")
     coords: list[StrictFiniteFloat] | None = Field(default=None, serialization_alias="Coords")
+    ecps: Ecp | None = Field(default=None, serialization_alias="ECPs")
     elementlabel: StrictStr | None = Field(default=None, serialization_alias="ElementLabel")
     elementnumber: StrictNonNegativeInt | None = Field(
         default=None, serialization_alias="ElementNumber"

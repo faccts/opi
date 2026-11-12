@@ -1,6 +1,7 @@
 import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 
 from pydantic import Field
 
@@ -13,6 +14,7 @@ from opi.output.models.json.gbw.properties.header import OrcaHeader
 from opi.output.models.json.gbw.properties.molecule import Molecule
 from opi.output.models.json_loadable import JSONLoadable
 from opi.utils.element import Element
+from opi.utils.pyscf import requires_pyscf
 
 
 class GbwResults(JSONLoadable):
@@ -142,6 +144,89 @@ class GbwResults(JSONLoadable):
             structure.origin = molecule.basename
 
         return structure
+
+    @requires_pyscf
+    def to_pyscf(self) -> Any:
+        """
+        Create a PySCF mean-field object from the molecular orbital data, e.g., to use ORCA's
+        orbitals in PySCF. Requires the optional dependency PySCF.
+
+        The basis set and effective core potentials are transferred exactly and the molecular
+        orbitals are reordered into PySCF's convention for basis functions.
+
+        The returned object holds the orbitals (`mo_coeff`), occupation numbers (`mo_occ`), and
+        orbital energies (`mo_energy`), but no SCF has been run with it. It is a Hartree-Fock
+        object (`scf.RHF`, `scf.UHF`, or `scf.ROHF`) according to the HF type of the
+        calculation, also for Kohn-Sham calculations, as the functional is not part of the gbw
+        data. CASSCF orbitals are returned as `scf.RHF` object holding the natural orbitals.
+
+        Returns
+        -------
+        pyscf.scf.hf.SCF
+            PySCF mean-field object holding the molecular orbitals.
+
+        Raises
+        ------
+        ImportError
+            If PySCF is not installed.
+        ValueError
+            If the gbw data lacks atoms, basis sets, or molecular orbitals.
+        """
+        from opi.output.models.json.gbw.pyscf_converter import gbw_to_pyscf
+
+        return gbw_to_pyscf(self)
+
+    @classmethod
+    @requires_pyscf
+    def from_pyscf(
+        cls,
+        mf: Any,
+        /,
+        *,
+        mo_coeff: Any = None,
+        mo_occ: Any = None,
+        mo_energy: Any = None,
+    ) -> "GbwResults":
+        """
+        Create gbw data from a PySCF mean-field object, e.g., to use PySCF's orbitals in ORCA.
+        Requires the optional dependency PySCF.
+
+        Write the result into a gbw file with `to_gbw_file()` and read it in ORCA with
+        `! MORead` and `%moinp`.
+
+        Parameters
+        ----------
+        mf : pyscf.scf.hf.SCF
+            PySCF mean-field object of RHF, UHF, or ROHF type (including Kohn-Sham). Its molecule
+            must use spherical basis functions and scalar ECPs.
+        mo_coeff : array_like | None, default: None
+            Molecular orbitals to use instead of `mf.mo_coeff`, e.g., localized or natural
+            orbitals, with the shape (n_ao, n_mo), or (2, n_ao, n_mo) for unrestricted orbitals.
+            Requires `mo_occ`.
+        mo_occ : array_like | None, default: None
+            Occupation numbers to use instead of `mf.mo_occ`.
+        mo_energy : array_like | None, default: None
+            Orbital energies to use instead of `mf.mo_energy`. If `mo_coeff` is given without
+            orbital energies, these are set to zero.
+
+        Returns
+        -------
+        GbwResults
+            gbw data holding the structure, basis set, effective core potentials, and molecular
+            orbitals.
+
+        Raises
+        ------
+        ImportError
+            If PySCF is not installed.
+        ValueError
+            If the molecule uses Cartesian basis functions or ECPs with spin-orbit terms, if the
+            orbitals are generalized, four-component, or complex, or if orbitals or occupation
+            numbers are missing or of inconsistent shape.
+        """
+        from opi.output.models.json.gbw.pyscf_converter import gbw_from_pyscf
+
+        return gbw_from_pyscf(mf, mo_coeff=mo_coeff, mo_occ=mo_occ, mo_energy=mo_energy)
 
     def to_gbw_file(self, gbw_file: Path | str, /, *, runner: Runner | None = None) -> Path:
         """
