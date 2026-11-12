@@ -15,6 +15,7 @@
 - Add SCF (spin-)density matrix to `Output` (#204)
 - Add version check attribute to Calculator, which is parsed to get_output (#225)
 - Added `output.error_message()` which retrieves the most important error message from the ORCA output file (#222).
+- Added AUTOCI convergence check `output.autoci_converged()` and complete list of methods to `BlockAutoCI` (#XXX)
 - Added `output.error_messages()` which retrieves all error messages from known strings from the ORCA output file (#222).
 - Added `output.cc_converged` and `output.casscf_converged` to check cc and casscf convergence (#222).
 - Added `z_maxiter` to method block for setting the number of CP-SCF iterations (#222).

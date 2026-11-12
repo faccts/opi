@@ -24,6 +24,7 @@ from opi.output.grepper.recipes import (
     get_error_messages,
     get_float_from_line,
     get_lines_from_block,
+    has_autoci_converged,
     has_casscf_converged,
     has_cc_converged,
     has_geometry_optimization_converged,
@@ -854,6 +855,18 @@ class Output:
             True if string is found in ".out" file else False
         """
         return self._has(has_cc_converged)
+
+    def autoci_converged(self) -> bool:
+        """
+        Determine if ORCA AUTOCI iterations (e.g. CCSD, CCSD(T)) converged, by looking for "Calculation CONVERGED in X iterations" in the ".out" file.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if string is found in ".out" file else False
+        """
+        return self._has(has_autoci_converged)
 
     def geometry_optimization_converged(self) -> bool:
         """
