@@ -3,6 +3,7 @@ from pathlib import Path
 
 from opi.output.grepper.core import Grepper
 from opi.output.grepper.patterns import (
+    AUTOCI_CONVERGED,
     CASSCF_CONVERGED,
     CC_CONVERGED,
     ERROR_PATTERNS,
@@ -407,3 +408,21 @@ def has_cc_converged(file_name: Path, /) -> bool:
         True if expression is found in file else False
     """
     return has_string_in_file(file_name, CC_CONVERGED)
+
+
+def has_autoci_converged(file_name: Path, /) -> bool:
+    """
+    Searches for the message 'Calculation CONVERGED in X iterations' as indicator that the
+    AUTOCI iterations (e.g. CCSD, CCSD(T)) converged.
+
+    Parameter
+    ---------
+    file_name: Path
+        Name of the output file
+
+    Returns
+    -------
+    bool
+        True if expression is found in file else False
+    """
+    return has_string_in_file(file_name, AUTOCI_CONVERGED)
