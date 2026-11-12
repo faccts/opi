@@ -62,7 +62,7 @@ class MolBarMode(StringEnum):
 _T = TypeVar("_T")
 
 
-requires_molbar = requires_optional("molbar", name="MolBar", extra="molbar")
+requires_molbar = requires_optional("molbar", name="MolBar", package="molbar")
 """
 Decorator that raises `ImportError` if MolBar is not installed.
 

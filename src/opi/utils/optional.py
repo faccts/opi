@@ -16,7 +16,7 @@ _T = TypeVar("_T")
 
 
 def requires_optional(
-    module: str, /, *, name: str, extra: str
+    module: str, /, *, name: str, package: str
 ) -> Callable[[Callable[_P, _T]], Callable[_P, _T]]:
     """
     Create a decorator that raises `ImportError` if an optional dependency is not installed.
@@ -31,8 +31,8 @@ def requires_optional(
         Name of the module to look for, e.g. "pyscf".
     name : str
         Name of the dependency as shown in the error message, e.g. "PySCF".
-    extra : str
-        Name of the extra of OPI that installs the dependency, e.g. "pyscf".
+    package : str
+        Name of the package to install, as shown in the error message, e.g. "pyscf".
 
     Returns
     -------
@@ -46,7 +46,7 @@ def requires_optional(
             if find_spec(module) is None:
                 raise ImportError(
                     f"{name} is not installed. It is an optional dependency of OPI, "
-                    f"install it with `pip install orca-pi[{extra}]`."
+                    f"install it with `pip install {package}`."
                 )
             return func(*args, **kwargs)
 

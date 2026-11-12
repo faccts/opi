@@ -8,7 +8,7 @@ from opi.utils.optional import requires_optional
 
 __all__ = ("requires_pyscf",)
 
-requires_pyscf = requires_optional("pyscf", name="PySCF", extra="pyscf")
+requires_pyscf = requires_optional("pyscf", name="PySCF", package="pyscf")
 """
 Decorator that raises an `ImportError` with a helpful message if PySCF is not installed.
 

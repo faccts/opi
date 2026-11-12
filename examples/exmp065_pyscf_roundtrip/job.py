@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 """
-Example: Round trip of a heavy-element wavefunction between ORCA and PySCF.
+Example: Transfer molecular orbitals between ORCA and PySCF.
 
-A Hartree-Fock calculation on BiH3 is run with ORCA. Bismuth carries an effective core potential
-(ECP) and the def2-TZVP basis set, augmented by a g, an f, and an h shell via `%basis AddGTO`.
-The added shells come after the f shells of def2-TZVP, so the shells of bismuth are not sorted by
-angular momentum. This makes the example a demanding test of the conversion.
+ORCA -> PySCF:
+    `mf = output.results_gbw[0].to_pyscf()` creates a PySCF mean-field object from the gbw data
+    of an ORCA calculation. The object holds ORCA's structure, basis set, effective core
+    potentials (ECPs), and molecular orbitals, but no SCF has been run with it.
 
-1. `GbwResults.to_pyscf()` converts ORCA's orbitals into a PySCF mean-field object, which
-   reproduces ORCA's SCF energy.
-2. PySCF runs its own SCF starting from ORCA's orbitals.
-3. `GbwResults.from_pyscf()` converts PySCF's orbitals back into gbw data, which is written into a
-   gbw file and read by ORCA as SCF guess (`MORead`). As the orbitals are converged, ORCA's SCF
-   converges immediately.
+PySCF -> ORCA:
+    `GbwResults.from_pyscf(mf).to_gbw_file(gbw_file)` writes PySCF's orbitals into a gbw file,
+    which ORCA reads as SCF guess with `MORead`.
 
-Requires the optional dependency PySCF (`pip install orca-pi[pyscf]`).
+The example runs both directions as a round trip: ORCA's Hartree-Fock orbitals of BiH3 are
+converted to PySCF, which reproduces ORCA's SCF energy and runs its own SCF. PySCF's orbitals are
+then converted back and read by ORCA, whose SCF converges immediately.
+
+Note on the system: bismuth carries an ECP, and its def2-TZVP basis set is augmented by a g, an
+f, and an h shell. This is not needed for the conversion. It only makes the example a demanding
+test, as high angular momenta and shells that are not sorted by angular momentum are covered.
+
+Requires the optional dependency PySCF (`pip install pyscf`).
 """
 
 import shutil
@@ -29,7 +34,8 @@ from opi.output.core import Output
 from opi.output.models.json.gbw.gbw_results import GbwResults
 from opi.utils.element import Element
 
-# > Shells added to the def2-TZVP basis set of bismuth, in this order
+# > Shells added to the def2-TZVP basis set of bismuth, in this order. They only make the example
+# > a harder test of the conversion and can be left out.
 ADDED_SHELLS = [
     BasisShell(angmom="g", primitives=[(0.4203, 1.0)]),
     BasisShell(angmom="f", primitives=[(1.26256, 1.0)]),
@@ -86,23 +92,31 @@ def run_exmp065(
     print("ORCA SCF ENERGY")
     print(output.get_final_energy())
 
-    # > 2. ORCA -> PySCF: The basis set, the ECP, and the orbitals are taken from the gbw file
+    # > 2. ORCA -> PySCF: The structure, the basis set, the ECP, and the orbitals are taken from
+    # > the gbw data. `results_gbw[0]` is the main gbw file of the calculation.
+    # > The returned object is a Hartree-Fock object (`scf.RHF`, `scf.UHF`, or `scf.ROHF`) with
+    # > `mo_coeff`, `mo_occ`, and `mo_energy` set. For a DFT calculation, create a Kohn-Sham object
+    # > from `mf.mol` yourself and copy these attributes, as the functional is not part of the gbw
+    # > data.
     mf = output.results_gbw[0].to_pyscf()
+    # > No SCF is needed to evaluate the energy of ORCA's orbitals
     print("PYSCF ENERGY OF ORCA'S ORBITALS")
     print(mf.energy_tot())
 
-    # > Run PySCF's SCF starting from ORCA's orbitals
+    # > Use the object like any other PySCF object, e.g., run an SCF starting from ORCA's orbitals
     mf.conv_tol = 1e-10
     mf.kernel(dm0=mf.make_rdm1())
     print("PYSCF SCF ENERGY")
     print(mf.e_tot)
 
-    # > 3. PySCF -> ORCA: The second calculation runs in a subfolder. The gbw file has to be
-    # > created inside that folder, as ORCA only accepts a `%moinp` file below its own working
-    # > directory.
+    # > 3. PySCF -> ORCA: The orbitals of the mean-field object are written into a gbw file.
+    # > Other orbitals, e.g., localized ones, can be passed with `mo_coeff` and `mo_occ`.
+    # > The second calculation runs in a subfolder. The gbw file has to be created inside that
+    # > folder, as ORCA only accepts a `%moinp` file below its own working directory.
     moread_dir = working_dir / "moread"
     moread_dir.mkdir()
     gbw_file = GbwResults.from_pyscf(mf).to_gbw_file(moread_dir / "from_pyscf.gbw")
+    # > ORCA reads the gbw file with `MORead` and `%moinp`, see `run_orca()`
     output_moread = run_orca(structure, moread_dir, "job_moread", moinp=gbw_file)
     print("ORCA SCF ENERGY WITH PYSCF'S ORBITALS AS GUESS")
     print(output_moread.get_final_energy())
