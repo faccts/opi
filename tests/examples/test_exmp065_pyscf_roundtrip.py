@@ -27,7 +27,7 @@ def test_exmp065_pyscf_roundtrip(example_input_file, tmp_path, json_files_export
     assert e_reference < 0
 
     # Assert PySCF reproduces ORCA's energy from ORCA's orbitals (basis set, ECP, AO order)
-    mf = reference.get_pyscf_scf()
+    mf = reference.results_gbw[0].to_pyscf()
     assert mf.mol.atom_nelec_core(0) == 60
     # > def2-TZVP is augmented by g and h functions
     assert max(mf.mol.bas_angular(i) for i in range(mf.mol.nbas)) == 5

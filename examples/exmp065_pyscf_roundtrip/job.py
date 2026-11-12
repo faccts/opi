@@ -7,7 +7,7 @@ A Hartree-Fock calculation on BiH3 is run with ORCA. Bismuth carries an effectiv
 The added shells come after the f shells of def2-TZVP, so the shells of bismuth are not sorted by
 angular momentum. This makes the example a demanding test of the conversion.
 
-1. `Output.get_pyscf_scf()` converts ORCA's orbitals into a PySCF mean-field object, which
+1. `GbwResults.to_pyscf()` converts ORCA's orbitals into a PySCF mean-field object, which
    reproduces ORCA's SCF energy.
 2. PySCF runs its own SCF starting from ORCA's orbitals.
 3. `GbwResults.from_pyscf()` converts PySCF's orbitals back into gbw data, which is written into a
@@ -87,7 +87,7 @@ def run_exmp065(
     print(output.get_final_energy())
 
     # > 2. ORCA -> PySCF: The basis set, the ECP, and the orbitals are taken from the gbw file
-    mf = output.get_pyscf_scf()
+    mf = output.results_gbw[0].to_pyscf()
     print("PYSCF ENERGY OF ORCA'S ORBITALS")
     print(mf.energy_tot())
 

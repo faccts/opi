@@ -54,7 +54,8 @@ def test_to_pyscf_reproduces_hf_energy(
     set, the order and sign of the basis functions (including f functions), and the occupations.
     """
     output = output_object_factory(task)
-    mf = output.get_pyscf_scf()
+    assert output.results_gbw is not None
+    mf = output.results_gbw[0].to_pyscf()
 
     assert mf.energy_tot() == pytest.approx(scf_energy(output), abs=1e-6)
 
@@ -436,13 +437,6 @@ def test_from_pyscf_rejects_spin_orbit_ecp() -> None:
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_get_pyscf_scf_returns_none(empty_output_object: Output) -> None:
-    """Without gbw data no PySCF object can be created."""
-    assert empty_output_object.get_pyscf_scf() is None
-
-
-@pytest.mark.unit
-@pytest.mark.output
 def test_missing_pyscf(json_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A helpful error must be raised if PySCF is not installed."""
     monkeypatch.setattr("opi.utils.optional.find_spec", lambda name: None)
@@ -528,7 +522,8 @@ def test_to_pyscf_ecp_energy(tmp_path: Path) -> None:
     mol = pyscf.gto.M(atom="H 0 0 0; I 0 0 1.61", verbose=0)
     output = run_orca(tmp_path, mol, "HF RHF def2-svp")
 
-    mf = output.get_pyscf_scf()
+    assert output.results_gbw is not None
+    mf = output.results_gbw[0].to_pyscf()
 
     assert mf.mol.atom_nelec_core(1) == 28
     assert mf.energy_tot() == pytest.approx(scf_energy(output), abs=1e-6)

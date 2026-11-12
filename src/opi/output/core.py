@@ -1902,34 +1902,6 @@ class Output:
         else:
             return None
 
-    def get_pyscf_scf(self, gbw_index: int = 0) -> Any | None:
-        """
-        Returns a PySCF mean-field object holding the molecular orbitals of a gbw file.
-        Requires the optional dependency PySCF. See `GbwResults.to_pyscf()` for details.
-
-        Parameters
-        -------
-        gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which the mean-field object is
-            returned. Default 0 refers to the main gbw file.
-
-        Returns
-        -------
-        pyscf.scf.hf.SCF | None
-            PySCF mean-field object or None, if no gbw data is available.
-
-        Raises
-        ------
-        ImportError
-            If PySCF is not installed.
-        ValueError
-            If the gbw data lacks atoms, basis sets, or molecular orbitals.
-        """
-        results_gbw = self._safe_get("results_gbw", gbw_index)
-        if results_gbw is None:
-            return None
-        return cast(GbwResults, results_gbw).to_pyscf()
-
     @staticmethod
     def _find_homo(mo_list: list[MO]) -> int | None:
         """
