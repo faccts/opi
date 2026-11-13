@@ -22,6 +22,13 @@ OPI distinguishes between two main kinds of tests:
 Example code lives in the top-level `examples/` directory while
 the corresponding tests are defined in `tests/examples`.
 
+Besides these, two folders hold tests that run ORCA directly, without an example
+(local-only, marker `orca`):
+
+-   `tests/failure_examples`: error handling for failed ORCA runs
+-   `tests/pyscf_conversion`: conversion of molecular orbitals between ORCA and PySCF
+    (requires PySCF), e.g., reading PySCF's orbitals in ORCA
+
 ------------------------------------------------------------------------
 
 ## Running tests

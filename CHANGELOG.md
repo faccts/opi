@@ -8,6 +8,8 @@
 - Move `POPDISP` from `DispersionCorrection` to `OutputControl`. (#218)
 
 ### Added
+- Added export of gbw molecular orbitals to PySCF (`GbwResults.to_pyscf()`) and import from PySCF (`GbwResults.from_pyscf()`), including ECPs parsed into the new `Atoms.ecps` field; PySCF is an optional dependency (`orca-pi[pyscf]`) (#XXX)
+- `NewBasis` in `BlockBasis` (e.g. `addgto`, `newgto`) accepts explicit shells (`BasisShell`) in addition to a basis set keyword (#XXX)
 - The ORCA version check now accepts pre-release versions (#301).
 - Improve support for OpenCOSMO-RS (#205)
 - Add missing pydantic fields for calculation timings (#211)
