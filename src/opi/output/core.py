@@ -4,15 +4,17 @@ It's mostly based on the ORCA's two JSONs files.
 """
 
 import json
+import operator
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 from warnings import warn
 
 import numpy as np
 import numpy.typing as npt
 from pydantic import StrictInt, StrictStr
 
+from opi.exceptions import OpiOutputError, OpiOutputIndexError, OpiOutputNotParsedError
 from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
@@ -105,7 +107,35 @@ class Output:
         Redump JSONs files after parsing. This is mostly meant for debugging.
     config_dict : dict[str, Any] | None, default: None
         Config dict class used in getter functions for creating json files with desired integrals.
+
+    Notes
+    -----
+    The getters (e.g. `get_final_energy()`) return None if a value is not in the output,
+    e.g. because it was not calculated. Empty containers (e.g. no imaginary frequencies) are
+    returned as such. The getters raise an error if they are used incorrectly:
+
+    - `OpiOutputNotParsedError`: The JSON files were not parsed, i.e., `Output.parse()` was not
+      called. Getters with an active `.out` file fallback read the `.out` file instead and only
+      raise if that file does not exist either. Getters that read other files (e.g. `get_ir()`
+      or `get_fcidump()`) do not need parsed JSON files.
+    - `OpiOutputIndexError`: The requested geometry or gbw index does not exist. Getters with an
+      active `.out` file fallback raise as well and only use the fallback if the JSON output
+      contains no geometries at all (e.g. for GFN-FF).
+    - `TypeError`: The geometry or gbw index is not an integer.
     """
+
+    # > Results that have to be loaded with `Output.parse()`, mapped to their error message
+    _PARSED_RESULTS: ClassVar[dict[str, str]] = {
+        "results_properties": "No property results of '{basename}' are loaded."
+        " Call `Output.parse()` first.",
+        "results_gbw": "No gbw results of '{basename}' are loaded."
+        " Call `Output.parse()` with `read_gbw_json=True` first.",
+    }
+    # > Lists whose index is chosen by the user, mapped to their name in error messages
+    _USER_INDEXED_LISTS: ClassVar[dict[str, str]] = {
+        "geometries": "geometries",
+        "results_gbw": "gbw results",
+    }
 
     def __init__(
         self,
@@ -1144,7 +1174,16 @@ class Output:
         This method walks through a sequence of attributes (str) or indices (int),
         returning the nested value if all lookups succeed and none of the intermediate
         objects are None. If any step fails—due to a missing attribute, invalid index,
-        or None encountered in the chain—it returns None instead of raising an exception.
+        or None encountered in the chain—it returns None.
+
+        Two cases are usage errors and raise instead:
+
+        - The chain starts with results (`results_properties` or `results_gbw`) that were not
+          parsed.
+        - An index into a list whose index is chosen by the user (`geometries` or `results_gbw`)
+          is out of range. An empty list still returns None, as it only means that no data is
+          available.
+        - An index into such a list is not an integer.
 
         Parameters
         ----------
@@ -1158,6 +1197,15 @@ class Output:
             The resolved value at the end of the access path if all steps succeed;
             otherwise, None. Should be cast into the correct type for usage.
 
+        Raises
+        ------
+        OpiOutputNotParsedError
+            If the requested results were not parsed.
+        OpiOutputIndexError
+            If a user-chosen index is out of range.
+        TypeError
+            If a user-chosen index is not an integer.
+
         Examples
         --------
             self._safe_get("results_properties", "geometries", index, "geometry")
@@ -1165,10 +1213,33 @@ class Output:
             self.results_properties.geometries[index].geometry
             but returns None if any part of the chain is missing or None, in a mypy-friendly way.
         """
-        current = self
-        for attr in attrs:
+        # > Check user-chosen indices first, so that a wrong type is reported in any case,
+        # > e.g. also if the results are not parsed
+        checked_attrs: list[str | int] = list(attrs)
+        for i in range(1, len(checked_attrs)):
+            previous_attr = checked_attrs[i - 1]
+            if previous_attr in self._USER_INDEXED_LISTS:
+                checked_attrs[i] = self._check_index(
+                    checked_attrs[i], self._USER_INDEXED_LISTS[str(previous_attr)]
+                )
+
+        if attrs and attrs[0] in self._PARSED_RESULTS and getattr(self, str(attrs[0])) is None:
+            raise OpiOutputNotParsedError(
+                self._PARSED_RESULTS[str(attrs[0])].format(basename=self.basename)
+            )
+
+        current: Any = self
+        previous: str | int | None = None
+        for attr in checked_attrs:
             if current is None:
                 return None
+            if isinstance(current, list) and previous in self._USER_INDEXED_LISTS:
+                assert isinstance(attr, int)
+                if current and not -len(current) <= attr < len(current):
+                    raise OpiOutputIndexError(
+                        f"Index {attr} is out of range: the output of '{self.basename}' contains"
+                        f" {len(current)} {self._USER_INDEXED_LISTS[str(previous)]}."
+                    )
             try:
                 if isinstance(attr, int) and isinstance(current, list):
                     current = current[attr]
@@ -1178,7 +1249,82 @@ class Output:
                     raise TypeError
             except (AttributeError, IndexError, TypeError):
                 return None
+            previous = attr
         return current
+
+    @staticmethod
+    def _check_index(index: Any, name: str, /) -> int:
+        """
+        Check that a user-chosen index is an integer. Any integer type (e.g. `numpy.int64`) is
+        accepted and converted to `int`.
+
+        Parameters
+        ----------
+        index : Any
+            Index to check.
+        name : str
+            Name of the indexed list for the error message.
+
+        Returns
+        -------
+        int
+            The index as `int`.
+
+        Raises
+        ------
+        TypeError
+            If `index` is not an integer.
+        """
+        try:
+            return operator.index(index)
+        except TypeError:
+            raise TypeError(f"Index into the {name} has to be an integer, got {index!r}.") from None
+
+    def _safe_get_with_fallback(
+        self, *attrs: str | int, fallback: bool
+    ) -> tuple[Any | None, OpiOutputError | None]:
+        """
+        `_safe_get()` for getters with a `.out` file fallback.
+        If `fallback` is True, a not-parsed error of `_safe_get()` is not raised, so the getter can
+        use the fallback instead. The error is returned, so that the getter can pass it to
+        `_raise_fallback_error()` if the fallback does not find a value either.
+        An index error is always raised: if the JSON output contains geometries, it is the
+        authoritative source and the `.out` file may contain more blocks, e.g. from a final
+        evaluation, that do not belong to the requested index. If the JSON output contains no
+        geometries (e.g. GFN-FF), `_safe_get()` returns None and the fallback is used.
+
+        Parameters
+        ----------
+        *attrs : str | int
+            Path to follow, see `_safe_get()`.
+        fallback : bool
+            Whether the getter uses the `.out` file fallback.
+
+        Returns
+        -------
+        tuple[Any | None, OpiOutputError | None]
+            The value (or None) and the error, if one occurred.
+        """
+        try:
+            return self._safe_get(*attrs), None
+        except OpiOutputNotParsedError as error:
+            if not fallback:
+                raise
+            return None, error
+
+    def _raise_fallback_error(self, error: OpiOutputError | None) -> None:
+        """
+        Raise the error of `_safe_get_with_fallback()` after the `.out` file fallback found no value.
+        A not-parsed error is only raised if there is no `.out` file either, since a value missing
+        from an existing `.out` file is just not available.
+
+        Parameters
+        ----------
+        error : OpiOutputError | None
+            Error returned by `_safe_get_with_fallback()`.
+        """
+        if error is not None and not self.get_outfile().is_file():
+            raise error
 
     def get_hftype(self, index: int = 0) -> Hftyp | None:
         """
@@ -1222,7 +1368,9 @@ class Output:
         -------
         charge : StrictInt | None
         """
-        charge = self._safe_get("results_properties", "calculation_info", "charge")
+        charge, error = self._safe_get_with_fallback(
+            "results_properties", "calculation_info", "charge", fallback=fallback
+        )
 
         if charge is not None:
             return cast(StrictInt, charge)
@@ -1237,7 +1385,10 @@ class Output:
             return int(raw)
 
         charge_mult = get_charge_and_mult_from_input(self.get_outfile())
-        return charge_mult[0] if charge_mult is not None else None
+        if charge_mult is None:
+            self._raise_fallback_error(error)
+            return None
+        return charge_mult[0]
 
     def get_mult(self, *, fallback: bool = True) -> StrictPositiveInt | None:
         """
@@ -1257,7 +1408,9 @@ class Output:
         -------
         mult : StrictPositiveInt | None
         """
-        mult = self._safe_get("results_properties", "calculation_info", "mult")
+        mult, error = self._safe_get_with_fallback(
+            "results_properties", "calculation_info", "mult", fallback=fallback
+        )
 
         if mult is not None:
             return cast(StrictPositiveInt, mult)
@@ -1272,7 +1425,10 @@ class Output:
             return int(raw)
 
         charge_mult = get_charge_and_mult_from_input(self.get_outfile())
-        return charge_mult[1] if charge_mult is not None else None
+        if charge_mult is None:
+            self._raise_fallback_error(error)
+            return None
+        return charge_mult[1]
 
     def get_nelectrons(
         self, *, spin_resolved: bool = False
@@ -1363,7 +1519,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the energy should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
         fallback : bool, default: True
             If True and the JSON output is unavailable, attempt to parse the energy from the plain-text
             `.out` file by grepping for "FINAL SINGLE POINT ENERGY".
@@ -1375,8 +1531,13 @@ class Output:
         """
 
         # > Get the final energy
-        final_energy = self._safe_get(
-            "results_properties", "geometries", index, "single_point_data", "finalenergy"
+        final_energy, error = self._safe_get_with_fallback(
+            "results_properties",
+            "geometries",
+            index,
+            "single_point_data",
+            "finalenergy",
+            fallback=fallback,
         )
 
         if final_energy is not None:
@@ -1386,9 +1547,12 @@ class Output:
         if not fallback:
             return None
 
-        return get_float_from_line(
+        final_energy = get_float_from_line(
             self.get_outfile(), "FINAL SINGLE POINT ENERGY", index, -1, strict=False
         )
+        if final_energy is None:
+            self._raise_fallback_error(error)
+        return final_energy
 
     def get_energies(self, *, index: int = -1) -> dict[str, Energy] | None:
         """
@@ -1398,7 +1562,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the energy should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         -------
@@ -1460,7 +1624,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the energy components should be returned. The default -1 refers
-            to the final geometry. Silently ignores if the requested index is not available and returns None.
+            to the final geometry. Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         -------
@@ -1523,7 +1687,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the correction should be returned. The default -1 refers to
-            the final geometry. Silently ignores if the requested index is not available and returns None.
+            the final geometry. Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         -------
@@ -1548,7 +1712,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the correction should be returned. The default -1 refers to
-            the final geometry. Silently ignores if the requested index is not available and returns None.
+            the final geometry. Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         -------
@@ -1573,7 +1737,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the energies should be returned. The default -1 refers to
-            the final geometry. Silently ignores if the requested index is not available and returns None.
+            the final geometry. Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         -------
@@ -1598,7 +1762,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the energies should be returned. The default -1 refers to
-            the final geometry. Silently ignores if the requested index is not available and returns None.
+            the final geometry. Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         -------
@@ -1638,8 +1802,14 @@ class Output:
             or None if it cannot be obtained.
         """
         # > Safely get the gradient
-        gradient = self._safe_get(
-            "results_properties", "geometries", index, "nuclear_gradient", 0, "grad"
+        gradient, error = self._safe_get_with_fallback(
+            "results_properties",
+            "geometries",
+            index,
+            "nuclear_gradient",
+            0,
+            "grad",
+            fallback=fallback,
         )
 
         # > Cast them into the correct type
@@ -1654,14 +1824,17 @@ class Output:
         if not fallback:
             return None
 
-        return self._grep_gradient(index)
+        grepped_gradient = self._grep_gradient(index)
+        if grepped_gradient is None:
+            self._raise_fallback_error(error)
+        return grepped_gradient
 
     def get_structure(
         self, *, index: int = -1, with_fragments: bool = True, fallback: bool = True
     ) -> Structure | None:
         """
         Returns structure from ORCA job as Structure object (by default the final structure).
-        Silently returns None of no structure is available.
+        Returns None if no structure is available.
 
         Parameters
         ----------
@@ -1683,12 +1856,15 @@ class Output:
 
         atoms: list[Atom] = []
         # > Get Cartesian coordinates
-        cartesians = self._get_cartesians(index)
+        cartesians, error = self._get_cartesians(index, fallback=fallback)
 
         if cartesians is None:
             if not fallback:
                 return None
-            return self._grep_structure(index)
+            grepped_structure = self._grep_structure(index)
+            if grepped_structure is None:
+                self._raise_fallback_error(error)
+            return grepped_structure
 
         for line in cartesians:
             elem, x_au, y_au, z_au = line
@@ -1715,7 +1891,7 @@ class Output:
     def get_structure_from_gbw(self, *, index: int = 0) -> Structure | None:
         """
         Returns the structure stored in a gbw file as `Structure` object.
-        Silently returns None if no structure is available.
+        Returns None if no structure is available.
 
         In contrast to `get_structure()`, which reads the geometry from the property JSON, this
         getter uses the gbw JSON. It therefore offers no fragment IDs and no `.out` file fallback,
@@ -1743,8 +1919,11 @@ class Output:
             return None
 
     def _get_cartesians(
-        self, index: int, /
-    ) -> list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None:
+        self, index: int, /, *, fallback: bool
+    ) -> tuple[
+        list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None,
+        OpiOutputError | None,
+    ]:
         """
         Returns cartesian coordinates from the output object for a specified index.
 
@@ -1752,15 +1931,25 @@ class Output:
         ----------
         index : int
             index of geometry to return.
+        fallback : bool
+            Whether the caller uses the `.out` file fallback, see `_safe_get_with_fallback()`.
 
         Returns
         ----------
         cartesians: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None
             List containing the cartesian coordinates or None.
+        error: OpiOutputError | None
+            The error of `_safe_get_with_fallback()`, if one occurred.
         """
         # > Safely get the cartesian coordinates
-        cartesians = self._safe_get(
-            "results_properties", "geometries", index, "geometry", "coordinates", "cartesians"
+        cartesians, error = self._safe_get_with_fallback(
+            "results_properties",
+            "geometries",
+            index,
+            "geometry",
+            "coordinates",
+            "cartesians",
+            fallback=fallback,
         )
         # > Cast them into the correct type
         if cartesians is not None:
@@ -1769,7 +1958,7 @@ class Output:
                 cartesians,
             )
 
-        return cartesians
+        return cartesians, error
 
     def _get_fragments(self, index: int, /) -> list[list[StrictPositiveInt]] | None:
         """
@@ -2074,7 +2263,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2100,7 +2289,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2128,7 +2317,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2154,7 +2343,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2180,7 +2369,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2206,7 +2395,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2230,7 +2419,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the dipole moments should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2253,7 +2442,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the quadrupole moments should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2276,7 +2465,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the polarizabilies should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2303,7 +2492,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which S² should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Returns None if the requested index is not available in the output file.
             For RHF/ROHF the index is not relevant since the ideal values are returned.
 
         Returns
@@ -2313,8 +2502,11 @@ class Output:
         """
         expec_s2: StrictFiniteFloat | None = None
         ideal_s2: StrictFiniteFloat | None = None
-        # > Get HFType
-        hftype = self.get_hftype()
+        # > Get HFType, without gbw results S² can still be grepped from the output file
+        try:
+            hftype = self.get_hftype()
+        except OpiOutputNotParsedError:
+            hftype = None
         match hftype:
             # > RHF/RKS just returns the ideal value zero
             case Hftyp.RHF:
@@ -2350,7 +2542,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2376,7 +2568,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2402,7 +2594,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2428,7 +2620,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2454,7 +2646,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2480,7 +2672,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2507,7 +2699,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2533,7 +2725,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the frequencies should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             frequencies are only available for the final geometry.
         threshold : float | None, default: None
             Frequencies more negative than ``-threshold`` (in cm⁻¹) are returned.

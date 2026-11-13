@@ -65,7 +65,9 @@ def run_exmp055(
     print(gradient)
 
     # > The fallback supports iterating over individual optimisation steps.
-    # > get_final_energy returns None once the index exceeds the number of steps.
+    # > GFN-FF writes no geometries to the JSON output, so get_final_energy returns None once the
+    # > index exceeds the number of steps in the .out file. For methods with geometries in the
+    # > JSON output it raises an OpiOutputIndexError instead.
     step = 0
     print("ENERGIES ALONG OPTIMISATION TRAJECTORY")
     while True:

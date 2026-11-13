@@ -1,5 +1,6 @@
 import pytest
 
+from opi.exceptions import OpiOutputNotParsedError
 from opi.input.structures import Structure
 from opi.output.core import Output
 
@@ -35,9 +36,10 @@ def test_get_gradient_with_index(output_object_factory, task: str, index: int):
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_get_gradient_returns_none(empty_output_object: Output):
-    """Test if `Output.get_gradient()` returns `None` when expected."""
-    assert not empty_output_object.get_gradient()
+def test_get_gradient_not_parsed(empty_output_object: Output):
+    """Test that `Output.get_gradient()` raises if there is neither parsed JSON nor a `.out` file."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_gradient()
 
 
 @pytest.mark.unit
@@ -62,9 +64,10 @@ def test_get_structure_with_fragments(output_object_factory, task: str):
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_get_structure_returns_none(empty_output_object: Output):
-    """Test if `Output.get_structure()` returns `None` when expected."""
-    assert not empty_output_object.get_structure()
+def test_get_structure_not_parsed(empty_output_object: Output):
+    """Test that `Output.get_structure()` raises if there is neither parsed JSON nor a `.out` file."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_structure()
 
 
 @pytest.mark.unit
@@ -90,8 +93,9 @@ def test_get_structure_fallback_index(output_no_json):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_structure_no_fallback(output_no_json):
-    """Test that `get_structure(fallback=False)` returns None when no JSON is present."""
-    assert output_no_json.get_structure(fallback=False) is None
+    """Test that `get_structure(fallback=False)` raises `OpiOutputNotParsedError` when no JSON is present."""
+    with pytest.raises(OpiOutputNotParsedError):
+        output_no_json.get_structure(fallback=False)
 
 
 @pytest.mark.unit
@@ -106,5 +110,6 @@ def test_get_gradient_fallback(output_no_json):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_gradient_no_fallback(output_no_json):
-    """Test that `get_gradient(fallback=False)` returns None when no JSON is present."""
-    assert output_no_json.get_gradient(index=0, fallback=False) is None
+    """Test that `get_gradient(fallback=False)` raises `OpiOutputNotParsedError` when no JSON is present."""
+    with pytest.raises(OpiOutputNotParsedError):
+        output_no_json.get_gradient(index=0, fallback=False)
