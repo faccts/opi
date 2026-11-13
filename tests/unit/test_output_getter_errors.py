@@ -7,11 +7,16 @@ The getters return None if a value is not in the output, but raise if they are u
 - `TypeError` if the requested geometry or gbw index is not an integer
 """
 
+import shutil
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from opi.exceptions import OpiOutputIndexError, OpiOutputNotParsedError
 from opi.output.core import Output
+
+FALLBACK_OUT = Path(__file__).parents[1] / "fixtures" / "job_fallback.out"
 
 
 @pytest.mark.unit
@@ -64,6 +69,27 @@ def test_index_error_when_fallback_finds_nothing(output_object_factory, task: st
     output_object = output_object_factory(task)
     with pytest.raises(OpiOutputIndexError):
         output_object.get_final_energy(index=len(output_object.results_properties.geometries))
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["led"])
+@pytest.mark.parametrize("getter", ["get_final_energy", "get_structure"])
+def test_index_error_when_fallback_has_more_blocks(
+    output_object_factory, tmp_path: Path, task: str, getter: str
+):
+    """
+    Test that an index out of range for the JSON geometries raises, even if the `.out` file
+    contains more blocks (e.g. from a final evaluation) that the fallback would find.
+    """
+    output_object = output_object_factory(task)
+    shutil.copy(FALLBACK_OUT, tmp_path / f"{output_object.basename}.out")
+    output_object.working_dir = tmp_path
+    n_geometries = len(output_object.results_properties.geometries)
+    # > The `.out` file has a value for this index, the JSON output does not
+    assert FALLBACK_OUT.read_text().count("FINAL SINGLE POINT ENERGY") > n_geometries
+    with pytest.raises(OpiOutputIndexError, match="geometries"):
+        getattr(output_object, getter)(index=n_geometries)
 
 
 @pytest.mark.unit
@@ -139,3 +165,19 @@ def test_type_error_for_non_integer_index(output_object_factory, task: str, inde
         output_object.get_final_energy(index=index)
     with pytest.raises(TypeError, match="integer"):
         output_object.get_mos(gbw_index=index)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("index", [0.0, "0", None])
+def test_type_error_for_non_integer_index_without_parsed_output(
+    output_no_json: Output, empty_output_object: Output, index
+):
+    """
+    Test that an index that is not an integer raises a `TypeError` also if the output is not
+    parsed, both for getters with `.out` file fallback and without.
+    """
+    with pytest.raises(TypeError, match="integer"):
+        output_no_json.get_final_energy(index=index)
+    with pytest.raises(TypeError, match="integer"):
+        empty_output_object.get_dipole(index=index)
