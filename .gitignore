@@ -183,5 +183,8 @@ docs/contents/api
 docs/contents/scripts/*.sha256
 
 # Claude files & folders
-.claude
+# > Only the skills and agents are tracked; they drive the CI review.
+.claude/*
+!.claude/skills/
+!.claude/agents/
 CLAUDE.md
