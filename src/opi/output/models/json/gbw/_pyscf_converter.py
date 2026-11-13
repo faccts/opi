@@ -1,6 +1,9 @@
 """
 Conversion of the molecular orbital data of a gbw file (`GbwResults`) from and to PySCF.
 
+This module is internal to OPI and may change or move without notice. Use
+`GbwResults.to_pyscf()` and `GbwResults.from_pyscf()` instead.
+
 ORCA and PySCF both use contracted, real spherical Gaussian basis functions whose contraction
 coefficients refer to normalized primitives, and both store effective core potentials (ECPs) as a
 local part plus semi-local parts relative to it. Hence, basis set and ECP data are transferred
@@ -44,8 +47,6 @@ from opi.utils.element import Element
 
 if TYPE_CHECKING:
     from opi.output.models.json.gbw.gbw_results import GbwResults
-
-__all__ = ("gbw_to_pyscf", "gbw_from_pyscf")
 
 # > Angular momentum letters as used by ORCA, which skips "j" and supports up to l = 10
 SHELL_LETTERS = "spdfghiklmn"

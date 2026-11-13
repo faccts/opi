@@ -188,7 +188,7 @@ class GbwResults(JSONLoadable):
         UserWarning
             If fractional ROHF occupation numbers are replaced by integer ones.
         """
-        from opi.output.models.json.gbw.pyscf_converter import gbw_to_pyscf
+        from opi.output.models.json.gbw._pyscf_converter import gbw_to_pyscf
 
         return gbw_to_pyscf(self)
 
@@ -248,7 +248,7 @@ class GbwResults(JSONLoadable):
             If the mean-field object uses a relativistic (X2C) Hamiltonian, which is not part of
             the gbw data.
         """
-        from opi.output.models.json.gbw.pyscf_converter import gbw_from_pyscf
+        from opi.output.models.json.gbw._pyscf_converter import gbw_from_pyscf
 
         return gbw_from_pyscf(mf, mo_coeff=mo_coeff, mo_occ=mo_occ, mo_energy=mo_energy)
 

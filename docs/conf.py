@@ -71,7 +71,8 @@ autoapi_options = [
     "show-module-summary",
     "imported-members",
 ]
-autoapi_ignore = []
+# > Internal modules, which are not part of the public API
+autoapi_ignore = ["*/_pyscf_converter.py"]
 # // Autodoc config
 autodoc_typehints = "description"
 
