@@ -678,3 +678,22 @@ def test_basisshell_accepts_uppercase_angmom():
 
     assert shell.angmom == "g"
     assert str(shell) == "G 1\n  1 0.4203 1.0"
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize("angmom", ["i", "k", "l", "m", "n"])
+def test_basisshell_accepts_high_angmom(angmom: str):
+    """Test for `BasisShell`: ORCA supports shells up to l = 10 (n), skipping the letter j."""
+    shell = BasisShell(angmom=angmom, primitives=[(1.0, 1.0)])
+
+    assert str(shell).startswith(f"{angmom.upper()} 1")
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize("angmom", ["j", "o"])
+def test_basisshell_rejects_unsupported_angmom(angmom: str):
+    """Test for `BasisShell`: ORCA has no j shell and supports no shells above l = 10."""
+    with pytest.raises(ValueError):
+        BasisShell(angmom=angmom, primitives=[(1.0, 1.0)])

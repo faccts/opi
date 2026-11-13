@@ -39,7 +39,7 @@ class BasisShell(BaseModel):
 
     Attributes
     ----------
-    angmom: Literal["s", "p", "d", "f", "g", "h", "i"]
+    angmom: Literal["s", "p", "d", "f", "g", "h", "i", "k", "l", "m", "n"]
         Angular momentum of the shell
     primitives: list[tuple[float, float]]
         Exponent and contraction coefficient of each primitive Gaussian
@@ -51,7 +51,7 @@ class BasisShell(BaseModel):
       1 0.4203 1.0
     """
 
-    angmom: Literal["s", "p", "d", "f", "g", "h", "i"]
+    angmom: Literal["s", "p", "d", "f", "g", "h", "i", "k", "l", "m", "n"]
     primitives: list[tuple[float, float]]
 
     @field_validator("angmom", mode="before")
