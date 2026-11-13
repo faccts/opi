@@ -46,6 +46,8 @@ from opi.output.models.json.gbw.properties.molecule import Molecule
 from opi.utils.element import Element
 
 if TYPE_CHECKING:
+    from pyscf.scf.hf import SCF
+
     from opi.output.models.json.gbw.gbw_results import GbwResults
 
 # > Angular momentum letters as used by ORCA, which skips "j" and supports up to l = 10
@@ -286,7 +288,7 @@ def _match_pyscf_shells(
     return matched
 
 
-def gbw_to_pyscf(gbw: GbwResults, /) -> Any:
+def gbw_to_pyscf(gbw: GbwResults, /) -> SCF:
     """
     Create a PySCF mean-field object from the molecular orbital data of a gbw file.
 
@@ -494,7 +496,12 @@ def _mo_list(
 
 
 def _orbital_data(
-    mf: Any, n_ao: int, mo_coeff: Any, mo_occ: Any, mo_energy: Any, /
+    mf: SCF,
+    n_ao: int,
+    mo_coeff: npt.ArrayLike | None,
+    mo_occ: npt.ArrayLike | None,
+    mo_energy: npt.ArrayLike | None,
+    /,
 ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64] | None]:
     """
     Collect and validate the orbitals, occupation numbers, and orbital energies to convert.
@@ -574,12 +581,12 @@ def _orbital_data(
 
 
 def gbw_from_pyscf(
-    mf: Any,
+    mf: SCF,
     /,
     *,
-    mo_coeff: Any = None,
-    mo_occ: Any = None,
-    mo_energy: Any = None,
+    mo_coeff: npt.ArrayLike | None = None,
+    mo_occ: npt.ArrayLike | None = None,
+    mo_energy: npt.ArrayLike | None = None,
 ) -> GbwResults:
     """
     Create gbw data from a PySCF mean-field object.

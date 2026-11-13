@@ -1,8 +1,9 @@
 import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import TYPE_CHECKING
 
+import numpy.typing as npt
 from pydantic import Field
 
 from opi.execution.core import Runner
@@ -15,6 +16,10 @@ from opi.output.models.json.gbw.properties.molecule import Molecule
 from opi.output.models.json_loadable import JSONLoadable
 from opi.utils.element import Element
 from opi.utils.pyscf import requires_pyscf
+
+if TYPE_CHECKING:
+    # > PySCF is an optional dependency and only imported for type annotations
+    from pyscf.scf.hf import SCF
 
 
 class GbwResults(JSONLoadable):
@@ -146,7 +151,7 @@ class GbwResults(JSONLoadable):
         return structure
 
     @requires_pyscf
-    def to_pyscf(self) -> Any:
+    def to_pyscf(self) -> "SCF":
         """
         Create a PySCF mean-field object from the molecular orbital data, e.g., to use ORCA's
         orbitals in PySCF. Requires the optional dependency PySCF.
@@ -196,12 +201,12 @@ class GbwResults(JSONLoadable):
     @requires_pyscf
     def from_pyscf(
         cls,
-        mf: Any,
+        mf: "SCF",
         /,
         *,
-        mo_coeff: Any = None,
-        mo_occ: Any = None,
-        mo_energy: Any = None,
+        mo_coeff: npt.ArrayLike | None = None,
+        mo_occ: npt.ArrayLike | None = None,
+        mo_energy: npt.ArrayLike | None = None,
     ) -> "GbwResults":
         """
         Create gbw data from a PySCF mean-field object, e.g., to use PySCF's orbitals in ORCA.
