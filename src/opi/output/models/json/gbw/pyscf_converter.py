@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import re
 import warnings
+from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -101,6 +103,90 @@ def shell_ao_map(ang: int, /) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.floa
     positions = np.array([_pyscf_position(ang, m) for m in m_values], dtype=np.int_)
     signs = np.array([_orca_sign(ang, m) for m in m_values], dtype=np.float64)
     return positions, signs
+
+
+@dataclass(frozen=True)
+class AOMap:
+    """
+    Mapping of the basis functions of a molecule between ORCA's and PySCF's order and sign.
+
+    Attributes
+    ----------
+    index : npt.NDArray[np.int_]
+        For each basis function in ORCA's order, its position in PySCF's order.
+    sign : npt.NDArray[np.float64]
+        For each basis function in ORCA's order, the sign of ORCA's function relative to PySCF's
+        (+1 or -1).
+    """
+
+    index: npt.NDArray[np.int_]
+    sign: npt.NDArray[np.float64]
+
+    @classmethod
+    def from_shells(cls, shells: Iterable[tuple[int, int]], /) -> AOMap:
+        """
+        Create the mapping from the shells of the molecule.
+
+        Parameters
+        ----------
+        shells : Iterable[tuple[int, int]]
+            For each shell in ORCA's order, its angular momentum and the position of its first
+            basis function in PySCF's order.
+
+        Returns
+        -------
+        AOMap
+            Mapping of all basis functions of the shells.
+        """
+        indices: list[npt.NDArray[np.int_]] = []
+        signs: list[npt.NDArray[np.float64]] = []
+        for ang, offset in shells:
+            positions, shell_signs = shell_ao_map(ang)
+            indices.append(positions + offset)
+            signs.append(shell_signs)
+        if not indices:
+            raise ValueError("No shells given")
+        return cls(index=np.concatenate(indices), sign=np.concatenate(signs))
+
+    @property
+    def n_ao(self) -> int:
+        """Number of basis functions."""
+        return len(self.index)
+
+    def to_pyscf(self, coeff: npt.NDArray[np.float64], /) -> npt.NDArray[np.float64]:
+        """
+        Transform orbital coefficients from ORCA's to PySCF's basis functions.
+
+        Parameters
+        ----------
+        coeff : npt.NDArray[np.float64]
+            Coefficients with shape (n_ao, n_mo) in ORCA's order.
+
+        Returns
+        -------
+        npt.NDArray[np.float64]
+            Coefficients with shape (n_ao, n_mo) in PySCF's order.
+        """
+        result = np.empty_like(coeff)
+        result[self.index] = self.sign[:, None] * coeff
+        return result
+
+    def to_orca(self, coeff: npt.NDArray[np.float64], /) -> npt.NDArray[np.float64]:
+        """
+        Transform orbital coefficients from PySCF's to ORCA's basis functions.
+
+        Parameters
+        ----------
+        coeff : npt.NDArray[np.float64]
+            Coefficients with shape (n_ao, n_mo) in PySCF's order.
+
+        Returns
+        -------
+        npt.NDArray[np.float64]
+            Coefficients with shape (n_ao, n_mo) in ORCA's order.
+        """
+        result: npt.NDArray[np.float64] = self.sign[:, None] * coeff[self.index]
+        return result
 
 
 def _orca_function_names(ang: int, /) -> list[str]:
@@ -266,31 +352,27 @@ def gbw_to_pyscf(gbw: GbwResults, /) -> Any:
     # > The molecule is built quietly, but PySCF shall report on anything the user does with the
     # > returned object, e.g., an SCF that does not converge
     mol.verbose = logger.NOTE
-    # > PySCF position and sign of each basis function in ORCA's order
+    # > Each ORCA shell starts at the first basis function of its matching PySCF shell
     ao_loc = mol.ao_loc_nr()
-    ao_positions: list[npt.NDArray[np.int_]] = []
-    ao_signs: list[npt.NDArray[np.float64]] = []
-    for idx, atom_shells in enumerate(orca_shells):
+    ao_map = AOMap.from_shells(
+        (ang, int(ao_loc[ish]))
+        for idx, atom_shells in enumerate(orca_shells)
         for (ang, _), ish in zip(
             atom_shells, _match_pyscf_shells(mol, idx, atom_shells), strict=True
-        ):
-            positions, signs = shell_ao_map(ang)
-            ao_positions.append(positions + ao_loc[ish])
-            ao_signs.append(signs)
-    positions = np.concatenate(ao_positions)
-    signs = np.concatenate(ao_signs)
-    n_ao = len(positions)
-    if mol.nao != n_ao:
-        raise ValueError(f"Basis set of PySCF ({mol.nao}) and gbw data ({n_ao}) differ in size")
+        )
+    )
+    if mol.nao != ao_map.n_ao:
+        raise ValueError(
+            f"Basis set of PySCF ({mol.nao}) and gbw data ({ao_map.n_ao}) differ in size"
+        )
 
     mos = mo_data.mos
     if any(mo.mocoefficients is None for mo in mos):
         raise ValueError("MO coefficients of at least one molecular orbital are missing")
     coeff_orca = np.array([mo.mocoefficients for mo in mos], dtype=np.float64).T
-    if coeff_orca.shape[0] != n_ao:
+    if coeff_orca.shape[0] != ao_map.n_ao:
         raise ValueError("Number of MO coefficients does not match the basis set size")
-    coeff = np.empty_like(coeff_orca)
-    coeff[positions] = signs[:, None] * coeff_orca
+    coeff = ao_map.to_pyscf(coeff_orca)
     occ = np.array([mo.occupancy or 0.0 for mo in mos], dtype=np.float64)
     energies = np.array([mo.orbitalenergy or 0.0 for mo in mos], dtype=np.float64)
 
@@ -540,8 +622,8 @@ def gbw_from_pyscf(
 
     # > Basis set: one ORCA shell per contraction, keeping PySCF's shell order within each atom
     ao_loc = mol.ao_loc_nr()
-    ao_index: list[npt.NDArray[np.int_]] = []
-    ao_sign: list[npt.NDArray[np.float64]] = []
+    # > Angular momentum and PySCF position of the first basis function of each ORCA shell
+    orca_shells: list[tuple[int, int]] = []
     labels: list[str] = []
     atoms: list[Atoms] = []
     coords = mol.atom_coords(unit="Angstrom")
@@ -566,9 +648,8 @@ def gbw_from_pyscf(
                         coefficients=[float(c) for c in coefficients[:, ictr]],
                     )
                 )
-                positions, signs = shell_ao_map(ang)
-                ao_index.append(positions + ao_loc[ish] + ictr * (2 * ang + 1))
-                ao_sign.append(signs)
+                # > The contractions of a PySCF shell follow each other
+                orca_shells.append((ang, int(ao_loc[ish]) + ictr * (2 * ang + 1)))
                 shell_count[ang] = shell_count.get(ang, 0) + 1
                 labels.extend(
                     f"{idx}{element.value:<2}  {shell_count[ang]}{name}"
@@ -594,23 +675,20 @@ def gbw_from_pyscf(
             )
         )
 
-    index = np.concatenate(ao_index)
-    sign = np.concatenate(ao_sign)
-    if len(index) != mol.nao:
+    ao_map = AOMap.from_shells(orca_shells)
+    if ao_map.n_ao != mol.nao:
         raise ValueError("Basis set conversion failed: number of basis functions differs")
-
-    def to_orca(coeff: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
-        result: npt.NDArray[np.float64] = sign[:, None] * coeff[index]
-        return result
 
     if hftyp == Hftyp.UHF:
         # > ORCA lists the orbital labels once per spin
         labels = labels * 2
         mos = _mo_list(
-            to_orca(mo_coeff[0]), mo_occ[0], None if energies is None else energies[0]
-        ) + _mo_list(to_orca(mo_coeff[1]), mo_occ[1], None if energies is None else energies[1])
+            ao_map.to_orca(mo_coeff[0]), mo_occ[0], None if energies is None else energies[0]
+        ) + _mo_list(
+            ao_map.to_orca(mo_coeff[1]), mo_occ[1], None if energies is None else energies[1]
+        )
     else:
-        mos = _mo_list(to_orca(mo_coeff), mo_occ, energies)
+        mos = _mo_list(ao_map.to_orca(mo_coeff), mo_occ, energies)
 
     molecule = Molecule(
         atoms=atoms,
