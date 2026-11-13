@@ -11,7 +11,8 @@ Tests for converting ORCA's orbitals to PySCF for different wavefunction types a
 These tests run ORCA and are not part of the CI.
 """
 
-pyscf = pytest.importorskip("pyscf")
+pyscf = pytest.importorskip("pyscf", reason="PySCF not installed")
+pytestmark = pytest.mark.pyscf
 
 
 @pytest.mark.orca

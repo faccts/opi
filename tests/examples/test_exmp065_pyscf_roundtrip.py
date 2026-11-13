@@ -5,7 +5,8 @@ import pytest
 
 # > example65 requires PySCF, which is not installed by default
 # > skip test if PySCF is not available
-pytest.importorskip("pyscf", reason="requires pyscf")
+pytest.importorskip("pyscf", reason="PySCF not installed")
+pytestmark = pytest.mark.pyscf
 
 from examples.exmp065_pyscf_roundtrip.job import run_exmp065
 from opi.input.structures import Structure

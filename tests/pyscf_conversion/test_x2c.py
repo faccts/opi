@@ -11,7 +11,8 @@ Tests for transferring orbitals of an X2C calculation between ORCA and PySCF.
 These tests run ORCA and are not part of the CI.
 """
 
-pyscf = pytest.importorskip("pyscf")
+pyscf = pytest.importorskip("pyscf", reason="PySCF not installed")
+pytestmark = pytest.mark.pyscf
 
 
 @pytest.mark.orca

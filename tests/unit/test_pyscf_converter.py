@@ -16,7 +16,8 @@ reproducing ORCA's SCF energy with PySCF. The tests marked with `orca` additiona
 conversion from PySCF to ORCA by reading PySCF's orbitals with ORCA.
 """
 
-pyscf = pytest.importorskip("pyscf")
+pyscf = pytest.importorskip("pyscf", reason="PySCF not installed")
+pytestmark = pytest.mark.pyscf
 
 
 def gbw_fixtures(json_dir: Path) -> list[Path]:

@@ -11,7 +11,8 @@ Tests for reading PySCF's orbitals in ORCA: PySCF -> gbw file -> ORCA `MORead`.
 These tests run ORCA and are not part of the CI.
 """
 
-pyscf = pytest.importorskip("pyscf")
+pyscf = pytest.importorskip("pyscf", reason="PySCF not installed")
+pytestmark = pytest.mark.pyscf
 
 
 @pytest.mark.orca

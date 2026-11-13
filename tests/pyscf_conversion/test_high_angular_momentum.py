@@ -14,7 +14,8 @@ Tests for the order and sign of basis functions up to l = 10, the maximum of ORC
 These tests run ORCA and are not part of the CI.
 """
 
-pyscf = pytest.importorskip("pyscf")
+pyscf = pytest.importorskip("pyscf", reason="PySCF not installed")
+pytestmark = pytest.mark.pyscf
 
 
 @pytest.mark.orca

@@ -151,6 +151,8 @@ addopts = [
 ]
 markers = [
     "ase: tests that require ASE",
+    "molbar: tests that require MolBar",
+    "pyscf: tests that require PySCF",
     "examples: tests that run an example",
     "orca: tests that require ORCA",
     "slow: tests that take longer",
