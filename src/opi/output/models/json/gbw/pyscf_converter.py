@@ -10,11 +10,11 @@ within a shell:
 - ORCA orders the functions of a shell by m = 0, +1, -1, +2, -2, ...
 - PySCF orders them by m = -l, ..., +l, except for p shells, which are ordered x, y, z
   (m = +1, -1, 0).
-- ORCA's functions with |m| = 3 and |m| = 4 have the opposite sign of PySCF's, all others
-  (including |m| = 5 and 6) have the same sign.
+- Up to l = 8, ORCA's functions with |m| = 3, 4, 7, and 8 have the opposite sign of PySCF's,
+  all others have the same sign. For l = 9 and 10, all functions have the same sign.
 
-The order and sign convention was verified up to i shells (l = 6) against ORCA's overlap
-matrix and energies.
+ORCA supports shells up to l = 10 (letters s, p, d, f, g, h, i, k, l, m, n), PySCF up to l = 12.
+The order and sign convention was verified for all of them against ORCA's overlap matrix.
 
 PySCF sorts the shells of an atom by angular momentum, while ORCA keeps the order of the basis
 set definition, so shells are matched by angular momentum and exponents.
@@ -45,8 +45,8 @@ if TYPE_CHECKING:
 
 __all__ = ("gbw_to_pyscf", "gbw_from_pyscf")
 
-# > Angular momentum letters as used by ORCA
-SHELL_LETTERS = "spdfghi"
+# > Angular momentum letters as used by ORCA, which skips "j" and supports up to l = 10
+SHELL_LETTERS = "spdfghiklmn"
 
 # > Names of the p and d functions in ORCA's orbital labels; higher shells are labeled by m
 _ORCA_FUNCTION_NAMES = {0: ("s",), 1: ("pz", "px", "py"), 2: ("dz2", "dxz", "dyz", "dx2y2", "dxy")}
@@ -72,6 +72,16 @@ def _pyscf_position(ang: int, m: int, /) -> int:
     return m + ang
 
 
+def _orca_sign(ang: int, m: int, /) -> float:
+    """
+    Sign of ORCA's basis function relative to PySCF's. This was determined from ORCA's overlap
+    matrix; the convention changes above l = 8.
+    """
+    if ang > 8:
+        return 1.0
+    return -1.0 if m != 0 and abs(m) % 4 in (0, 3) else 1.0
+
+
 def shell_ao_map(ang: int, /) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.float64]]:
     """
     Map the basis functions of a shell from ORCA's to PySCF's order.
@@ -89,7 +99,7 @@ def shell_ao_map(ang: int, /) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.floa
     """
     m_values = _orca_m_values(ang)
     positions = np.array([_pyscf_position(ang, m) for m in m_values], dtype=np.int_)
-    signs = np.array([-1.0 if abs(m) in (3, 4) else 1.0 for m in m_values], dtype=np.float64)
+    signs = np.array([_orca_sign(ang, m) for m in m_values], dtype=np.float64)
     return positions, signs
 
 
@@ -291,11 +301,58 @@ def gbw_to_pyscf(gbw: GbwResults, /) -> Any:
         mf.mo_occ = np.stack((occ[:n_mo], occ[n_mo:]))
         mf.mo_energy = np.stack((energies[:n_mo], energies[n_mo:]))
     else:
-        mf = scf.ROHF(mol) if hftyp == Hftyp.ROHF else scf.RHF(mol)
+        if hftyp == Hftyp.ROHF:
+            mf = scf.ROHF(mol)
+            occ = _integer_rohf_occupations(occ, mol.nelec)
+        else:
+            mf = scf.RHF(mol)
         mf.mo_coeff = coeff
         mf.mo_occ = occ
         mf.mo_energy = energies
     return mf
+
+
+def _integer_rohf_occupations(
+    occ: npt.NDArray[np.float64], nelec: tuple[int, int], /
+) -> npt.NDArray[np.float64]:
+    """
+    Return ROHF occupation numbers that PySCF can handle.
+
+    For an open shell of degenerate orbitals (e.g., the pi orbitals of OH), ORCA's ROHF averages
+    over the configurations and stores fractional occupation numbers. PySCF's ROHF only
+    represents a single determinant, with occupation numbers of 0, 1, and 2. Fractional
+    occupations are therefore replaced by integer ones, filling the orbitals in ORCA's order.
+
+    Parameters
+    ----------
+    occ : npt.NDArray[np.float64]
+        ROHF occupation numbers from the gbw data, in ORCA's orbital order.
+    nelec : tuple[int, int]
+        Numbers of alpha and beta electrons.
+
+    Returns
+    -------
+    npt.NDArray[np.float64]
+        `occ` if all occupation numbers are integers, otherwise integer occupation numbers.
+
+    Warns
+    -----
+    UserWarning
+        If the occupation numbers had to be replaced.
+    """
+    if np.allclose(occ, np.round(occ)):
+        return occ
+    n_alpha, n_beta = nelec
+    integer_occ = np.zeros_like(occ)
+    integer_occ[:n_beta] = 2.0
+    integer_occ[n_beta:n_alpha] = 1.0
+    warnings.warn(
+        "ORCA's ROHF averaged the occupation of degenerate open-shell orbitals, which a "
+        "single-determinant PySCF object cannot represent. The fractional occupation numbers "
+        "were replaced by integer ones, so the energy of the PySCF object differs from ORCA's.",
+        stacklevel=3,
+    )
+    return integer_occ
 
 
 # ============================================================

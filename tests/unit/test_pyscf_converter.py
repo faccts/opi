@@ -1,12 +1,14 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pytest
 
+from opi.input.blocks import BasisShell, BlockABC, BlockBasis, NewBasis
 from opi.output.core import Output
 from opi.output.models.json.gbw.gbw_results import GbwResults
+from opi.utils.element import Element
 
 """
 Tests for the conversion of gbw data from and to PySCF.
@@ -107,7 +109,7 @@ def test_ecps_parsed(json_dir: Path) -> None:
 def shells_sorted(results: GbwResults) -> bool:
     """Whether the shells of each atom are sorted by angular momentum, like PySCF sorts them."""
     assert results.molecule is not None and results.molecule.atoms is not None
-    order = "spdfghi"
+    order = "spdfghiklmn"
     return all(
         [order.index(shell.shell) for shell in atom.basis or []]
         == sorted(order.index(shell.shell) for shell in atom.basis or [])
@@ -453,10 +455,18 @@ def test_missing_pyscf(json_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 WATER = "O 0 0 0; H 0 0.757 0.587; H 0 -0.757 0.587"
 
 
-def run_orca(tmp_path: Path, mol: Any, keywords: str, *, moinp: Path | None = None) -> Output:
+def run_orca(
+    tmp_path: Path,
+    mol: Any,
+    keywords: str,
+    *,
+    moinp: Path | None = None,
+    blocks: Sequence[BlockABC] = (),
+) -> Output:
     """Run a single point with ORCA for a PySCF molecule."""
     from opi.core import Calculator
-    from opi.input.simple_keywords import Scf
+    from opi.input.blocks import BlockScf
+    from opi.input.simple_keywords import ORCAKeyword, Scf
     from opi.input.structures import Structure
 
     xyz = "\n".join(
@@ -470,12 +480,17 @@ def run_orca(tmp_path: Path, mol: Any, keywords: str, *, moinp: Path | None = No
 
     calc = Calculator(basename="job", working_dir=tmp_path)
     calc.structure = structure
-    calc.input.add_simple_keywords(Scf.NOAUTOSTART)
-    calc.input.add_arbitrary_string(f"! {keywords} NoFrozenCore VeryTightSCF\n")
+    # > Simple keywords are written before the blocks. Otherwise, a basis set keyword would
+    # > replace shells added in a `%basis` block.
+    calc.input.add_simple_keywords(Scf.NOAUTOSTART, Scf.VERYTIGHTSCF)
+    calc.input.add_simple_keywords(
+        *(ORCAKeyword(word) for word in f"{keywords} NoFrozenCore".split())
+    )
+    calc.input.add_blocks(*blocks)
     if moinp is not None:
         calc.input.add_simple_keywords(Scf.MOREAD)
         # > A wrong guess would not converge within two iterations
-        calc.input.add_arbitrary_string("%scf maxiter 2 end\n")
+        calc.input.add_blocks(BlockScf(maxiter=2))
         calc.input.moinp = moinp
     calc.write_and_run()
 
@@ -527,3 +542,136 @@ def test_to_pyscf_ecp_energy(tmp_path: Path) -> None:
 
     assert mf.mol.atom_nelec_core(1) == 28
     assert mf.energy_tot() == pytest.approx(scf_energy(output), abs=1e-6)
+
+
+@pytest.mark.orca
+@pytest.mark.output
+@pytest.mark.parametrize(
+    ("letters", "import_to_orca"),
+    [
+        # > ORCA flips the sign of the functions with |m| = 3, 4, 7, 8 up to l = 8
+        ("hikl", True),
+        # > ... and of none for l = 9, 10. orca_2json of ORCA 6.1.1 cannot write gbw files with
+        # > such shells, so only the export is checked.
+        ("mn", False),
+    ],
+)
+def test_high_angular_momentum(tmp_path: Path, letters: str, import_to_orca: bool) -> None:
+    """
+    ORCA supports shells up to l = 10. Their functions must be converted with the correct order and
+    sign: a wrong sign makes ORCA's orbitals non-orthonormal in PySCF.
+    """
+    # > Low-symmetry geometry, so that every function of the added shells overlaps with others
+    mol = pyscf.gto.M(atom="O 0 0 0; H 0.61 0.52 0.55; H -0.43 -0.77 0.31", verbose=0)
+    shells = [BasisShell(angmom=letter, primitives=[(1.2, 1.0)]) for letter in letters]
+    basis_block = BlockBasis(addgto=NewBasis(element=Element.OXYGEN, shells=shells))
+    output = run_orca(tmp_path, mol, "HF RHF def2-svp NoRI", blocks=[basis_block])
+
+    assert output.results_gbw is not None
+    mf = output.results_gbw[0].to_pyscf()
+    max_l = max(mf.mol.bas_angular(i) for i in range(mf.mol.nbas))
+    assert max_l == "spdfghiklmn".index(letters[-1])
+    overlap = mf.mol.intor("int1e_ovlp")
+    np.testing.assert_allclose(
+        mf.mo_coeff.T @ overlap @ mf.mo_coeff, np.eye(mf.mo_coeff.shape[1]), atol=1e-6
+    )
+    assert mf.energy_tot() == pytest.approx(scf_energy(output), abs=1e-6)
+
+    if import_to_orca:
+        # > PySCF's own SCF orbitals as guess for ORCA
+        mf.kernel(dm0=mf.make_rdm1())
+        moread_dir = tmp_path / "moread"
+        moread_dir.mkdir()
+        gbw_file = GbwResults.from_pyscf(mf).to_gbw_file(moread_dir / "guess.gbw")
+        output_moread = run_orca(
+            moread_dir, mol, "HF RHF def2-svp NoRI", moinp=gbw_file, blocks=[basis_block]
+        )
+        assert output_moread.get_final_energy() == pytest.approx(mf.e_tot, abs=1e-7)
+
+
+@pytest.mark.orca
+@pytest.mark.output
+@pytest.mark.parametrize(
+    ("atom", "spin", "method"),
+    [(WATER, 0, "RHF"), (WATER, 0, "UHF"), ("O 0 0 0; H 0 0 0.97", 1, "UHF")],
+)
+def test_to_pyscf_hf_types(tmp_path: Path, atom: str, spin: int, method: str) -> None:
+    """PySCF must reproduce ORCA's Hartree-Fock energy for restricted and unrestricted orbitals."""
+    mol = pyscf.gto.M(atom=atom, spin=spin, verbose=0)
+    output = run_orca(tmp_path, mol, f"HF {method} def2-svp NoRI")
+
+    assert output.results_gbw is not None
+    mf = output.results_gbw[0].to_pyscf()
+
+    assert type(mf).__name__ == method
+    assert mf.energy_tot() == pytest.approx(scf_energy(output), abs=1e-6)
+
+
+@pytest.mark.orca
+@pytest.mark.output
+def test_to_pyscf_rohf_fractional_occupations(tmp_path: Path) -> None:
+    """
+    ORCA's ROHF averages the occupation of the degenerate pi orbitals of OH (1.5 each). PySCF's
+    ROHF cannot represent this, so integer occupations are used and a warning is issued.
+    """
+    mol = pyscf.gto.M(atom="O 0 0 0; H 0 0 0.97", spin=1, verbose=0)
+    output = run_orca(tmp_path, mol, "HF ROHF def2-svp NoRI")
+    assert output.results_gbw is not None
+    results = output.results_gbw[0]
+    assert results.molecule is not None and results.molecule.molecularorbitals is not None
+    orca_occupations = [mo.occupancy for mo in results.molecule.molecularorbitals.mos or []]
+    # > Ensure the test keeps covering fractional occupations
+    assert 1.5 in orca_occupations
+
+    with pytest.warns(UserWarning, match="fractional occupation numbers"):
+        mf = results.to_pyscf()
+
+    assert set(mf.mo_occ) <= {0.0, 1.0, 2.0}
+    assert mf.mo_occ.sum() == mf.mol.nelectron
+    overlap = mf.mol.intor("int1e_ovlp")
+    np.testing.assert_allclose(
+        mf.mo_coeff.T @ overlap @ mf.mo_coeff, np.eye(mf.mo_coeff.shape[1]), atol=1e-6
+    )
+
+
+@pytest.mark.orca
+@pytest.mark.output
+@pytest.mark.parametrize(("pyscf_method", "orca_method"), [("RHF", "UHF"), ("UHF", "RHF")])
+def test_from_pyscf_orca_moread_other_hf_type(
+    tmp_path: Path, pyscf_method: str, orca_method: str
+) -> None:
+    """ORCA must accept restricted orbitals as guess of an unrestricted calculation and vice versa."""
+    mol = pyscf.gto.M(atom=WATER, basis="def2-svp", verbose=0)
+    mf = getattr(pyscf.scf, pyscf_method)(mol).run(conv_tol=1e-11)
+    gbw_file = GbwResults.from_pyscf(mf).to_gbw_file(tmp_path / "guess.gbw")
+
+    output = run_orca(tmp_path, mol, f"HF {orca_method} def2-svp NoRI", moinp=gbw_file)
+
+    assert output.get_final_energy() == pytest.approx(mf.e_tot, abs=1e-7)
+
+
+@pytest.mark.orca
+@pytest.mark.output
+def test_x2c(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    ORCA's X2C is reproduced by PySCF's X2C with ORCA's speed of light, in both directions. The
+    Hamiltonian itself is not part of the gbw data.
+    """
+    monkeypatch.setattr(pyscf.lib.param, "LIGHT_SPEED", 137.0359895)
+    mol = pyscf.gto.M(atom="H 0 0 0; I 0 0 1.61", verbose=0)
+    output = run_orca(tmp_path, mol, "HF RHF X2C x2c-svpall NoRI")
+
+    # > ORCA -> PySCF
+    assert output.results_gbw is not None
+    mf = output.results_gbw[0].to_pyscf().x2c()
+    assert mf.energy_tot() == pytest.approx(scf_energy(output), abs=1e-6)
+
+    # > PySCF -> ORCA
+    mf.kernel(dm0=mf.make_rdm1())
+    moread_dir = tmp_path / "moread"
+    moread_dir.mkdir()
+    with pytest.warns(UserWarning, match="relativistic"):
+        results = GbwResults.from_pyscf(mf)
+    gbw_file = results.to_gbw_file(moread_dir / "guess.gbw")
+    output_moread = run_orca(moread_dir, mol, "HF RHF X2C x2c-svpall NoRI", moinp=gbw_file)
+    assert output_moread.get_final_energy() == pytest.approx(mf.e_tot, abs=1e-7)

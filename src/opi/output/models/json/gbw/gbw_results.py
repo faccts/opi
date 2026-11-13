@@ -162,7 +162,14 @@ class GbwResults(JSONLoadable):
 
         Likewise, a relativistic Hamiltonian (DKH, ZORA, X2C) is not part of the gbw data. For
         such calculations, the returned object does not reproduce ORCA's energy, unless a
-        corresponding Hamiltonian is set up in PySCF (e.g., `mf.x2c()`), where available.
+        corresponding Hamiltonian is set up in PySCF. ORCA's X2C (with its default point nucleus)
+        is reproduced by `mf.x2c()`, if PySCF uses ORCA's speed of light
+        (`pyscf.lib.param.LIGHT_SPEED = 137.0359895`).
+
+        For an open shell of degenerate orbitals (e.g., the pi orbitals of OH), ORCA's ROHF
+        averages over the configurations and stores fractional occupation numbers. As PySCF's
+        ROHF represents a single determinant, these are replaced by integer occupation numbers
+        and a warning is issued; the energy then differs from ORCA's.
 
         Returns
         -------
@@ -175,6 +182,11 @@ class GbwResults(JSONLoadable):
             If PySCF is not installed.
         ValueError
             If the gbw data lacks atoms, basis sets, or molecular orbitals.
+
+        Warns
+        -----
+        UserWarning
+            If fractional ROHF occupation numbers are replaced by integer ones.
         """
         from opi.output.models.json.gbw.pyscf_converter import gbw_to_pyscf
 
@@ -293,11 +305,27 @@ class GbwResults(JSONLoadable):
             # > `orca_2json` appends "_copy" to the stem of the JSON file
             tmp_gbw_file = json_file.with_name(f"{json_file.stem}_copy.gbw")
             if not result.returncode_ok() or not tmp_gbw_file.is_file():
-                raise RuntimeError(
-                    f"orca_2json failed to create a gbw file from {gbw_file.stem}.json"
-                )
+                message = f"orca_2json failed to create a gbw file from {gbw_file.stem}.json"
+                # > `orca_2json` of ORCA 6.1.1 fails silently for shells above l = 8
+                if self._max_shell_letter() in ("m", "n"):
+                    message += (
+                        ". The basis set contains shells above l = 8, which orca_2json may not "
+                        "support."
+                    )
+                raise RuntimeError(message)
 
             return Path(shutil.move(tmp_gbw_file, gbw_file))
+
+    def _max_shell_letter(self) -> str | None:
+        """Letter of the highest angular momentum of the basis set, or None if there is none."""
+        order = "spdfghiklmn"
+        letters: list[str] = []
+        if self.molecule is not None:
+            for atom in self.molecule.atoms or []:
+                for shell in atom.basis or []:
+                    if shell.shell is not None and shell.shell.lower() in order:
+                        letters.append(shell.shell.lower())
+        return max(letters, key=order.index) if letters else None
 
     def _check_gbw_writable(self) -> None:
         """
