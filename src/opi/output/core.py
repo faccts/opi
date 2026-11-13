@@ -119,7 +119,8 @@ class Output:
       raise if that file does not exist either. Getters that read other files (e.g. `get_ir()`
       or `get_fcidump()`) do not need parsed JSON files.
     - `OpiOutputIndexError`: The requested geometry or gbw index does not exist. Getters with an
-      active `.out` file fallback only raise if the fallback finds no value for the index either.
+      active `.out` file fallback raise as well and only use the fallback if the JSON output
+      contains no geometries at all (e.g. for GFN-FF).
     - `TypeError`: The geometry or gbw index is not an integer.
     """
 
@@ -1212,6 +1213,16 @@ class Output:
             self.results_properties.geometries[index].geometry
             but returns None if any part of the chain is missing or None, in a mypy-friendly way.
         """
+        # > Check user-chosen indices first, so that a wrong type is reported in any case,
+        # > e.g. also if the results are not parsed
+        checked_attrs: list[str | int] = list(attrs)
+        for i in range(1, len(checked_attrs)):
+            previous_attr = checked_attrs[i - 1]
+            if previous_attr in self._USER_INDEXED_LISTS:
+                checked_attrs[i] = self._check_index(
+                    checked_attrs[i], self._USER_INDEXED_LISTS[str(previous_attr)]
+                )
+
         if attrs and attrs[0] in self._PARSED_RESULTS and getattr(self, str(attrs[0])) is None:
             raise OpiOutputNotParsedError(
                 self._PARSED_RESULTS[str(attrs[0])].format(basename=self.basename)
@@ -1219,19 +1230,11 @@ class Output:
 
         current: Any = self
         previous: str | int | None = None
-        attr: Any
-        for attr in attrs:
+        for attr in checked_attrs:
             if current is None:
                 return None
             if isinstance(current, list) and previous in self._USER_INDEXED_LISTS:
-                # > Accept any integer type (e.g. `numpy.int64`), but nothing else
-                try:
-                    attr = operator.index(attr)
-                except TypeError:
-                    raise TypeError(
-                        f"Index into the {self._USER_INDEXED_LISTS[str(previous)]} has to be an"
-                        f" integer, got {attr!r}."
-                    ) from None
+                assert isinstance(attr, int)
                 if current and not -len(current) <= attr < len(current):
                     raise OpiOutputIndexError(
                         f"Index {attr} is out of range: the output of '{self.basename}' contains"
@@ -1249,14 +1252,46 @@ class Output:
             previous = attr
         return current
 
+    @staticmethod
+    def _check_index(index: Any, name: str, /) -> int:
+        """
+        Check that a user-chosen index is an integer. Any integer type (e.g. `numpy.int64`) is
+        accepted and converted to `int`.
+
+        Parameters
+        ----------
+        index : Any
+            Index to check.
+        name : str
+            Name of the indexed list for the error message.
+
+        Returns
+        -------
+        int
+            The index as `int`.
+
+        Raises
+        ------
+        TypeError
+            If `index` is not an integer.
+        """
+        try:
+            return operator.index(index)
+        except TypeError:
+            raise TypeError(f"Index into the {name} has to be an integer, got {index!r}.") from None
+
     def _safe_get_with_fallback(
         self, *attrs: str | int, fallback: bool
     ) -> tuple[Any | None, OpiOutputError | None]:
         """
         `_safe_get()` for getters with a `.out` file fallback.
-        If `fallback` is True, the errors of `_safe_get()` are not raised, so the getter can use the
-        fallback instead. The error is returned, so that the getter can pass it to
+        If `fallback` is True, a not-parsed error of `_safe_get()` is not raised, so the getter can
+        use the fallback instead. The error is returned, so that the getter can pass it to
         `_raise_fallback_error()` if the fallback does not find a value either.
+        An index error is always raised: if the JSON output contains geometries, it is the
+        authoritative source and the `.out` file may contain more blocks, e.g. from a final
+        evaluation, that do not belong to the requested index. If the JSON output contains no
+        geometries (e.g. GFN-FF), `_safe_get()` returns None and the fallback is used.
 
         Parameters
         ----------
@@ -1272,7 +1307,7 @@ class Output:
         """
         try:
             return self._safe_get(*attrs), None
-        except (OpiOutputNotParsedError, OpiOutputIndexError) as error:
+        except OpiOutputNotParsedError as error:
             if not fallback:
                 raise
             return None, error
@@ -1280,16 +1315,14 @@ class Output:
     def _raise_fallback_error(self, error: OpiOutputError | None) -> None:
         """
         Raise the error of `_safe_get_with_fallback()` after the `.out` file fallback found no value.
-        An index error is always raised. A not-parsed error is only raised if there is no `.out`
-        file either, since a value missing from an existing `.out` file is just not available.
+        A not-parsed error is only raised if there is no `.out` file either, since a value missing
+        from an existing `.out` file is just not available.
 
         Parameters
         ----------
         error : OpiOutputError | None
             Error returned by `_safe_get_with_fallback()`.
         """
-        if isinstance(error, OpiOutputIndexError):
-            raise error
         if error is not None and not self.get_outfile().is_file():
             raise error
 
