@@ -63,6 +63,7 @@
 - Added `OpiError`, `OpiExecutionError`, and `OrcaMmError`. (#224)
 - Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
 - Added `csf` and `det` as Literals to `printwf` in the `%casscf` block. (#311)
+- Added AUTOCI convergence check `output.autoci_converged()` and complete list of methods to `BlockAutoCI` (#318).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
