@@ -17,7 +17,8 @@ def test_exmp016_autoci(example_input_file, tmp_path, json_files_exporter) -> No
     # Run the example in tmp_path
     output = run_exmp016(structure=structure, working_dir=tmp_path)
 
-    # Assert negative final energy
+    # Assert convergence and negative final energy
+    assert output.autoci_converged()
     assert output.get_final_energy() < 0
 
     # optional export of json files
