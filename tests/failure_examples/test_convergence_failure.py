@@ -7,11 +7,12 @@ Covers SCF, coupled-cluster, geometry optimization, and CP-SCF convergence failu
 import pytest
 
 from opi.core import Calculator
-from opi.input.blocks import BlockGeom, BlockMdci, BlockMethod, BlockScf
-from opi.input.simple_keywords import AuxBasisSet, Task, Wft
+from opi.input.blocks import BlockGeom, BlockMdci, BlockMethod, BlockScf, BlockTddft
+from opi.input.simple_keywords import AuxBasisSet, Dft, Task, Wft
 from opi.input.structures import Structure
 from opi.output.grepper.patterns import (
     CC_NOT_CONVERGED_ERROR,
+    CIS_TDA_NOT_CONVERGED_ERROR,
     CPSCF_NOT_CONVERGED_ERROR,
     OPT_NOT_CONVERGED_ERROR,
     SCF_NOT_CONVERGED_ERROR,
@@ -94,3 +95,17 @@ def test_cpscf_conv_fail(calc):
     output = calc.get_output()
     assert not output.terminated_normally()
     assert output.error_message() == CPSCF_NOT_CONVERGED_ERROR.message
+
+
+@pytest.mark.orca
+def test_cis_conv_fail(calc):
+    """Test error_message for the CIS/TDA excited state solver not converging"""
+    calc.input.add_simple_keywords(Dft.B3LYP)
+    calc.input.add_blocks(BlockTddft(nroots=5, maxiter=1))
+    # > write the input and run the calculation
+    calc.write_and_run()
+
+    # > get the output and check some results
+    output = calc.get_output()
+    assert not output.terminated_normally()
+    assert output.error_message() == CIS_TDA_NOT_CONVERGED_ERROR.message

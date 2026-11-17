@@ -369,6 +369,9 @@ class BaseRunner:
         orca_path : Path
             Can either point to:
                 1) the main ORCA binary directly, which must have the name "orca".
+                   If it is not located in a `bin/` folder, but sits next to a `bin/` folder that contains
+                   another `orca` and a `lib/` folder (e.g., a launcher script at the top of the installation),
+                   its folder is treated as the base folder of the installation, as in 2).
                 2) the folder which contains the main ORCA binary `orca` either `./orca` or `./bin/orca`
 
         Returns
@@ -389,12 +392,22 @@ class BaseRunner:
         except FileNotFoundError:
             raise FileNotFoundError(f"ORCA path does not exist: {orca_path}")
 
+        orca_name = resolve_binary_name(OrcaBinary.ORCA)
+
         # > Case 1
-        if orca_path.is_file() and orca_path.name == resolve_binary_name(OrcaBinary.ORCA):
+        if orca_path.is_file() and orca_path.name == orca_name:
             # > Check if the parent dir is 'bin/'
             if orca_path.parent.name == "bin":
                 orca_bin_folder = orca_path.parent
                 orca_lib_folder = orca_bin_folder.with_name("lib")
+            # > The binary sits at the top of an installation that keeps its binaries in 'bin/'
+            # > and its libraries in 'lib/' (e.g., a launcher script).
+            # > Treat its folder as the base folder, as in case 2.
+            elif (orca_path.parent / "bin" / orca_name).is_file() and (
+                orca_path.parent / "lib"
+            ).is_dir():
+                orca_bin_folder = orca_path.parent / "bin"
+                orca_lib_folder = orca_path.parent / "lib"
             else:
                 orca_bin_folder = orca_path.parent
                 orca_lib_folder = orca_bin_folder

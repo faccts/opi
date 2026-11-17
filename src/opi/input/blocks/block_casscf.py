@@ -65,7 +65,7 @@ class BlockCasscf(BlockABC):
     printlevel: int | None = None
     printgstate: int | None = None
     printndo: int | None = None
-    printwf: int | None = None
+    printwf: int | Literal["csf", "det"] | None = None
     actorbs: int | None = None
     actconstraints: Literal["unchanged", "canonorbs", "locorbs", "natorbs"] | None = None
     locmet: Literal["pipekmezey", "pm", "fosterboys", "fb", "iaoibo", "iaoboys", "ahfb"] | None = (

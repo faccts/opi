@@ -24,6 +24,7 @@ from opi.output.grepper.recipes import (
     get_error_messages,
     get_float_from_line,
     get_lines_from_block,
+    has_autoci_converged,
     has_casscf_converged,
     has_cc_converged,
     has_geometry_optimization_converged,
@@ -754,6 +755,13 @@ class Output:
         """
         return self.get_file(".out")
 
+    def get_errfile(self) -> Path:
+        """
+        The full path to the ".err" file.
+        The file only exists if ORCA or one of its helper programs wrote to stderr.
+        """
+        return self.get_file(".err")
+
     def terminated_normally(self) -> bool:
         """
         Determine if ORCA terminated normally, by looking for "ORCA TERMINATED NORMALLY" in the ".out" file.
@@ -776,6 +784,8 @@ class Output:
     def error_messages(self) -> list[str]:
         """
         Return all known error messages found in the ORCA output file.
+        Messages that ORCA and its helper programs write to stderr, e.g. of the MPI launcher,
+        are looked up in the ".err" file, if it exists.
         Scanning stops early when a critical pattern is matched. Critical patterns are patterns that directly terminate ORCA.
         If the output file does not exist a corresponding error message is returned.
 
@@ -786,13 +796,15 @@ class Output:
         """
         outfile = self.get_outfile()
         try:
-            return get_error_messages(outfile)
+            return get_error_messages(outfile, self.get_errfile())
         except FileNotFoundError:
             return [f"Could not find output file: {outfile}"]
 
     def error_message(self) -> str:
         """
         Return the most important error message found in the ORCA output file or an empty string if no known error was detected.
+        Messages that ORCA and its helper programs write to stderr, e.g. of the MPI launcher,
+        are looked up in the ".err" file, if it exists.
         If the output file does not exist a corresponding error message is returned.
 
         Returns
@@ -802,7 +814,7 @@ class Output:
         """
         outfile = self.get_outfile()
         try:
-            return get_error_message(outfile)
+            return get_error_message(outfile, self.get_errfile())
         except FileNotFoundError:
             return f"Could not find output file: {outfile}"
 
@@ -844,6 +856,18 @@ class Output:
             True if string is found in ".out" file else False
         """
         return self._has(has_cc_converged)
+
+    def autoci_converged(self) -> bool:
+        """
+        Determine if ORCA AUTOCI iterations (e.g. CCSD, CCSD(T)) converged, by looking for "Calculation CONVERGED in X iterations" in the ".out" file.
+        If the ".out" file does not exist, also return False.
+
+        Returns
+        -------
+        bool
+            True if string is found in ".out" file else False
+        """
+        return self._has(has_autoci_converged)
 
     def geometry_optimization_converged(self) -> bool:
         """
