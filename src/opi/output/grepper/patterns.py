@@ -28,6 +28,8 @@ GEOMETRY_CONVERGED = "HURRAY"
 NEB_CONVERGED = "H U R R A Y"
 CC_CONVERGED = "The Coupled-Cluster iterations have converged"
 CASSCF_CONVERGED = "---- THE CAS-SCF GRADIENT HAS CONVERGED ----"
+# > Printed by AUTOCI (e.g. CCSD, CCSD(T)) as "Calculation CONVERGED in X iterations"
+AUTOCI_CONVERGED = "Calculation CONVERGED in"
 
 # > Has strings - Strings that indicate something was requested
 HAS_GEOMETRY_OPT = "Geometry Optimization Run"
