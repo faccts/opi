@@ -107,10 +107,38 @@ def test_empty_geometry_list_returns_none(output_object_factory, task: str):
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_missing_value_in_fallback_file_returns_none(output_no_json: Output):
-    """Test that a value missing from an existing `.out` file returns None for unparsed output."""
-    assert output_no_json.get_final_energy() is not None
-    assert output_no_json.get_final_energy(index=10**6) is None
+@pytest.mark.parametrize("getter", ["get_final_energy", "get_structure", "get_gradient"])
+def test_index_error_in_fallback_file(output_no_json: Output, getter: str):
+    """Test that an index out of range of the blocks in the `.out` file raises for unparsed output."""
+    assert getattr(output_no_json, getter)(index=0) is not None
+    with pytest.raises(OpiOutputIndexError, match="output file"):
+        getattr(output_no_json, getter)(index=10**6)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_missing_block_in_fallback_file_returns_none(output_no_json: Output):
+    """Test that a value whose block is missing from an existing `.out` file returns None."""
+    assert "Expectation value of <S**2>" not in FALLBACK_OUT.read_text()
+    assert output_no_json.get_s2(index=10**6) == (None, None)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["led"])
+def test_fallback_not_used_for_missing_value_in_json(
+    output_object_factory, tmp_path: Path, task: str
+):
+    """
+    Test that the `.out` file fallback is not used if the property JSON contains the requested
+    geometry but not the value, as the `.out` block with the same index may belong to another
+    geometry.
+    """
+    output_object = output_object_factory(task)
+    shutil.copy(FALLBACK_OUT, tmp_path / f"{output_object.basename}.out")
+    output_object.working_dir = tmp_path
+    output_object.results_properties.geometries[-1].single_point_data = None
+    assert output_object.get_final_energy() is None
 
 
 @pytest.mark.unit
@@ -181,3 +209,70 @@ def test_type_error_for_non_integer_index_without_parsed_output(
         output_no_json.get_final_energy(index=index)
     with pytest.raises(TypeError, match="integer"):
         empty_output_object.get_dipole(index=index)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["led"])
+def test_index_error_for_empty_gbw_results(output_object_factory, task: str):
+    """Test that gbw getters raise `OpiOutputIndexError` if no gbw results were found."""
+    output_object = output_object_factory(task)
+    output_object.results_gbw = []
+    with pytest.raises(OpiOutputIndexError, match="0 gbw results"):
+        output_object.get_mos()
+    with pytest.raises(OpiOutputIndexError, match="0 gbw results"):
+        output_object.get_int_overlap()
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["opt"])
+@pytest.mark.parametrize("index", [True, False, np.bool_(True)])
+def test_type_error_for_boolean_index(output_object_factory, task: str, index):
+    """Test that a boolean index raises a `TypeError`, although bool is a subclass of int."""
+    output_object = output_object_factory(task)
+    with pytest.raises(TypeError, match="integer"):
+        output_object.get_energies(index=index)
+    with pytest.raises(TypeError, match="integer"):
+        output_object.get_mos(gbw_index=index)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("index", [0.0, "0", None, True])
+def test_type_error_for_non_integer_index_in_get_s2(output_no_json: Output, index):
+    """Test that `get_s2()` raises a `TypeError` for a non-integer index."""
+    with pytest.raises(TypeError, match="integer"):
+        output_no_json.get_s2(index=index)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_index_error_in_get_s2(tmp_path: Path):
+    """Test that `get_s2()` raises `OpiOutputIndexError` for an index out of range of the `.out` file."""
+    # > Lines as written by ORCA for a UHF calculation
+    (tmp_path / "job.out").write_text(
+        "Expectation value of <S**2>     :     0.758102\n"
+        "Ideal value S*(S+1) for S=0.5   :     0.750000\n"
+    )
+    output = Output("job", version_check=False)
+    output.working_dir = tmp_path
+    assert output.get_s2(index=-1) == (0.758102, 0.75)
+    with pytest.raises(OpiOutputIndexError, match="output file"):
+        output.get_s2(index=1)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["led"])
+def test_recreate_gbw_results_with_negative_index(
+    output_object_factory, monkeypatch: pytest.MonkeyPatch, task: str
+):
+    """Test that `recreate_gbw_results()` reloads the gbw results for a negative index."""
+    output_object = output_object_factory(task)
+    # > Recreating the gbw JSON needs ORCA, the existing file is reloaded instead
+    monkeypatch.setattr(output_object, "create_gbw_json", lambda **_: None)
+    old_results = output_object.results_gbw[-1]
+    output_object.recreate_gbw_results({}, -1)
+    assert output_object.results_gbw[-1] is not old_results
+    assert output_object.results_gbw[-1] == old_results
