@@ -54,6 +54,7 @@ WHITELIST = (
     "ml_properties",
     "moplot",
     "redox",
+    "vcd_spectrum",
     "wb97m2",
 )
 
