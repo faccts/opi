@@ -39,6 +39,12 @@ def run_exmp016(
         sys.exit(1)
     # << END OF IF
 
+    # > Check AUTOCI convergence ("Calculation CONVERGED in X iterations")
+    if not output.autoci_converged():
+        print(f"AUTOCI CISD iterations did not converge, see: {output.get_outfile()}")
+        sys.exit(1)
+    # << END OF IF
+
     # > Parse JSON files
     output.parse()
     return output
