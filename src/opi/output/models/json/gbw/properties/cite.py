@@ -1,3 +1,5 @@
+from pydantic import Field
+
 from opi.output.models.base.get_item import GetItem
 from opi.output.models.json.gbw.properties.paper import Paper
 
@@ -14,5 +16,5 @@ class Cite(GetItem):
         Key for the SHARK paper
     """
 
-    rn231: Paper | None = None
-    rn232: Paper | None = None
+    rn231: Paper | None = Field(default=None, serialization_alias="RN231")
+    rn232: Paper | None = Field(default=None, serialization_alias="RN232")

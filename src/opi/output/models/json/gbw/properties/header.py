@@ -1,4 +1,4 @@
-from pydantic import StrictStr
+from pydantic import Field, StrictStr
 
 from opi.output.models.base.get_item import GetItem
 
@@ -17,6 +17,6 @@ class OrcaHeader(GetItem):
         Orca-version
     """
 
-    date: StrictStr | None = None
-    git: StrictStr | None = None
-    version: StrictStr | None = None
+    date: StrictStr | None = Field(default=None, serialization_alias="Date")
+    git: StrictStr | None = Field(default=None, serialization_alias="Git")
+    version: StrictStr | None = Field(default=None, serialization_alias="Version")

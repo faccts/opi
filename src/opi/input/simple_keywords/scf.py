@@ -1,159 +1,176 @@
 from opi.input.simple_keywords.base import (
-    SimpleKeyword,
+    ORCAKeyword,
     SimpleKeywordBox,
 )
 
 __all__ = ("Scf",)
 
 
-class Scf(SimpleKeywordBox):
+class ScfThreshold(SimpleKeywordBox):
+    SLOPPYSCF = ORCAKeyword("sloppyscf", alias="sloppy")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    LOOSESCF = ORCAKeyword("loosescf", alias="loose")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    NORMALSCF = ORCAKeyword("normalscf", alias="normal")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    STRONGSCF = ORCAKeyword("strongscf", alias="strong")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    TIGHTSCF = ORCAKeyword("tightscf", alias="tight")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    VERYTIGHTSCF = ORCAKeyword("verytightscf", alias="verytight")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    EXTREMESCF = ORCAKeyword("extremescf", alias="extreme")
+    """ORCAKeyword: SCF convergence threshold settings."""
+
+
+class ScfGuess(SimpleKeywordBox):
+    MOREAD = ORCAKeyword("moread")
+    """ORCAKeyword: SCF initial guess read orbitals from gbw file."""
+    EHTANO = ORCAKeyword("ehtano")
+    """ORCAKeyword: SCF initial guess."""
+    HCORE = ORCAKeyword("hcore")
+    """ORCAKeyword: SCF initial guess."""
+    PATOM = ORCAKeyword("patom")
+    """ORCAKeyword: SCF initial guess."""
+    PMODEL = ORCAKeyword("pmodel")
+    """ORCAKeyword: SCF initial guess."""
+    PMODELX = ORCAKeyword("pmodelx")
+    """ORCAKeyword: SCF initial guess."""
+    PMODELXAV = ORCAKeyword("pmodelxav")
+    """ORCAKeyword: SCF initial guess."""
+    PMODELXPM = ORCAKeyword("pmodelxpm")
+    """ORCAKeyword: SCF initial guess."""
+    SYMBREAKGUESS = ORCAKeyword("symbreakguess")
+    """ORCAKeyword: SCF initial guess."""
+
+
+class ScfConvergence(SimpleKeywordBox):
+    EASYCONV = ORCAKeyword("easyconv", alias="easy")
+    """ORCAKeyword: SCF convergence strategy."""
+    NORMALCONV = ORCAKeyword("normalconv", alias="normal")
+    """ORCAKeyword: SCF convergence strategy."""
+    SLOWCONV = ORCAKeyword("slowconv", alias="slow")
+    """ORCAKeyword: SCF convergence strategy."""
+    VERYSLOWCONV = ORCAKeyword("veryslowconv", alias="veryslow")
+    """ORCAKeyword: SCF convergence strategy."""
+
+
+class ScfSolver(SimpleKeywordBox):
+    DIIS = ORCAKeyword("diis")
+    """ORCAKeyword: SCF solver."""
+    KDIIS = ORCAKeyword("kdiis")
+    """ORCAKeyword: SCF solver."""
+    SOSCF = ORCAKeyword("soscf")
+    """ORCAKeyword: SCF solver."""
+    TRAH = ORCAKeyword("trah")
+    """ORCAKeyword: SCF solver."""
+
+
+class Scf(ScfThreshold, ScfConvergence, ScfGuess, ScfSolver):
     """Enum to store all simple keywords of type Scf."""
 
-    G3CONV = SimpleKeyword("3conv")
-    """SimpleKeyword: SCF solver combination."""
-    AODIISTRAH = SimpleKeyword("aodiistrah")
-    """SimpleKeyword: SCF solver combination."""
-    DIISTRAH = SimpleKeyword("diistrah")
-    """SimpleKeyword: SCF solver combination."""
-    KDIISTRAH = SimpleKeyword("kdiistrah")
-    """SimpleKeyword: SCF solver combination."""
-    DIIS = SimpleKeyword("diis")
-    """SimpleKeyword: SCF solver."""
-    NODIIS = SimpleKeyword("nodiis")
-    """SimpleKeyword: SCF solver."""
-    AODIIS = SimpleKeyword("aodiis")
-    """SimpleKeyword: SCF solver."""
-    NOAODIIS = SimpleKeyword("noaodiis")
-    """SimpleKeyword: SCF solver."""
-    KDIIS = SimpleKeyword("kdiis")
-    """SimpleKeyword: SCF solver."""
-    NOKDIIS = SimpleKeyword("nokdiis")
-    """SimpleKeyword: SCF solver."""
-    SOSCF = SimpleKeyword("soscf")
-    """SimpleKeyword: SCF solver."""
-    NOSOSCF = SimpleKeyword("nososcf")
-    """SimpleKeyword: SCF solver."""
-    TRAH = SimpleKeyword("trah")
-    """SimpleKeyword: SCF solver."""
-    NOTRAH = SimpleKeyword("notrah")
-    """SimpleKeyword: SCF solver."""
-    AUTOSTART = SimpleKeyword("autostart")
-    """SimpleKeyword: SCF initial guess start SCF from a gbw file with the same basename (default)."""
-    NOAUTOSTART = SimpleKeyword("noautostart")
-    """SimpleKeyword: SCF initial guess do not start SCF from a gbw file with the same basename."""
-    MOREAD = SimpleKeyword("moread")
-    """SimpleKeyword: SCF initial guess read orbitals from gbw file."""
-    EHTANO = SimpleKeyword("ehtano")
-    """SimpleKeyword: SCF initial guess."""
-    HCORE = SimpleKeyword("hcore")
-    """SimpleKeyword: SCF initial guess."""
-    HUECKEL = SimpleKeyword("hueckel")
-    """SimpleKeyword: SCF initial guess."""
-    PATOM = SimpleKeyword("patom")
-    """SimpleKeyword: SCF initial guess."""
-    PMODEL = SimpleKeyword("pmodel")
-    """SimpleKeyword: SCF initial guess."""
-    PMODELX = SimpleKeyword("pmodelx")
-    """SimpleKeyword: SCF initial guess."""
-    PMODELXAV = SimpleKeyword("pmodelxav")
-    """SimpleKeyword: SCF initial guess."""
-    PMODELXPM = SimpleKeyword("pmodelxpm")
-    """SimpleKeyword: SCF initial guess."""
-    SYMBREAKGUESS = SimpleKeyword("symbreakguess")
-    """SimpleKeyword: SCF initial guess."""
-    UNITMATRIXGUESS = SimpleKeyword("unitmatrixguess")
-    """SimpleKeyword: SCF initial guess."""
-    USEGRAMSCHMIDT = SimpleKeyword("usegramschmidt")
-    """SimpleKeyword: SCF initial guess."""
-    CALCGUESSENERGY = SimpleKeyword("calcguessenergy")
-    """SimpleKeyword: Calculate the guess energy."""
-    CONV = SimpleKeyword("conv")
-    """SimpleKeyword: Conventional SCF."""
-    SEMIDIRECT = SimpleKeyword("semidirect")
-    """SimpleKeyword: Semidirect SCF."""
-    DIRECT = SimpleKeyword("direct")
-    """SimpleKeyword: Direct SCF."""
-    SCFSTAB = SimpleKeyword("scfstab")
-    """SimpleKeyword: SCF stability analysis."""
-    NOSCFSTAB = SimpleKeyword("noscfstab")
-    """SimpleKeyword: No SCF stability analysis."""
-    DELTASCF = SimpleKeyword("deltascf")
-    """SimpleKeyword: DeltaSCF for access to excited states."""
-    FRSOSCF = SimpleKeyword("frsoscf")
-    """SimpleKeyword: freeze and release DeltaSCF settings."""
-    GMF = SimpleKeyword("gmf")
-    """SimpleKeyword: DeltaSCF settings."""
-    SMEAR = SimpleKeyword("smear")
-    """SimpleKeyword: do finite temperature DFT (smearing)."""
-    NOSMEAR = SimpleKeyword("nosmear")
-    """SimpleKeyword: do not use finite temperature DFT (smearing)."""
-    FRACOCC = SimpleKeyword("fracocc")
-    """SimpleKeyword: enable fractional occupations."""
-    SCFCONVFORCED = SimpleKeyword("scfconvforced")
-    """SimpleKeyword: Force SCF convergence for subsequent operations."""
-    SLOPPYSCF = SimpleKeyword("sloppyscf")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    LOOSESCF = SimpleKeyword("loosescf")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    NORMALSCF = SimpleKeyword("normalscf")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    STRONGSCF = SimpleKeyword("strongscf")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    TIGHTSCF = SimpleKeyword("tightscf")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    VERYTIGHTSCF = SimpleKeyword("verytightscf")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    EXTREMESCF = SimpleKeyword("extremescf")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    SLOPPYSCFCHECK = SimpleKeyword("sloppyscfcheck")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    NOSLOPPYSCFCHECK = SimpleKeyword("nosloppyscfcheck")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    SCFCHECKGRAD = SimpleKeyword("scfcheckgrad")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    SCFCONV6 = SimpleKeyword("scfconv6")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    SCFCONV7 = SimpleKeyword("scfconv7")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    SCFCONV8 = SimpleKeyword("scfconv8")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    SCFCONV9 = SimpleKeyword("scfconv9")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    SCFCONV10 = SimpleKeyword("scfconv10")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    SCFCONV11 = SimpleKeyword("scfconv11")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    SCFCONV12 = SimpleKeyword("scfconv12")
-    """SimpleKeyword: SCF convergence threshold settings."""
-    EASYCONV = SimpleKeyword("easyconv")
-    """SimpleKeyword: SCF convergence strategy."""
-    NORMALCONV = SimpleKeyword("normalconv")
-    """SimpleKeyword: SCF convergence strategy."""
-    SLOWCONV = SimpleKeyword("slowconv")
-    """SimpleKeyword: SCF convergence strategy."""
-    VERYSLOWCONV = SimpleKeyword("veryslowconv")
-    """SimpleKeyword: SCF convergence strategy."""
-    DAMP = SimpleKeyword("damp")
-    """SimpleKeyword: SCF settings."""
-    NODAMP = SimpleKeyword("nodamp")
-    """SimpleKeyword: SCF settings."""
-    LSHIFT = SimpleKeyword("lshift")
-    """SimpleKeyword: SCF settings."""
-    NOLSHIFT = SimpleKeyword("nolshift")
-    """SimpleKeyword: SCF settings."""
-    USEINCREMENTAL = SimpleKeyword("useincremental")
-    """SimpleKeyword: SCF settings."""
-    NOINCREMENTAL = SimpleKeyword("noincremental")
-    """SimpleKeyword: SCF settings."""
-    NOITER = SimpleKeyword("noiter")
-    """SimpleKeyword: SCF settings no iterations."""
-    SCFLBFGS = SimpleKeyword("scflbfgs")
-    """SimpleKeyword: SOSCF settings."""
-    SCFLBOFILL = SimpleKeyword("scflbofill")
-    """SimpleKeyword: SOSCF settings."""
-    SCFLPOWELL = SimpleKeyword("scflpowell")
-    """SimpleKeyword: SOSCF settings."""
-    SCFLSR1 = SimpleKeyword("scflsr1")
-    """SimpleKeyword: SOSCF settings."""
-    NOTRAHRANDOMIZE = SimpleKeyword("notrahrandomize")
-    """SimpleKeyword: TRAH settings."""
+    G3CONV = ORCAKeyword("3conv")
+    """ORCAKeyword: SCF solver combination."""
+    AODIISTRAH = ORCAKeyword("aodiistrah")
+    """ORCAKeyword: SCF solver combination."""
+    DIISTRAH = ORCAKeyword("diistrah")
+    """ORCAKeyword: SCF solver combination."""
+    KDIISTRAH = ORCAKeyword("kdiistrah")
+    """ORCAKeyword: SCF solver combination."""
+
+    NODIIS = ORCAKeyword("nodiis")
+    """ORCAKeyword: SCF solver."""
+    AODIIS = ORCAKeyword("aodiis")
+    """ORCAKeyword: SCF solver."""
+    NOAODIIS = ORCAKeyword("noaodiis")
+    """ORCAKeyword: SCF solver."""
+
+    NOKDIIS = ORCAKeyword("nokdiis")
+    """ORCAKeyword: SCF solver."""
+
+    NOSOSCF = ORCAKeyword("nososcf")
+    """ORCAKeyword: SCF solver."""
+
+    NOTRAH = ORCAKeyword("notrah")
+    """ORCAKeyword: SCF solver."""
+    AUTOSTART = ORCAKeyword("autostart")
+    """ORCAKeyword: SCF initial guess start SCF from a gbw file with the same basename (default)."""
+    NOAUTOSTART = ORCAKeyword("noautostart")
+    """ORCAKeyword: SCF initial guess do not start SCF from a gbw file with the same basename."""
+    HUECKEL = ORCAKeyword("hueckel")
+    """ORCAKeyword: SCF initial guess."""
+
+    UNITMATRIXGUESS = ORCAKeyword("unitmatrixguess")
+    """ORCAKeyword: SCF initial guess."""
+    USEGRAMSCHMIDT = ORCAKeyword("usegramschmidt")
+    """ORCAKeyword: SCF initial guess."""
+    CALCGUESSENERGY = ORCAKeyword("calcguessenergy")
+    """ORCAKeyword: Calculate the guess energy."""
+    CONV = ORCAKeyword("conv")
+    """ORCAKeyword: Conventional SCF."""
+    SEMIDIRECT = ORCAKeyword("semidirect")
+    """ORCAKeyword: Semidirect SCF."""
+    DIRECT = ORCAKeyword("direct")
+    """ORCAKeyword: Direct SCF."""
+    SCFSTAB = ORCAKeyword("scfstab")
+    """ORCAKeyword: SCF stability analysis."""
+    NOSCFSTAB = ORCAKeyword("noscfstab")
+    """ORCAKeyword: No SCF stability analysis."""
+    DELTASCF = ORCAKeyword("deltascf")
+    """ORCAKeyword: DeltaSCF for access to excited states."""
+    FRSOSCF = ORCAKeyword("frsoscf")
+    """ORCAKeyword: freeze and release DeltaSCF settings."""
+    GMF = ORCAKeyword("gmf")
+    """ORCAKeyword: DeltaSCF settings."""
+    SMEAR = ORCAKeyword("smear")
+    """ORCAKeyword: do finite temperature DFT (smearing)."""
+    NOSMEAR = ORCAKeyword("nosmear")
+    """ORCAKeyword: do not use finite temperature DFT (smearing)."""
+    FRACOCC = ORCAKeyword("fracocc")
+    """ORCAKeyword: enable fractional occupations."""
+    SCFCONVFORCED = ORCAKeyword("scfconvforced")
+    """ORCAKeyword: Force SCF convergence for subsequent operations."""
+    SLOPPYSCFCHECK = ORCAKeyword("sloppyscfcheck")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    NOSLOPPYSCFCHECK = ORCAKeyword("nosloppyscfcheck")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    SCFCHECKGRAD = ORCAKeyword("scfcheckgrad")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    SCFCONV6 = ORCAKeyword("scfconv6")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    SCFCONV7 = ORCAKeyword("scfconv7")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    SCFCONV8 = ORCAKeyword("scfconv8")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    SCFCONV9 = ORCAKeyword("scfconv9")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    SCFCONV10 = ORCAKeyword("scfconv10")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    SCFCONV11 = ORCAKeyword("scfconv11")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    SCFCONV12 = ORCAKeyword("scfconv12")
+    """ORCAKeyword: SCF convergence threshold settings."""
+    DAMP = ORCAKeyword("damp")
+    """ORCAKeyword: SCF settings."""
+    NODAMP = ORCAKeyword("nodamp")
+    """ORCAKeyword: SCF settings."""
+    LSHIFT = ORCAKeyword("lshift")
+    """ORCAKeyword: SCF settings."""
+    NOLSHIFT = ORCAKeyword("nolshift")
+    """ORCAKeyword: SCF settings."""
+    USEINCREMENTAL = ORCAKeyword("useincremental")
+    """ORCAKeyword: SCF settings."""
+    NOINCREMENTAL = ORCAKeyword("noincremental")
+    """ORCAKeyword: SCF settings."""
+    NOITER = ORCAKeyword("noiter")
+    """ORCAKeyword: SCF settings no iterations."""
+    SCFLBFGS = ORCAKeyword("scflbfgs")
+    """ORCAKeyword: SOSCF settings."""
+    SCFLBOFILL = ORCAKeyword("scflbofill")
+    """ORCAKeyword: SOSCF settings."""
+    SCFLPOWELL = ORCAKeyword("scflpowell")
+    """ORCAKeyword: SOSCF settings."""
+    SCFLSR1 = ORCAKeyword("scflsr1")
+    """ORCAKeyword: SOSCF settings."""
+    NOTRAHRANDOMIZE = ORCAKeyword("notrahrandomize")
+    """ORCAKeyword: TRAH settings."""

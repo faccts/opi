@@ -1,6 +1,7 @@
 from opi.output.models.base.get_item import GetItem
 from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
+    StrictNonNegativeInt,
     StrictPositiveInt,
 )
 
@@ -21,6 +22,8 @@ class RoCisEnergy(GetItem):
         Correlation energy
     totalenergy: StrictFiniteFloat | None, default = None
         Total energy
+    numofroots: StrictNonNegativeInt | None, default = None
+        Number of calculated roots
     """
 
     multiplicities: list[list[StrictPositiveInt]] | None = None
@@ -28,3 +31,4 @@ class RoCisEnergy(GetItem):
     refenergy: StrictFiniteFloat | None = None
     correnergy: StrictFiniteFloat | None = None
     totalenergy: StrictFiniteFloat | None = None
+    numofroots: StrictNonNegativeInt | None = None

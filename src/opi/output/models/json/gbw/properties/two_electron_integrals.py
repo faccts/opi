@@ -1,3 +1,5 @@
+from pydantic import Field
+
 from opi.output.models.base.get_item import GetItem
 from opi.output.models.base.strict_types import StrictNonNegativeFloat, StrictNonNegativeInt
 from opi.output.models.json.gbw.properties.molecular_two_electron_integral import (
@@ -48,19 +50,23 @@ class TwoElectronIntegrals(GetItem):
         Molecular orbital basis two electron integrals in Exchange order, all
     """
 
-    orbwin: list[StrictNonNegativeInt] | None = None
-    thresh: StrictNonNegativeFloat | None = None
-    ao_pqrs: list[list[TwoElectronIntegralElement]] | None = None
-    ao_prqs: list[list[TwoElectronIntegralElement]] | None = None
-    mo_ijkl: MOTwoElectronIntegral | None = None
-    mo_ijka: MOTwoElectronIntegral | None = None
-    mo_ijab: MOTwoElectronIntegral | None = None
-    mo_iabc: MOTwoElectronIntegral | None = None
-    mo_abcd: MOTwoElectronIntegral | None = None
-    mo_pqrs: MOTwoElectronIntegral | None = None
-    mo_ikjl: MOTwoElectronIntegral | None = None
-    mo_ikja: MOTwoElectronIntegral | None = None
-    mo_iajb: MOTwoElectronIntegral | None = None
-    mo_ibac: MOTwoElectronIntegral | None = None
-    mo_acbd: MOTwoElectronIntegral | None = None
-    mo_prqs: MOTwoElectronIntegral | None = None
+    orbwin: list[StrictNonNegativeInt] | None = Field(default=None, serialization_alias="OrbWin")
+    thresh: StrictNonNegativeFloat | None = Field(default=None, serialization_alias="Thresh")
+    ao_pqrs: list[list[TwoElectronIntegralElement]] | None = Field(
+        default=None, serialization_alias="AO_PQRS"
+    )
+    ao_prqs: list[list[TwoElectronIntegralElement]] | None = Field(
+        default=None, serialization_alias="AO_PRQS"
+    )
+    mo_ijkl: MOTwoElectronIntegral | None = Field(default=None, serialization_alias="MO_IJKL")
+    mo_ijka: MOTwoElectronIntegral | None = Field(default=None, serialization_alias="MO_IJKA")
+    mo_ijab: MOTwoElectronIntegral | None = Field(default=None, serialization_alias="MO_IJAB")
+    mo_iabc: MOTwoElectronIntegral | None = Field(default=None, serialization_alias="MO_IABC")
+    mo_abcd: MOTwoElectronIntegral | None = Field(default=None, serialization_alias="MO_ABCD")
+    mo_pqrs: MOTwoElectronIntegral | None = Field(default=None, serialization_alias="MO_PQRS")
+    mo_ikjl: MOTwoElectronIntegral | None = Field(default=None, serialization_alias="MO_IKJL")
+    mo_ikja: MOTwoElectronIntegral | None = Field(default=None, serialization_alias="MO_IKJA")
+    mo_iajb: MOTwoElectronIntegral | None = Field(default=None, serialization_alias="MO_IAJB")
+    mo_ibac: MOTwoElectronIntegral | None = Field(default=None, serialization_alias="MO_IBAC")
+    mo_acbd: MOTwoElectronIntegral | None = Field(default=None, serialization_alias="MO_ACBD")
+    mo_prqs: MOTwoElectronIntegral | None = Field(default=None, serialization_alias="MO_PRQS")

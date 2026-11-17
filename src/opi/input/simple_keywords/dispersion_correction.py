@@ -1,5 +1,5 @@
 from opi.input.simple_keywords.base import (
-    SimpleKeyword,
+    ORCAKeyword,
     SimpleKeywordBox,
 )
 
@@ -9,23 +9,21 @@ __all__ = ("DispersionCorrection",)
 class DispersionCorrection(SimpleKeywordBox):
     """Enum to store all simple keywords of type DispersionCorrection."""
 
-    ABC = SimpleKeyword("abc")
-    """SimpleKeyword: Use three body term, applicable together with D3BJ.."""
-    D2 = SimpleKeyword("d2")
-    """SimpleKeyword: D2 - Dispersion correction.."""
-    D3 = SimpleKeyword("d3")
-    """SimpleKeyword: D3 - Dispersion correction.."""
-    D3ZERO = SimpleKeyword("d3zero")
-    """SimpleKeyword: D3 - Dispersion correction with zero damping.."""
-    D3BJ = SimpleKeyword("d3bj")
-    """SimpleKeyword: D3 - Dispersion correction with Becke-Johnson damping."""
-    D3TZ = SimpleKeyword("d3tz")
-    """SimpleKeyword: Use TZ optimized damping parameters if available."""
-    D4 = SimpleKeyword("d4")
-    """SimpleKeyword: D4 - Dispersion correction with three body term and Becke-Johnson damping."""
-    NL = SimpleKeyword("nl")
-    """SimpleKeyword: Use -NL / -VV10 / -V dispersion correction."""
-    POPDISP = SimpleKeyword("popdisp")
-    """SimpleKeyword: Pairwise dispersion correction analysis."""
-    SCNL = SimpleKeyword("scnl")
-    """SimpleKeyword: Use self-consistent NL."""
+    ABC = ORCAKeyword("abc")
+    """ORCAKeyword: Use three body term, applicable together with D3BJ.."""
+    D2 = ORCAKeyword("d2")
+    """ORCAKeyword: D2 - Dispersion correction.."""
+    D3 = ORCAKeyword("d3")
+    """ORCAKeyword: D3 - Dispersion correction.."""
+    D3ZERO = ORCAKeyword("d3zero")
+    """ORCAKeyword: D3 - Dispersion correction with zero damping.."""
+    D3BJ = ORCAKeyword("d3bj")
+    """ORCAKeyword: D3 - Dispersion correction with Becke-Johnson damping."""
+    D3TZ = ORCAKeyword("d3tz")
+    """ORCAKeyword: Use TZ optimized damping parameters if available."""
+    D4 = ORCAKeyword("d4")
+    """ORCAKeyword: D4 - Dispersion correction with three body term and Becke-Johnson damping."""
+    NL = ORCAKeyword("nl")
+    """ORCAKeyword: Use -NL / -VV10 / -V dispersion correction."""
+    SCNL = ORCAKeyword("scnl")
+    """ORCAKeyword: Use self-consistent NL."""

@@ -242,3 +242,30 @@ class Solvent(StrEnum):
     WOCTANOL = "WOCTANOL"
     WETOCTANOL = "WETOCTANOL"
     CONDUCTOR = "CONDUCTOR"
+
+    @classmethod
+    def find_keyword(cls, key: str) -> str:
+        """
+        Function to find member of this class using a key as argument.
+
+        Parameters
+        ----------
+        key: str
+            String used to find keyword
+
+        Returns
+        -------
+        str
+            Found keyword
+
+        Raises
+        ------
+        ValueError
+            If the given key is not found in this class
+
+        """
+        norm = key.lower()
+        for member in cls:
+            if member.value.lower() == norm or member.name.lower() == norm:
+                return str(member.value)
+        raise ValueError(f"Key {key} not found in {cls.__name__}")

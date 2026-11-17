@@ -1,5 +1,5 @@
 from opi.input.simple_keywords.base import (
-    SimpleKeyword,
+    ORCAKeyword,
     SimpleKeywordBox,
 )
 
@@ -9,95 +9,95 @@ __all__ = ("Miscellaneous",)
 class Miscellaneous(SimpleKeywordBox):
     """Enum to store all simple keywords of type Miscellaneous."""
 
-    ANGS = SimpleKeyword("angs")
-    """SimpleKeyword: Miscellaneous."""
-    BOHRS = SimpleKeyword("bohrs")
-    """SimpleKeyword: Miscellaneous."""
-    CHEAPINTS = SimpleKeyword("cheapints")
-    """SimpleKeyword: Miscellaneous."""
-    KEEPDENSITY = SimpleKeyword("keepdensity")
-    """SimpleKeyword: Miscellaneous."""
-    KEEPFOCK = SimpleKeyword("keepfock")
-    """SimpleKeyword: Miscellaneous."""
-    KEEPINTS = SimpleKeyword("keepints")
-    """SimpleKeyword: Miscellaneous."""
-    KEEPRESPDENSITY = SimpleKeyword("keeprespdensity")
-    """SimpleKeyword: Miscellaneous."""
-    KEEPTRANSDENSITY = SimpleKeyword("keeptransdensity")
-    """SimpleKeyword: Miscellaneous."""
-    LIBINT = SimpleKeyword("libint")
-    """SimpleKeyword: Libint for Integral generation."""
-    MASS2016 = SimpleKeyword("mass2016")
-    """SimpleKeyword: Miscellaneous."""
-    NOCHEAPINTS = SimpleKeyword("nocheapints")
-    """SimpleKeyword: Miscellaneous."""
-    NOKEEPDENSITY = SimpleKeyword("nokeepdensity")
-    """SimpleKeyword: Miscellaneous."""
-    NOKEEPFOCK = SimpleKeyword("nokeepfock")
-    """SimpleKeyword: Miscellaneous."""
-    NOKEEPINTS = SimpleKeyword("nokeepints")
-    """SimpleKeyword: Miscellaneous."""
-    NOLIBINT = SimpleKeyword("nolibint")
-    """SimpleKeyword: Libint for Integral generation."""
-    NOREADINTS = SimpleKeyword("noreadints")
-    """SimpleKeyword: Miscellaneous."""
-    NOSHARK = SimpleKeyword("noshark")
-    """SimpleKeyword: Shark for integral generation."""
-    NOSYM = SimpleKeyword("nosym")
-    """SimpleKeyword: Symmetry keywords."""
-    NOSYMMETRY = SimpleKeyword("nosymmetry")
-    """SimpleKeyword: Symmetry keywords."""
-    NOUSESHARK = SimpleKeyword("nouseshark")
-    """SimpleKeyword: Shark for integral generation."""
-    NOUSESYM = SimpleKeyword("nousesym")
-    """SimpleKeyword: Symmetry keywords."""
-    NOUSESYMMETRY = SimpleKeyword("nousesymmetry")
-    """SimpleKeyword: Symmetry keywords."""
-    NOXCFUN = SimpleKeyword("noxcfun")
-    """SimpleKeyword: do not use Xcfun library."""
-    PREFERC2V = SimpleKeyword("preferc2v")
-    """SimpleKeyword: Symmetry keywords."""
-    PREFERD2 = SimpleKeyword("preferd2")
-    """SimpleKeyword: Symmetry keywords."""
-    READINTS = SimpleKeyword("readints")
-    """SimpleKeyword: Miscellaneous."""
-    RESCUE = SimpleKeyword("rescue")
-    """SimpleKeyword: Try to rescue a calculation from an old orca version."""
-    SCALEPC = SimpleKeyword("scalepc")
-    """SimpleKeyword: Scale Pointcharges."""
-    SHARK = SimpleKeyword("shark")
-    """SimpleKeyword: Shark for integral generation."""
-    USEC2V = SimpleKeyword("usec2v")
-    """SimpleKeyword: Symmetry keywords."""
-    USED2 = SimpleKeyword("used2")
-    """SimpleKeyword: Symmetry keywords."""
-    USESHARK = SimpleKeyword("useshark")
-    """SimpleKeyword: Shark for integral generation."""
-    USESYM = SimpleKeyword("usesym")
-    """SimpleKeyword: Symmetry keywords."""
-    USESYMMETRY = SimpleKeyword("usesymmetry")
-    """SimpleKeyword: Symmetry keywords."""
-    XCFUN = SimpleKeyword("xcfun")
-    """SimpleKeyword: Use Xcfun library."""
-    PAF = SimpleKeyword("paf")
-    """SimpleKeyword: Bring molecule into its principle axis orientation."""
-    ALLOWRHF = SimpleKeyword("allowrhf")
-    """SimpleKeyword: AllowRHF for open-shell."""
-    NOALLOWRHF = SimpleKeyword("noallowrhf")
-    """SimpleKeyword: AllowRHF for open-shell."""
-    DOEQ = SimpleKeyword("doeq")
-    """SimpleKeyword: Do Eq for nuclear charges."""
-    NOEQ = SimpleKeyword("noeq")
-    """SimpleKeyword: Do not Eq for nuclear charges."""
-    BPOP = SimpleKeyword("bpop")
-    """SimpleKeyword: Use Boltzmann weighting in multiple xyz job."""
-    NUMGRAD = SimpleKeyword("numgrad")
-    """SimpleKeyword: Numerical gradient."""
-    SURFCROSSNUMFREQ = SimpleKeyword("surfcrossnumfreq")
-    """SimpleKeyword: Check for surface crossing frequency."""
-    MECP_NUMFREQ = SimpleKeyword("mecp-numfreq")
-    """SimpleKeyword: Numerical MECP freq."""
-    NEARIR = SimpleKeyword("nearir")
-    """SimpleKeyword: VPT2 analysis for nearIR."""
-    VPT2 = SimpleKeyword("vpt2")
-    """SimpleKeyword: VPT2 analysis."""
+    ANGS = ORCAKeyword("angs")
+    """ORCAKeyword: Miscellaneous."""
+    BOHRS = ORCAKeyword("bohrs")
+    """ORCAKeyword: Miscellaneous."""
+    CHEAPINTS = ORCAKeyword("cheapints")
+    """ORCAKeyword: Miscellaneous."""
+    KEEPDENSITY = ORCAKeyword("keepdensity")
+    """ORCAKeyword: Miscellaneous."""
+    KEEPFOCK = ORCAKeyword("keepfock")
+    """ORCAKeyword: Miscellaneous."""
+    KEEPINTS = ORCAKeyword("keepints")
+    """ORCAKeyword: Miscellaneous."""
+    KEEPRESPDENSITY = ORCAKeyword("keeprespdensity")
+    """ORCAKeyword: Miscellaneous."""
+    KEEPTRANSDENSITY = ORCAKeyword("keeptransdensity")
+    """ORCAKeyword: Miscellaneous."""
+    LIBINT = ORCAKeyword("libint")
+    """ORCAKeyword: Libint for Integral generation."""
+    MASS2016 = ORCAKeyword("mass2016")
+    """ORCAKeyword: Miscellaneous."""
+    NOCHEAPINTS = ORCAKeyword("nocheapints")
+    """ORCAKeyword: Miscellaneous."""
+    NOKEEPDENSITY = ORCAKeyword("nokeepdensity")
+    """ORCAKeyword: Miscellaneous."""
+    NOKEEPFOCK = ORCAKeyword("nokeepfock")
+    """ORCAKeyword: Miscellaneous."""
+    NOKEEPINTS = ORCAKeyword("nokeepints")
+    """ORCAKeyword: Miscellaneous."""
+    NOLIBINT = ORCAKeyword("nolibint")
+    """ORCAKeyword: Libint for Integral generation."""
+    NOREADINTS = ORCAKeyword("noreadints")
+    """ORCAKeyword: Miscellaneous."""
+    NOSHARK = ORCAKeyword("noshark")
+    """ORCAKeyword: Shark for integral generation."""
+    NOSYM = ORCAKeyword("nosym")
+    """ORCAKeyword: Symmetry keywords."""
+    NOSYMMETRY = ORCAKeyword("nosymmetry")
+    """ORCAKeyword: Symmetry keywords."""
+    NOUSESHARK = ORCAKeyword("nouseshark")
+    """ORCAKeyword: Shark for integral generation."""
+    NOUSESYM = ORCAKeyword("nousesym")
+    """ORCAKeyword: Symmetry keywords."""
+    NOUSESYMMETRY = ORCAKeyword("nousesymmetry")
+    """ORCAKeyword: Symmetry keywords."""
+    NOXCFUN = ORCAKeyword("noxcfun")
+    """ORCAKeyword: do not use Xcfun library."""
+    PREFERC2V = ORCAKeyword("preferc2v")
+    """ORCAKeyword: Symmetry keywords."""
+    PREFERD2 = ORCAKeyword("preferd2")
+    """ORCAKeyword: Symmetry keywords."""
+    READINTS = ORCAKeyword("readints")
+    """ORCAKeyword: Miscellaneous."""
+    RESCUE = ORCAKeyword("rescue")
+    """ORCAKeyword: Try to rescue a calculation from an old orca version."""
+    SCALEPC = ORCAKeyword("scalepc")
+    """ORCAKeyword: Scale Pointcharges."""
+    SHARK = ORCAKeyword("shark")
+    """ORCAKeyword: Shark for integral generation."""
+    USEC2V = ORCAKeyword("usec2v")
+    """ORCAKeyword: Symmetry keywords."""
+    USED2 = ORCAKeyword("used2")
+    """ORCAKeyword: Symmetry keywords."""
+    USESHARK = ORCAKeyword("useshark")
+    """ORCAKeyword: Shark for integral generation."""
+    USESYM = ORCAKeyword("usesym")
+    """ORCAKeyword: Symmetry keywords."""
+    USESYMMETRY = ORCAKeyword("usesymmetry")
+    """ORCAKeyword: Symmetry keywords."""
+    XCFUN = ORCAKeyword("xcfun")
+    """ORCAKeyword: Use Xcfun library."""
+    PAF = ORCAKeyword("paf")
+    """ORCAKeyword: Bring molecule into its principle axis orientation."""
+    ALLOWRHF = ORCAKeyword("allowrhf")
+    """ORCAKeyword: AllowRHF for open-shell."""
+    NOALLOWRHF = ORCAKeyword("noallowrhf")
+    """ORCAKeyword: AllowRHF for open-shell."""
+    DOEQ = ORCAKeyword("doeq")
+    """ORCAKeyword: Do Eq for nuclear charges."""
+    NOEQ = ORCAKeyword("noeq")
+    """ORCAKeyword: Do not Eq for nuclear charges."""
+    BPOP = ORCAKeyword("bpop")
+    """ORCAKeyword: Use Boltzmann weighting in multiple xyz job."""
+    NUMGRAD = ORCAKeyword("numgrad")
+    """ORCAKeyword: Numerical gradient."""
+    SURFCROSSNUMFREQ = ORCAKeyword("surfcrossnumfreq")
+    """ORCAKeyword: Check for surface crossing frequency."""
+    MECP_NUMFREQ = ORCAKeyword("mecp-numfreq")
+    """ORCAKeyword: Numerical MECP freq."""
+    NEARIR = ORCAKeyword("nearir")
+    """ORCAKeyword: VPT2 analysis for nearIR."""
+    VPT2 = ORCAKeyword("vpt2")
+    """ORCAKeyword: VPT2 analysis."""

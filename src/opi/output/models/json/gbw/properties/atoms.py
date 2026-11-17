@@ -1,4 +1,4 @@
-from pydantic import StrictStr
+from pydantic import Field, StrictStr
 
 from opi.output.models.base.get_item import GetItem
 from opi.output.models.base.strict_types import (
@@ -38,14 +38,22 @@ class Atoms(GetItem):
         nuclearcharge at the atom
     """
 
-    basis: list[Base] | None = None
-    basisauxc: list[Base] | None = None
-    basisauxj: list[Base] | None = None
-    basisauxjk: list[Base] | None = None
-    coords: list[StrictFiniteFloat] | None = None
-    elementlabel: StrictStr | None = None
-    elementnumber: StrictNonNegativeInt | None = None
-    idx: StrictNonNegativeInt | None = None
-    loewdincharge: StrictFiniteFloat | None = None
-    mullikencharge: StrictFiniteFloat | None = None
-    nuclearcharge: StrictFiniteFloat | None = None
+    basis: list[Base] | None = Field(default=None, serialization_alias="Basis")
+    basisauxc: list[Base] | None = Field(default=None, serialization_alias="BasisAuxC")
+    basisauxj: list[Base] | None = Field(default=None, serialization_alias="BasisAuxJ")
+    basisauxjk: list[Base] | None = Field(default=None, serialization_alias="BasisAuxJK")
+    coords: list[StrictFiniteFloat] | None = Field(default=None, serialization_alias="Coords")
+    elementlabel: StrictStr | None = Field(default=None, serialization_alias="ElementLabel")
+    elementnumber: StrictNonNegativeInt | None = Field(
+        default=None, serialization_alias="ElementNumber"
+    )
+    idx: StrictNonNegativeInt | None = Field(default=None, serialization_alias="Idx")
+    loewdincharge: StrictFiniteFloat | None = Field(
+        default=None, serialization_alias="LoewdinCharge"
+    )
+    mullikencharge: StrictFiniteFloat | None = Field(
+        default=None, serialization_alias="MullikenCharge"
+    )
+    nuclearcharge: StrictFiniteFloat | None = Field(
+        default=None, serialization_alias="NuclearCharge"
+    )

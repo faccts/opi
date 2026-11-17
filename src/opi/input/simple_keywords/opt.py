@@ -1,49 +1,52 @@
 from opi.input.simple_keywords.base import (
-    SimpleKeyword,
+    ORCAKeyword,
     SimpleKeywordBox,
 )
 
 __all__ = ("Opt",)
 
 
-class Opt(SimpleKeywordBox):
+class OptThreshold(SimpleKeywordBox):
+    CRUDEOPT = ORCAKeyword("crudeopt", alias="crude")
+    """ORCAKeyword: Geometry optimization with thresholds."""
+    LOOSEOPT = ORCAKeyword("looseopt", alias="loose")
+    """ORCAKeyword: Geometry optimization with thresholds."""
+    NORMALOPT = ORCAKeyword("normalopt", alias="normal")
+    """ORCAKeyword: Geometry optimization with thresholds."""
+    SLOPPYOPT = ORCAKeyword("sloppyopt", alias="sloppy")
+    """ORCAKeyword: Geometry optimization with thresholds."""
+    TIGHTOPT = ORCAKeyword("tightopt", alias="tight")
+    """ORCAKeyword: Geometry optimization with thresholds."""
+    VERYTIGHTOPT = ORCAKeyword("verytightopt", alias="verytight")
+    """ORCAKeyword: Geometry optimization with thresholds."""
+
+
+class Opt(OptThreshold):
     """Enum to store all simple keywords of type Opt."""
 
-    OPT = SimpleKeyword("opt")
-    """SimpleKeyword: Perform a geometry optimization."""
-    CRUDEOPT = SimpleKeyword("crudeopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
-    INTERPOPT = SimpleKeyword("interpopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
-    LOOSEOPT = SimpleKeyword("looseopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
-    NORMALOPT = SimpleKeyword("normalopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
-    SLOPPYOPT = SimpleKeyword("sloppyopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
-    TIGHTOPT = SimpleKeyword("tightopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
-    VERYTIGHTOPT = SimpleKeyword("verytightopt")
-    """SimpleKeyword: Geometry optimization with thresholds."""
-    OPTH = SimpleKeyword("opth")
-    """SimpleKeyword: Optimize only hydrogen atoms."""
-    COPT = SimpleKeyword("copt")
-    """SimpleKeyword: Perform geometry optimization (cartesian coordinates)."""
-    L_OPT = SimpleKeyword("l-opt")
-    """SimpleKeyword: Perform geometry optimization."""
-    L_OPTH = SimpleKeyword("l-opth")
-    """SimpleKeyword: Optimize only hydrogen atoms."""
-    OPTTS = SimpleKeyword("optts")
-    """SimpleKeyword: optimize transition state."""
-    OPTTS_GMF = SimpleKeyword("optts(gmf)")
-    """SimpleKeyword: optimize transition state."""
-    QMMMOPT = SimpleKeyword("qmmmopt")
-    """SimpleKeyword: Optimize the geometry with qmmm."""
-    QMMMOPT_PDYNAMO = SimpleKeyword("qmmmopt/pdynamo")
-    """SimpleKeyword: Optimize the geometry with qmmm."""
-    RIGIDBODYOPT = SimpleKeyword("rigidbodyopt")
-    """SimpleKeyword: Optimize fragments as rigid bodies."""
-    CI_OPT = SimpleKeyword("ci-opt")
-    """SimpleKeyword: conical-intersection optimization."""
-    MECP_OPT = SimpleKeyword("mecp-opt")
-    """SimpleKeyword: MECP optimization."""
+    OPT = ORCAKeyword("opt")
+    """ORCAKeyword: Perform a geometry optimization."""
+    INTERPOPT = ORCAKeyword("interpopt")
+    """ORCAKeyword: Geometry optimization with thresholds."""
+    OPTH = ORCAKeyword("opth")
+    """ORCAKeyword: Optimize only hydrogen atoms."""
+    COPT = ORCAKeyword("copt")
+    """ORCAKeyword: Perform geometry optimization (cartesian coordinates)."""
+    L_OPT = ORCAKeyword("l-opt")
+    """ORCAKeyword: Perform geometry optimization."""
+    L_OPTH = ORCAKeyword("l-opth")
+    """ORCAKeyword: Optimize only hydrogen atoms."""
+    OPTTS = ORCAKeyword("optts")
+    """ORCAKeyword: optimize transition state."""
+    OPTTS_GMF = ORCAKeyword("optts(gmf)")
+    """ORCAKeyword: optimize transition state."""
+    QMMMOPT = ORCAKeyword("qmmmopt")
+    """ORCAKeyword: Optimize the geometry with qmmm."""
+    QMMMOPT_PDYNAMO = ORCAKeyword("qmmmopt/pdynamo")
+    """ORCAKeyword: Optimize the geometry with qmmm."""
+    RIGIDBODYOPT = ORCAKeyword("rigidbodyopt")
+    """ORCAKeyword: Optimize fragments as rigid bodies."""
+    CI_OPT = ORCAKeyword("ci-opt")
+    """ORCAKeyword: conical-intersection optimization."""
+    MECP_OPT = ORCAKeyword("mecp-opt")
+    """ORCAKeyword: MECP optimization."""

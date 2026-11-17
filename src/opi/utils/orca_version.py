@@ -1,3 +1,4 @@
+import math
 import re
 from typing import Any
 
@@ -6,8 +7,9 @@ from semantic_version import Version  # type: ignore[import-untyped]
 
 class OrcaVersion(Version):  # type: ignore
     """
-    Class to hold an ORCA version tag: X.Y[.Z[-f.A]]
+    Class to hold an ORCA version tag: X.Y[.Z[-f.[T.]A]]
     The "[...]" parts are optional. X, Y, Z and A are integers.
+    T is an optional pre-release tag, e.g. "beta" in "7.0.0-f.beta.4".
     """
 
     RGX_VERSION = re.compile(
@@ -19,14 +21,49 @@ class OrcaVersion(Version):  # type: ignore
         # micro version [optional]
         r"\.(?P<micro>\d+|x)"
         # bugfix version [optional]
-        r"(-(?P<bugfix>f\.\d+))?"
+        r"(-(?P<bugfix>f(\.[a-z]+)?\.\d+))?"
         r")?",
         re.VERBOSE | re.IGNORECASE,
     )
     RGX_OUTPUT_VERSION = re.compile(
-        r"^\s*Program Version\s+([1-9]+\.\d+\.([xX]|\d+(-f\.\d+)?))",
+        r"^\s*Program Version\s+([1-9]+\.\d+\.([xX]|\d+(-f(\.[a-zA-Z]+)?\.\d+)?))",
         re.MULTILINE,
     )
+
+    def _orca_key(self) -> tuple[int, int, int, int, str, float]:
+        """
+        Sort key, in which pre-release versions (e.g. "f.beta.4") sort before the final release
+        ("f.0") of the same version. A version without bugfix part sorts after all its bugfix releases.
+        """
+        match self.prerelease:
+            case ("f", tag, num):
+                return (self.major, self.minor, self.patch, 0, tag.lower(), int(num))
+            case ("f", num):
+                return (self.major, self.minor, self.patch, 1, "", int(num))
+            case ():
+                return (self.major, self.minor, self.patch, 1, "", math.inf)
+            case _:
+                raise ValueError(f"Invalid ORCA version: {self}")
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, OrcaVersion):
+            return NotImplemented
+        return self._orca_key() < other._orca_key()
+
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, OrcaVersion):
+            return NotImplemented
+        return self._orca_key() <= other._orca_key()
+
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, OrcaVersion):
+            return NotImplemented
+        return self._orca_key() > other._orca_key()
+
+    def __ge__(self, other: object) -> bool:
+        if not isinstance(other, OrcaVersion):
+            return NotImplemented
+        return self._orca_key() >= other._orca_key()
 
     @classmethod
     def from_str(cls, version_str: str, /) -> "OrcaVersion":

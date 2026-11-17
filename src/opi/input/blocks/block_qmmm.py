@@ -4,7 +4,7 @@ from pydantic import field_validator
 
 from opi.input.blocks import BlockABC
 from opi.input.blocks.util import InputFilePath
-from opi.input.simple_keywords import SimpleKeyword
+from opi.input.simple_keywords import ORCAKeyword
 from opi.models import IntGroupEnd
 
 __all__ = ("BlockQmmm",)
@@ -99,9 +99,9 @@ class BlockQmmm(BlockABC):
     levels: int | None = None
     doboxdimopt: bool | None = None
     boxdiminp: float | None = None
-    hflayergto: SimpleKeyword | None = None
-    hflayerecp: SimpleKeyword | None = None
-    ecplayerecp: SimpleKeyword | None = None
+    hflayergto: ORCAKeyword | None = None
+    hflayerecp: ORCAKeyword | None = None
+    ecplayerecp: ORCAKeyword | None = None
     qmatoms: IntGroupEnd | None = None
     activeatoms: IntGroupEnd | None = None
     optregion_fixedatoms: IntGroupEnd | None = None
@@ -118,8 +118,8 @@ class BlockQmmm(BlockABC):
     gfnff_topo_qm2: InputFilePath | None = None
     gfnff_topo_qm3: InputFilePath | None = None
     atomtype_filename: InputFilePath | None = None
-    qm2custommethod: SimpleKeyword | None = None
-    qm2custombasis: SimpleKeyword | None = None
+    qm2custommethod: ORCAKeyword | None = None
+    qm2custombasis: ORCAKeyword | None = None
     qm2customfile: InputFilePath | None = None
 
     @field_validator(

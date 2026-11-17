@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from opi.output.grepper.core import Grepper
@@ -10,27 +11,60 @@ from opi.output.grepper.patterns import (
     HAS_FREQ,
     HAS_GEOMETRY_OPT,
     HAS_SCF,
+    NEB_CONVERGED,
     SCF_CONVERGED,
     TERMINATED_NORMALLY,
 )
 
+# > Coordinate line of the input file as echoed in the output, e.g. "| 10> * xyz 0 1"
+# > Group 1 is the charge, group 2 the multiplicity
+_INPUT_COORDS_CHARGE_MULT = re.compile(
+    r"^\|\s*\d+>\s*\*\s*(?:xyz|int|internal|gzmt|xyzfile|gzmtfile|pdbfile)\s+([+-]?\d+)\s+(\d+)",
+    re.IGNORECASE,
+)
 
-def get_error_messages(file_name: Path) -> list[str]:
-    """Return all errors from the output files until a critical error is found."""
+
+def get_error_messages(file_name: Path, err_file_name: Path | None = None) -> list[str]:
+    """
+    Return all errors from the output files until a critical error is found.
+
+    Parameters
+    ----------
+    file_name : Path
+        Path to the ORCA ".out" file.
+    err_file_name : Path | None, default: None
+        Path to the ORCA ".err" file. Patterns of messages that ORCA and its helper programs
+        write to stderr are looked up in this file, if it exists, and then in the ".out" file,
+        which also holds them when stderr was redirected into it (e.g. `orca job.inp > job.out 2>&1`).
+    """
+    err_file = err_file_name if err_file_name is not None and err_file_name.is_file() else None
     hits: list[str] = []
     for pattern in ERROR_PATTERNS:
-        msg = pattern.extract(file_name)
+        msg = ""
+        if pattern.stderr and err_file is not None:
+            msg = pattern.extract(err_file)
+        if not msg:
+            msg = pattern.extract(file_name)
         if msg:
             hits.append(msg)
             if pattern.critical:
                 break
-    return hits if hits else []
+    return hits
 
 
-def get_error_message(file_name: Path) -> str:
-    """Return the most important extracted error message."""
-    messages = get_error_messages(file_name)
-    return next(iter(messages or []), "")
+def get_error_message(file_name: Path, err_file_name: Path | None = None) -> str:
+    """
+    Return the most important extracted error message.
+
+    Parameters
+    ----------
+    file_name : Path
+        Path to the ORCA ".out" file.
+    err_file_name : Path | None, default: None
+        Path to the ORCA ".err" file.
+    """
+    messages = get_error_messages(file_name, err_file_name)
+    return next(iter(messages), "")
 
 
 def has_string_in_file(file_name: Path, search_for: str, /, *, strict: bool = True) -> bool:
@@ -128,6 +162,35 @@ def get_float_from_line(
             raise
         else:
             return None
+
+
+def get_charge_and_mult_from_input(file_name: Path, /) -> tuple[int, int] | None:
+    """
+    Get charge and multiplicity from the coordinate line (e.g. "* xyz 0 1") of the input file
+    as echoed in the ORCA output. If the output contains several jobs, the last one is used.
+
+    Parameters
+    ----------
+    file_name : Path
+        Path to the ORCA output file.
+
+    Returns
+    -------
+    tuple[int, int] | None
+        Charge and multiplicity, or None if the file does not exist or no coordinate line is found.
+    """
+    try:
+        lines = Grepper(file_name).search(_INPUT_COORDS_CHARGE_MULT, fallback=[])
+    except FileNotFoundError:
+        return None
+
+    if not lines:
+        return None
+
+    match = _INPUT_COORDS_CHARGE_MULT.search(lines[-1])
+    if match is None:
+        return None
+    return int(match.group(1)), int(match.group(2))
 
 
 def get_lines_from_block(
@@ -259,6 +322,23 @@ def has_geometry_optimization_converged(file_name: Path, /) -> bool:
         True if expression is found in file else False
     """
     return has_string_in_file(file_name, GEOMETRY_CONVERGED)
+
+
+def has_neb_converged(file_name: Path, /) -> bool:
+    """
+    Searches for the message 'H U R R A Y' to indicate that a NEB optimization has converged.
+
+    Parameter
+    ---------
+    file_name: Path
+        Name of the output file
+
+    Returns
+    -------
+    bool
+        True if expression is found in file else False
+    """
+    return has_string_in_file(file_name, NEB_CONVERGED)
 
 
 def has_scf(file_name: Path, /) -> bool:

@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
 
 import shutil
+import sys
 from pathlib import Path
 
 from opi.core import Calculator
-from opi.input.blocks import BlockGeom
+from opi.input.blocks import BlockGeom, Scan
 from opi.input.simple_keywords import BasisSet, Method, Scf, Task
 from opi.input.structures import Structure
 from opi.output.core import Output
+
+
+def check_termination(output: Output) -> None:
+    """Exit if the ORCA calculation did not terminate normally."""
+    if not output.terminated_normally():
+        print(f"ORCA calculation failed, see output file: {output.get_outfile()}")
+        print(output.error_message())
+        sys.exit(1)
 
 
 def run_exmp026(
@@ -30,10 +39,14 @@ def run_exmp026(
         Task.OPT,
     )
 
-    calc_bond.input.add_blocks(BlockGeom(scan="B  0  1 = 1.1, 2.1, 5"))
+    # > A scan can be defined with a `Scan` object ...
+    calc_bond.input.add_blocks(
+        BlockGeom(scan=Scan(mode="B", atom1=0, atom2=1, startvalue=1.1, endvalue=2.1, steps=5))
+    )
     calc_bond.write_input()
     calc_bond.run()
     output_bond = calc_bond.get_output()
+    check_termination(output_bond)
     output_bond.parse()
 
     # > Print hl gap for scan
@@ -65,11 +78,13 @@ def run_exmp026(
         Task.OPT,
     )
 
+    # > ... or with a string in ORCA syntax
     calc_angle.input.add_blocks(BlockGeom(scan="A  1 0 2 = 110, 170, 6"))
     calc_angle.write_input()
     calc_angle.run()
+    check_termination(calc_angle.get_output())
 
-    # > Scan a dihedral with a relaxed surface scan
+    # > Scan a dihedral over an explicit list of values given as string
     calc_dihedral = Calculator(basename="scan_dihedral", working_dir=working_dir)
     calc_dihedral.structure = structure
     calc_dihedral.input.add_simple_keywords(
@@ -79,8 +94,26 @@ def run_exmp026(
         Task.OPT,
     )
 
-    calc_dihedral.input.add_blocks(BlockGeom(scan="D 6 1 0 2 = 60, 120, 6"))
+    calc_dihedral.input.add_blocks(BlockGeom(scan="D 6 1 0 2 [60 90 120]"))
     calc_dihedral.write_input()
     calc_dihedral.run()
+    check_termination(calc_dihedral.get_output())
+
+    # > Scan a bond over an explicit list of values given as `Scan` object
+    calc_valuelist = Calculator(basename="scan_valuelist", working_dir=working_dir)
+    calc_valuelist.structure = structure
+    calc_valuelist.input.add_simple_keywords(
+        Scf.NOAUTOSTART,
+        Method.HF,
+        BasisSet.MINIX,
+        Task.OPT,
+    )
+
+    calc_valuelist.input.add_blocks(
+        BlockGeom(scan=Scan(mode="B", atom1=0, atom2=1, valuelist=[1.1, 1.5, 2.1]))
+    )
+    calc_valuelist.write_input()
+    calc_valuelist.run()
+    check_termination(calc_valuelist.get_output())
 
     return output_bond

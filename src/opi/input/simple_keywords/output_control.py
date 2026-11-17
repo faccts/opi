@@ -1,5 +1,5 @@
 from opi.input.simple_keywords.base import (
-    SimpleKeyword,
+    ORCAKeyword,
     SimpleKeywordBox,
 )
 
@@ -9,29 +9,31 @@ __all__ = ("OutputControl",)
 class OutputControl(SimpleKeywordBox):
     """Enum to store all simple keywords of type OutputControl."""
 
-    MINIPRINT = SimpleKeyword("miniprint")
-    """SimpleKeyword: OutputControl."""
-    SMALLPRINT = SimpleKeyword("smallprint")
-    """SimpleKeyword: OutputControl."""
-    NORMALPRINT = SimpleKeyword("normalprint")
-    """SimpleKeyword: OutputControl."""
-    LARGEPRINT = SimpleKeyword("largeprint")
-    """SimpleKeyword: OutputControl."""
-    SCFSOLVERTIME = SimpleKeyword("scfsolvertime")
-    """SimpleKeyword: OutputControl."""
-    PRINTGAP = SimpleKeyword("printgap")
-    """SimpleKeyword: OutputControl."""
-    PRINTMOS = SimpleKeyword("printmos")
-    """SimpleKeyword: OutputControl."""
-    PRINTBASIS = SimpleKeyword("printbasis")
-    """SimpleKeyword: printbas."""
-    GRIDPRINT = SimpleKeyword("gridprint")
-    """SimpleKeyword: Print grid information."""
-    WRITEONLYINITIALPROPFILE = SimpleKeyword("writeonlyinitialpropfile")
-    """SimpleKeyword: Only write property file for first geometry."""
-    NOMOPRINT = SimpleKeyword("nomoprint")
-    """SimpleKeyword: OutputControl."""
-    NOPROPFILE = SimpleKeyword("nopropfile")
-    """SimpleKeyword: Write no property file."""
-    NOPRINTMOS = SimpleKeyword("noprintmos")
-    """SimpleKeyword: OutputControl."""
+    MINIPRINT = ORCAKeyword("miniprint")
+    """ORCAKeyword: OutputControl."""
+    SMALLPRINT = ORCAKeyword("smallprint")
+    """ORCAKeyword: OutputControl."""
+    NORMALPRINT = ORCAKeyword("normalprint")
+    """ORCAKeyword: OutputControl."""
+    LARGEPRINT = ORCAKeyword("largeprint")
+    """ORCAKeyword: OutputControl."""
+    SCFSOLVERTIME = ORCAKeyword("scfsolvertime")
+    """ORCAKeyword: OutputControl."""
+    PRINTGAP = ORCAKeyword("printgap")
+    """ORCAKeyword: OutputControl."""
+    PRINTMOS = ORCAKeyword("printmos")
+    """ORCAKeyword: OutputControl."""
+    PRINTBASIS = ORCAKeyword("printbasis")
+    """ORCAKeyword: printbas."""
+    GRIDPRINT = ORCAKeyword("gridprint")
+    """ORCAKeyword: Print grid information."""
+    WRITEONLYINITIALPROPFILE = ORCAKeyword("writeonlyinitialpropfile")
+    """ORCAKeyword: Only write property file for first geometry."""
+    NOMOPRINT = ORCAKeyword("nomoprint")
+    """ORCAKeyword: OutputControl."""
+    NOPROPFILE = ORCAKeyword("nopropfile")
+    """ORCAKeyword: Write no property file."""
+    NOPRINTMOS = ORCAKeyword("noprintmos")
+    """ORCAKeyword: OutputControl."""
+    POPDISP = ORCAKeyword("popdisp")
+    """ORCAKeyword: Pairwise dispersion correction analysis."""

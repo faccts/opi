@@ -56,26 +56,44 @@ class Molecule(GetItem):
         Contains the available densities
     """
 
-    atoms: list[Atoms] | None = None
-    basename: StrictStr | None = None
-    molecularorbitals: MolecularOrbitals | None = None
-    coordinateunits: StrictStr | None = None
-    multiplicity: StrictInt | None = None
-    charge: StrictInt | None = None
-    hftyp: StrictStr | None = None
-    origin: tuple[StrictFloat, StrictFloat, StrictFloat]
-    s_matrix: list[list[StrictFloat]] | None = Field(default=None, alias="s-matrix")
-    h_matrix: list[list[StrictFloat]] | None = Field(default=None, alias="h-matrix")
-    t_matrix: list[list[StrictFloat]] | None = Field(default=None, alias="t-matrix")
-    v_matrix: list[list[StrictFloat]] | None = Field(default=None, alias="v-matrix")
-    hmo: list[list[list[StrictFloat]]] | None = None
-    f_matrix: list[list[list[StrictFloat]]] | None = Field(default=None, alias="f-matrix")
-    j_matrix: list[list[list[StrictFloat]]] | None = Field(default=None, alias="j-matrix")
-    k_matrix: list[list[list[StrictFloat]]] | None = Field(default=None, alias="k-matrix")
-    twoelintegrals: TwoElectronIntegrals | None = Field(default=None, alias="2elintegrals")
-    pointgroup: StrictStr | None = None
-    td_dft: list[TdDft] | None = Field(None, alias="td-dft")
-    densities: Densities | None = None
+    atoms: list[Atoms] | None = Field(default=None, serialization_alias="Atoms")
+    basename: StrictStr | None = Field(default=None, serialization_alias="BaseName")
+    molecularorbitals: MolecularOrbitals | None = Field(
+        default=None, serialization_alias="MolecularOrbitals"
+    )
+    coordinateunits: StrictStr | None = Field(default=None, serialization_alias="CoordinateUnits")
+    multiplicity: StrictInt | None = Field(default=None, serialization_alias="Multiplicity")
+    charge: StrictInt | None = Field(default=None, serialization_alias="Charge")
+    hftyp: StrictStr | None = Field(default=None, serialization_alias="HFTyp")
+    origin: tuple[StrictFloat, StrictFloat, StrictFloat] = Field(serialization_alias="Origin")
+    s_matrix: list[list[StrictFloat]] | None = Field(
+        default=None, alias="s-matrix", serialization_alias="S-Matrix"
+    )
+    h_matrix: list[list[StrictFloat]] | None = Field(
+        default=None, alias="h-matrix", serialization_alias="H-Matrix"
+    )
+    t_matrix: list[list[StrictFloat]] | None = Field(
+        default=None, alias="t-matrix", serialization_alias="T-Matrix"
+    )
+    v_matrix: list[list[StrictFloat]] | None = Field(
+        default=None, alias="v-matrix", serialization_alias="V-Matrix"
+    )
+    hmo: list[list[list[StrictFloat]]] | None = Field(default=None, serialization_alias="HMO")
+    f_matrix: list[list[list[StrictFloat]]] | None = Field(
+        default=None, alias="f-matrix", serialization_alias="F-Matrix"
+    )
+    j_matrix: list[list[list[StrictFloat]]] | None = Field(
+        default=None, alias="j-matrix", serialization_alias="J-Matrix"
+    )
+    k_matrix: list[list[list[StrictFloat]]] | None = Field(
+        default=None, alias="k-matrix", serialization_alias="K-Matrix"
+    )
+    twoelintegrals: TwoElectronIntegrals | None = Field(
+        default=None, alias="2elintegrals", serialization_alias="2elIntegrals"
+    )
+    pointgroup: StrictStr | None = Field(default=None, serialization_alias="PointGroup")
+    td_dft: list[TdDft] | None = Field(None, alias="td-dft", serialization_alias="TD-DFT")
+    densities: Densities | None = Field(default=None, serialization_alias="Densities")
 
     class Configuration:
         allow_population_by_field_name = True

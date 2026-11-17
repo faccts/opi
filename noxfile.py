@@ -62,6 +62,42 @@ def tests(session):
     session.run("pytest", *session.posargs)
 
 @nox.session(default=False)
+def notebooks(session):
+    """
+    Execute the documentation notebooks: `nox -s notebooks -- how_to_opi`.
+
+    Without arguments, the whitelist in `scripts/sweep_notebooks.py` runs -- the sweep for
+    a nightly run or a release check. Everything after `--` is passed on to the script,
+    so notebooks can be named or globbed, whitelisted or not.
+    """
+    session.run_install(
+        "uv",
+        "sync",
+        "--group",
+        "notebooks",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.run("python", "scripts/sweep_notebooks.py", *session.posargs)
+
+@nox.session(default=False)
+def all_notebooks(session):
+    """
+    Execute every documentation notebook, whitelisted or not: `nox -s all_notebooks`.
+
+    The same as `nox -s notebooks -- '*'`. Notebooks are left off the whitelist because
+    they cannot run unattended, so expect some to fail. Options after `--`, such as
+    `--list` or `--timeout`, are passed on to `scripts/sweep_notebooks.py`.
+    """
+    session.run_install(
+        "uv",
+        "sync",
+        "--group",
+        "notebooks",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
+    session.run("python", "scripts/sweep_notebooks.py", "*", *session.posargs)
+
+@nox.session(default=False)
 def json_gen(session):
     session.run_install(
         "uv",

@@ -1,4 +1,4 @@
-from pydantic import StrictFloat, StrictInt, StrictStr
+from pydantic import Field, StrictFloat, StrictInt, StrictStr
 
 from opi.output.models.base.get_item import GetItem
 from opi.output.models.base.strict_types import StrictNonNegativeFloat
@@ -22,8 +22,10 @@ class MO(GetItem):
         Symmetry of the molecular orbital
     """
 
-    mocoefficients: list[StrictFloat] | None = None
-    occupancy: StrictNonNegativeFloat | None = None
-    orbitalenergy: StrictFloat | None = None
-    orbitalsymlabel: StrictStr | None = None
-    orbitalsymmetry: StrictInt | None = None
+    mocoefficients: list[StrictFloat] | None = Field(
+        default=None, serialization_alias="MOCoefficients"
+    )
+    occupancy: StrictNonNegativeFloat | None = Field(default=None, serialization_alias="Occupancy")
+    orbitalenergy: StrictFloat | None = Field(default=None, serialization_alias="OrbitalEnergy")
+    orbitalsymlabel: StrictStr | None = Field(default=None, serialization_alias="OrbitalSymLabel")
+    orbitalsymmetry: StrictInt | None = Field(default=None, serialization_alias="OrbitalSymmetry")

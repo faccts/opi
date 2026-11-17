@@ -10,7 +10,7 @@ from opi.input.arbitrary_string import (
     ArbitraryStringPos,
 )
 from opi.input.blocks.base import BlockABC
-from opi.input.simple_keywords.base import SimpleKeyword
+from opi.input.simple_keywords.base import ORCAKeyword
 
 __all__ = ("Input",)
 
@@ -21,7 +21,7 @@ class Input:
 
     Attributes
     ----------
-    _simple_keywords | simple_keywords: list[SimpleKeyword]
+    _simple_keywords | simple_keywords: list[ORCAKeyword]
         List of simple keywords to be put into the ORCA input.
         Access to this attribute should be done through the respective `add_simple_keywords/remove_.../clear_...` methods.
     _blocks | blocks: dict[str, BlockABC]
@@ -43,7 +43,7 @@ class Input:
         # > MEMBER VARIABLES
         # ---------------------------------
         # // Simple Keywords
-        self._simple_keywords: list[SimpleKeyword] = []
+        self._simple_keywords: list[ORCAKeyword] = []
         # // Block options
         self._blocks: dict[str, BlockABC] = {}
         # // Arbitrary strings
@@ -63,15 +63,15 @@ class Input:
     # > PROPERTIES
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     @property
-    def simple_keywords(self) -> "list[SimpleKeyword] | None":
+    def simple_keywords(self) -> "list[ORCAKeyword] | None":
         return self._simple_keywords
 
     @simple_keywords.setter
-    def simple_keywords(self, value: list[SimpleKeyword] | None) -> None:
+    def simple_keywords(self, value: list[ORCAKeyword] | None) -> None:
         """
         Parameters
         ----------
-        value : list[SimpleKeyword] | None
+        value : list[ORCAKeyword] | None
         """
         raise AttributeError(
             "simple_keywords is private, use the add_simple_keywords/get_simple_keywords function for access."
@@ -312,7 +312,7 @@ class Input:
     # ----------------------------------------------------------------------
     def add_simple_keywords(
         self,
-        *keywords: str | SimpleKeyword,
+        *keywords: str | ORCAKeyword,
         strict: bool = False,
     ) -> None:
         """
@@ -320,9 +320,12 @@ class Input:
 
         The keywords are stored in the class attribute `_simple_keywords`.
 
+        Keywords are compared case-insensitively, so a keyword that only differs in case from an
+        already added one counts as a duplicate. The spelling of the first occurrence is kept.
+
         Parameters
         ----------
-        *keywords : str | SimpleKeyword
+        *keywords : str | ORCAKeyword
             One or more simple keywords to add.
         strict : bool, default: False
             If True, a ValueError is raised if any keyword has already been added.
@@ -346,7 +349,7 @@ class Input:
         for keyword in keywords:
             # > Convert string to simple keyword.
             if isinstance(keyword, str):
-                simple_keyword = SimpleKeyword(keyword)
+                simple_keyword = ORCAKeyword(keyword)
             else:
                 simple_keyword = keyword
 
@@ -358,7 +361,7 @@ class Input:
 
     def remove_simple_keywords(
         self,
-        *keywords: str | SimpleKeyword,
+        *keywords: str | ORCAKeyword,
         strict: bool = False,
     ) -> None:
         """
@@ -366,7 +369,7 @@ class Input:
 
         Parameters
         ----------
-        *keywords : str | SimpleKeyword
+        *keywords : str | ORCAKeyword
             One or more simple keywords to remove.
         strict : bool, default: False
             If True, a ValueError is raised if any of the specified keywords is not present.
@@ -388,7 +391,7 @@ class Input:
         for keyword in keywords:
             # > Convert string to simple keyword.
             if isinstance(keyword, str):
-                simple_keyword = SimpleKeyword(keyword.lower())
+                simple_keyword = ORCAKeyword(keyword)
             else:
                 simple_keyword = keyword
 
@@ -400,13 +403,13 @@ class Input:
                     f"Strict: No simple keyword {simple_keyword} has been added. So it cannot be removed."
                 )
 
-    def _has_simple_keyword(self, keyword: str | SimpleKeyword, /) -> bool:
+    def _has_simple_keyword(self, keyword: str | ORCAKeyword, /) -> bool:
         """
         Check if a keyword has been added to the Calculator
 
         Parameters
         ----------
-        keyword : str | SimpleKeyword
+        keyword : str | ORCAKeyword
             The simple keyword to check
 
         Returns
@@ -417,17 +420,17 @@ class Input:
         if not self._simple_keywords:
             return False
         if isinstance(keyword, str):
-            return SimpleKeyword(keyword.lower()) in self._simple_keywords
+            return ORCAKeyword(keyword) in self._simple_keywords
         else:
             return keyword in self._simple_keywords
 
-    def has_simple_keywords(self, *keywords: str | SimpleKeyword) -> tuple[bool, ...]:
+    def has_simple_keywords(self, *keywords: str | ORCAKeyword) -> tuple[bool, ...]:
         """
         Check if one or more simple keywords have been added to the Calculator.
 
         Parameters
         ----------
-        *keywords : str or SimpleKeyword
+        *keywords : str or ORCAKeyword
             One or more simple keywords to check.
 
         Returns
@@ -439,14 +442,14 @@ class Input:
         return tuple(self._has_simple_keyword(keyword) for keyword in keywords)
 
     def _get_simple_keyword(
-        self, keyword: str | SimpleKeyword, /, *, create_missing: bool = False
-    ) -> SimpleKeyword | None:
+        self, keyword: str | ORCAKeyword, /, *, create_missing: bool = False
+    ) -> ORCAKeyword | None:
         """
         Retrieve a simple keyword that has been added to the Calculator.
 
         Parameters
         ----------
-        keyword : str | SimpleKeyword
+        keyword : str | ORCAKeyword
             the simple keyword to retrieve
         create_missing : bool, default = False
             if True, the keyword will be generated if it is missing, and it is requested,
@@ -454,11 +457,11 @@ class Input:
 
         Returns
         -------
-        SimpleKeyword | None
+        ORCAKeyword | None
             If the simple keyword exists, or it was created, it is returned, else None is returned.
         """
         if isinstance(keyword, str):
-            simple_keyword: SimpleKeyword = SimpleKeyword(keyword.lower())
+            simple_keyword: ORCAKeyword = ORCAKeyword(keyword)
         else:
             simple_keyword = keyword
 
@@ -479,15 +482,15 @@ class Input:
 
     def get_simple_keywords(
         self,
-        *keywords: str | SimpleKeyword,
+        *keywords: str | ORCAKeyword,
         create_missing: bool = False,
-    ) -> list[SimpleKeyword]:
+    ) -> list[ORCAKeyword]:
         """
         Retrieve one or more simple keyword that have been added to the Calculator.
 
         Parameters
         ----------
-        keywords : str | SimpleKeyword
+        keywords : str | ORCAKeyword
             One or more simple keywords to retrieve.
         create_missing : bool, default = False
             If True, keywords will be generated if they are missing, and they are requested.
@@ -495,11 +498,11 @@ class Input:
 
         Returns
         -------
-        List[SimpleKeyword]
+        List[ORCAKeyword]
             A list of all requested simple keywords if they exist, or if they were created.
             Empty list if all keywords are missing and `create_missing` is False.
         """
-        keywords_to_return: list[SimpleKeyword] = []
+        keywords_to_return: list[ORCAKeyword] = []
         for keyword in keywords:
             keyword_to_return = self._get_simple_keyword(keyword, create_missing=create_missing)
             # > check if keyword was found/created
@@ -599,7 +602,8 @@ class Input:
         overwrite: bool = False,
     ) -> None:
         """
-        Add one or more blocks to the Calculator's `blocks` attribute.
+        Add one or more blocks to the Calculator's `blocks` attribute. If the block exists in `Input._blocks` already,
+        the existing block will be merged with the new block, with the values from new block taking precedence.
 
         Parameters
         ----------
@@ -607,10 +611,10 @@ class Input:
             One or more blocks to add
         strict : bool, default: False
             If True, raise a ValueError if a block has already been added.
-            If False (default), does nothing if a block has already been added.
+            If False (default), does not raise an error and instead merges the blocks.
         overwrite : bool, default: False
-            If True, blocks that are already present will be overwritten (strict is ignored)
-            If False (default), existing blocks are not overwritten
+            If True, blocks that are already present will be overwritten completely, replacing the existing block.
+            If False (default), existing blocks are not overwritten and instead merged
 
         Raises
         ------
@@ -642,6 +646,9 @@ class Input:
                 self._blocks[name] = block
             elif strict:
                 raise ValueError(f"Strict: Block for {block.name} has already been added")
+            else:
+                existing_block = self._blocks[name]
+                self._blocks[name] = existing_block | block
 
     def remove_blocks(self, *blocks: BlockABC | type[BlockABC] | str, strict: bool = False) -> None:
         """
@@ -838,23 +845,26 @@ class Input:
     # > ARBITRARY STRINGS
     # ----------------------------------------------------------------------
     def add_arbitrary_string(
-        self, string: str, /, *, pos: ArbitraryStringPos | str | None = None
+        self, string: str | ArbitraryString, /, *, pos: ArbitraryStringPos | str | None = None
     ) -> None:
         """
         Add an arbitrary string.
 
         Parameters
         ----------
-        string : str
+        string : str | ArbitraryString
             Arbitrary string to be added
         pos : ArbitraryStringPos | str | None, default: None
             Coordinates of the arbitrary string within the input file.
             For details look into the `ArbitraryStringPos` class.
         """
+        if isinstance(string, ArbitraryString):
+            arb_string = string
+        else:
+            arb_string = ArbitraryString(string=string)
+            if pos is not None:
+                arb_string.pos = ArbitraryStringPos(pos)
 
-        arb_string = ArbitraryString(string=string)
-        if pos is not None:
-            arb_string.pos = ArbitraryStringPos(pos)
         self._arbitrary_strings.append(arb_string)
 
     def remove_arbitrary_string(
@@ -903,3 +913,72 @@ class Input:
                 raise ValueError("No arbitrary strings added.")
         else:
             self._arbitrary_strings.clear()
+
+    # ----------------------------------------------------------------------
+    # > INPUT MERGE LOGIC
+    # ----------------------------------------------------------------------
+
+    def __or__(self, other: "Input") -> "Input":
+        """
+        Merges two instances of `Input` into a new `Input`. Neither operand is modified.
+
+        Every component of the input is merged on its own terms:
+            - Simple keywords are concatenated, those of `self` first, dropping duplicates. The
+              order is preserved: the first occurrence of a keyword determines its position.
+            - Blocks are merged per ORCA block they model, through `Input.add_blocks()`. The values of `other` take precedence.
+              Every block is copied on the way in, so that the merged input shares no block
+              instance with either operand.
+            - Arbitrary strings are concatenated, those of `self` first, keeping duplicates.
+            - `ncores`, `memory` and `moinp` are taken from `other` if set, otherwise from `self`.
+              An `ncores` or `memory` of `0` counts as unset here.
+
+        If `other` is not an `Input`, `NotImplemented` is returned, so that Python fails the `|`
+        operation with a `TypeError`.
+
+        Parameters
+        ----------
+        other : Input
+            Instance of `Input` to be merged into `self`
+
+        Returns
+        -------
+        Input
+            New instance of `Input` with the simple keywords, blocks, arbitrary strings and
+            special input variables of `self` and `other`.
+        """
+        if not isinstance(other, Input):
+            return NotImplemented
+
+        # > Systematically handle all components of an Input object.
+        new_input = Input()
+
+        # > First simple keywords will be handled by concatenating the two lists of simple keywords,
+        # > those of `self` first. `add_simple_keywords()` drops duplicates, so the first occurrence
+        # > of a keyword determines its position.
+        new_input.add_simple_keywords(
+            *(self.simple_keywords if self.simple_keywords else []),
+            *(other.simple_keywords if other.simple_keywords else []),
+        )
+
+        # > Next the blocks will be handled, since the Block already implements merge logic, the blocks will be iteratively merged based on name of block
+        # > Since add_blocks() already handles the merge case, we need only to iteratively add all the blocks in self followed by those in other
+        for blocks in (self.blocks, other.blocks):
+            for block in (blocks or {}).values():
+                new_input.add_blocks(block.model_copy(deep=True))
+
+        # > Next the arbitrary strings will be handled, here the list of strings will simply be merged.
+        new_arbit_strings_list = (self.arbitrary_strings if self.arbitrary_strings else []) + (
+            other.arbitrary_strings if other.arbitrary_strings else []
+        )
+        for arbit_string in new_arbit_strings_list:
+            new_input.add_arbitrary_string(arbit_string)
+
+        # > Finally the various special variables will be handled by giving precedence to the other Input object
+
+        new_input.ncores = other.ncores if other.ncores else self.ncores
+
+        new_input.memory = other.memory if other.memory else self.memory
+
+        new_input.moinp = other.moinp if other.moinp else self.moinp
+
+        return new_input

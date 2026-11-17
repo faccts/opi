@@ -1,4 +1,4 @@
-from pydantic import StrictFloat, StrictStr
+from pydantic import Field, StrictFloat, StrictStr
 
 from opi.output.models.base.get_item import GetItem
 
@@ -17,6 +17,6 @@ class Base(GetItem):
         Shell of the Basis set
     """
 
-    coefficients: list[StrictFloat] | None = None
-    exponents: list[StrictFloat] | None = None
-    shell: StrictStr | None = None
+    coefficients: list[StrictFloat] | None = Field(default=None, serialization_alias="Coefficients")
+    exponents: list[StrictFloat] | None = Field(default=None, serialization_alias="Exponents")
+    shell: StrictStr | None = Field(default=None, serialization_alias="Shell")

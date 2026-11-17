@@ -21,4 +21,4 @@ class BlockIce(BlockABC):
     etol: float | None = None
     icetype: Literal["CFGs", "CSFs", "DETs"] | None = None
     # > algorithm details
-    integrals: Literal["exact", "ri"] | None
+    integrals: Literal["exact", "ri"] | None = None

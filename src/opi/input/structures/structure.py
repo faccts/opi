@@ -50,10 +50,10 @@ class Structure:
     ----------
     atoms: list[Atom | EmbeddingPotential | GhostAtom | PointCharge]
         Atoms in the molecule
-    charge: int
-        Charge of structure
-    multiplicity: int
-        Multiplicity of structure
+    charge: int | None
+        Charge of structure. None if unknown (e.g., it could not be read from an ORCA output).
+    multiplicity: int | None
+        Multiplicity of structure. None if unknown (e.g., it could not be read from an ORCA output).
     origin: Path | str
         Origin of the molecule, usually path to a file or some identifier
 
@@ -67,18 +67,18 @@ class Structure:
         | PointCharge
         | Sequence[Atom | EmbeddingPotential | GhostAtom | PointCharge]
         | Iterable[Atom | EmbeddingPotential | GhostAtom | PointCharge],
-        charge: int = 0,
-        multiplicity: int = 1,
+        charge: int | None = 0,
+        multiplicity: int | None = 1,
         origin: Path | str | None = None,
     ) -> None:
         # // Atoms
         self._atoms: list[Atom | EmbeddingPotential | GhostAtom | PointCharge] = []
         self.atoms = cast(list[Atom | EmbeddingPotential | GhostAtom | PointCharge], atoms)
         # // Charge
-        self._charge: int
+        self._charge: int | None
         self.charge = charge
         # // Multiplicity
-        self._multiplicity: int
+        self._multiplicity: int | None
         self.multiplicity = multiplicity
 
         # > Origin of the molecule. Typically, the path to the file or some identifier
@@ -125,36 +125,57 @@ class Structure:
         return [i for i, a in enumerate(self.atoms) if type(a) is Atom]
 
     @property
-    def charge(self) -> int:
+    def charge(self) -> int | None:
         return self._charge
 
     @charge.setter
-    def charge(self, value: int) -> None:
+    def charge(self, value: int | None) -> None:
         """
         Parameters
         ----------
-        value : int
+        value : int | None
+            Molecular charge, or None if unknown.
         """
-        if not isinstance(value, int):
+        if value is not None and not isinstance(value, int):
             raise TypeError(f"{self.__class__.__name__}.charge: must be an integer")
         self._charge = value
 
     @property
-    def multiplicity(self) -> int:
+    def multiplicity(self) -> int | None:
         return self._multiplicity
 
     @multiplicity.setter
-    def multiplicity(self, value: int) -> None:
+    def multiplicity(self, value: int | None) -> None:
         """
         Parameters
         ----------
-        value : int
+        value : int | None
+            Electron spin multiplicity, or None if unknown.
         """
-        if not isinstance(value, int):
+        if value is None:
+            pass
+        elif not isinstance(value, int):
             raise TypeError(f"{self.__class__.__name__}.multiplicity: must be an integer")
         elif value < 1:
             raise ValueError(f"{self.__class__.__name__}.multiplicity: must be positive")
         self._multiplicity = value
+
+    def _require_charge(self) -> int:
+        """Return the charge, raising a `ValueError` if it is unknown (None)."""
+        if self.charge is None:
+            raise ValueError(
+                f"{self.__class__.__name__}.charge: charge is unknown (None), please set it explicitly"
+            )
+        return self.charge
+
+    def _require_multiplicity(self) -> int:
+        """Return the multiplicity, raising a `ValueError` if it is unknown (None)."""
+        if self.multiplicity is None:
+            raise ValueError(
+                f"{self.__class__.__name__}.multiplicity: multiplicity is unknown (None), "
+                "please set it explicitly"
+            )
+        return self.multiplicity
 
     @property
     def nelectrons(self) -> int:
@@ -167,11 +188,16 @@ class Structure:
         ----------
         nelectrons : int
             Returns the number of electrons for the structure. Can be negative!
+
+        Raises
+        ------
+        ValueError
+            If the charge is unknown (None).
         """
         nelectrons = 0
         for atom in self.real_atoms:
             nelectrons += atom.element.atomic_number
-        nelectrons -= self.charge
+        nelectrons -= self._require_charge()
         return nelectrons
 
     @property
@@ -187,12 +213,12 @@ class Structure:
     @property
     def multiplicity_is_odd(self) -> bool:
         """Returns a boolean indicating if the multiplicity is odd."""
-        return self.multiplicity % 2 == 1
+        return self._require_multiplicity() % 2 == 1
 
     @property
     def multiplicity_is_even(self) -> bool:
         """Returns a boolean indicating if the multiplicity is even."""
-        return self.multiplicity % 2 == 0
+        return self._require_multiplicity() % 2 == 0
 
     @property
     def nelec_and_multiplicity_even(self) -> bool:
@@ -264,7 +290,15 @@ class Structure:
         -------
             str:
                 String representation of Molecule
+
+        Raises
+        ------
+        ValueError
+            If the charge or multiplicity is unknown (None).
         """
+        charge = self._require_charge()
+        multiplicity = self._require_multiplicity()
+
         # > First we check whether the multiplicity is possible with the numbers of electrons and warn if not
         if self.nelec_and_multiplicity_even:
             warn(
@@ -279,7 +313,7 @@ class Structure:
             )
 
         # String representation of Molecule class , mostly used for .xyz file
-        text = f"* xyz {self.charge} {self.multiplicity}\n"
+        text = f"* xyz {charge} {multiplicity}\n"
         for atom in self.atoms:
             text += f"{atom.format_orca()}\n"
         text += "*"
@@ -1678,7 +1712,7 @@ class Structure:
         return call_molbar(
             elements=[atom.element for atom in self.real_atoms],
             coordinates=self.get_coordinates(only_atoms=self.real_atom_indices),
-            total_charge=self.charge,
+            total_charge=self._require_charge(),
             mode=mode,
             return_data=return_data,
         )
