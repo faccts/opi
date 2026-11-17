@@ -165,6 +165,29 @@ def get_float_from_line(
             return None
 
 
+def count_occurrences(file_name: Path, search_for: str, /) -> int:
+    """
+    Count the lines of `file_name` that contain a string.
+
+    Parameters
+    ----------
+    file_name : Path
+        Path to the file that should be searched.
+    search_for : str
+        String that is searched for (case-sensitive).
+
+    Returns
+    -------
+    int
+        Number of lines that contain `search_for`, 0 if `file_name` does not exist.
+    """
+    try:
+        results = Grepper(file_name).search(search_for, fallback=[], case_sensitive=True)
+    except FileNotFoundError:
+        return 0
+    return len(results)
+
+
 def get_charge_and_mult_from_input(file_name: Path, /) -> tuple[int, int] | None:
     """
     Get charge and multiplicity from the coordinate line (e.g. "* xyz 0 1") of the input file
