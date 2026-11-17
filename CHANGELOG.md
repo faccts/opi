@@ -64,6 +64,8 @@
 - Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
 - Added `csf` and `det` as Literals to `printwf` in the `%casscf` block. (#311)
 - Added AUTOCI convergence check `output.autoci_converged()` and complete list of methods to `BlockAutoCI` (#318).
+- Added `Output.get_vcd()` and the `VcdMode` class which return the calculated VCD spectrum from the ORCA output file (#322).
+- Added a tutorial notebook on the calculation of a VCD spectrum (#322).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)

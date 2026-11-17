@@ -72,6 +72,7 @@ from opi.output.models.json.property.properties.van_der_waals_correction import 
 from opi.output.models.json.property.property_results import (
     PropertyResults,
 )
+from opi.output.vcd_mode import VcdMode
 from opi.utils.misc import check_minimal_version, lowercase
 from opi.utils.orca_version import OrcaVersion
 from opi.utils.units import AU_TO_ANGST, AU_TO_EV
@@ -3035,6 +3036,34 @@ class Output:
                 break
 
         return ir_dict or None
+
+    def get_vcd(self) -> dict[int, VcdMode] | None:
+        """
+        Returns the VCD spectrum from the ORCA output file. Requires a frequency calculation with
+        `dovcd` enabled in the `%freq` block. Note that VCD cannot be calculated with `NUMFREQ`.
+
+        Returns
+        ----------
+        dict[int, VcdMode] | None
+            Dictionary where the key indicates the number of the mode and `VcdMode` contains the VCD data of the mode
+            and None if the VCD spectrum could not be grepped from the ORCA output.
+        """
+        outfile = self.get_outfile()
+        # // String for finding the VCD spectrum block. The header line is used instead of the
+        # // block title, because the title is separated from the table by empty lines.
+        vcd_string = "VCD-Intensity"
+        # // Grep the VCD spectrum block
+        vcd_data = get_lines_from_block(outfile, vcd_string, index=-1, offset=3)
+
+        vcd_dict = {}
+        for vcd_line in vcd_data:
+            try:
+                vcd_mode = VcdMode.from_string(vcd_line)
+                vcd_dict[vcd_mode.mode] = vcd_mode
+            except (ValueError, IndexError):
+                break
+
+        return vcd_dict or None
 
     def get_free_solvation_energy_opencosmors(self) -> float | None:
         """
