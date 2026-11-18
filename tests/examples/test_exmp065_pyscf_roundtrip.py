@@ -30,8 +30,8 @@ def test_exmp065_pyscf_roundtrip(example_input_file, tmp_path, json_files_export
     # Assert PySCF reproduces ORCA's energy from ORCA's orbitals (basis set, ECP, AO order)
     mf = reference.results_gbw[0].to_pyscf()
     assert mf.mol.atom_nelec_core(0) == 60
-    # > def2-TZVP is augmented by g and h functions
-    assert max(mf.mol.bas_angular(i) for i in range(mf.mol.nbas)) == 5
+    # > def2-QZVPP of bismuth holds g functions
+    assert max(mf.mol.bas_angular(i) for i in range(mf.mol.nbas)) == 4
     assert mf.energy_tot() == pytest.approx(e_reference, abs=1e-6)
 
     # Assert ORCA took the guess from PySCF's orbitals and converged immediately

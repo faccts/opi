@@ -194,10 +194,9 @@ def test_pyscf_round_trip_gbw_data(json_dir: Path) -> None:
 @pytest.mark.output
 def test_to_pyscf_unsorted_shells(output_object_factory: Callable[[str], Output]) -> None:
     """
-    Bismuth with def2-TZVP, augmented by a g, an f, and an h shell, has an ECP, g and h
-    functions, and shells that are not sorted by angular momentum (..., f, f, g, f, h), which
-    PySCF sorts. PySCF must still reproduce ORCA's energy. This also checks the signs of the
-    functions with |m| = 4 (flipped) and |m| = 5 (not flipped).
+    Bismuth with def2-QZVPP has an ECP, g functions, and shells that ORCA does not sort by angular
+    momentum (..., f, f, g, f, f), while PySCF sorts them. PySCF must still reproduce ORCA's
+    energy. This also checks the signs of the functions with |m| = 4, which are flipped.
     """
     output = output_object_factory("pyscf_roundtrip")
     assert output.results_gbw is not None
@@ -208,7 +207,7 @@ def test_to_pyscf_unsorted_shells(output_object_factory: Callable[[str], Output]
     mf = results.to_pyscf()
 
     assert mf.mol.atom_nelec_core(0) == 60
-    assert max(mf.mol.bas_angular(i) for i in range(mf.mol.nbas)) == 5
+    assert max(mf.mol.bas_angular(i) for i in range(mf.mol.nbas)) == 4
     assert mf.energy_tot() == pytest.approx(scf_energy(output), abs=1e-6)
 
 

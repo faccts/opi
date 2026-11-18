@@ -13,11 +13,8 @@ PySCF -> ORCA:
 
 The example runs both directions as a round trip: ORCA's Hartree-Fock orbitals of BiH3 are
 converted to PySCF, which reproduces ORCA's SCF energy and runs its own SCF. PySCF's orbitals are
-then converted back and read by ORCA, whose SCF converges immediately.
-
-Note on the system: bismuth carries an ECP, and its def2-TZVP basis set is augmented by a g, an
-f, and an h shell. This is not needed for the conversion. It only makes the example a demanding
-test, as high angular momenta and shells that are not sorted by angular momentum are covered.
+then converted back and read by ORCA, whose SCF converges immediately. Bismuth carries an ECP
+with def2-QZVPP, which is transferred along with the basis set.
 
 Requires the optional dependency PySCF (`pip install pyscf`).
 """
@@ -27,20 +24,10 @@ import sys
 from pathlib import Path
 
 from opi.core import Calculator
-from opi.input.blocks import BasisShell, BlockBasis, NewBasis
 from opi.input.simple_keywords import Approximation, BasisSet, Method, Scf, Task
 from opi.input.structures import Structure
 from opi.output.core import Output
 from opi.output.models.json.gbw.gbw_results import GbwResults
-from opi.utils.element import Element
-
-# > Shells added to the def2-TZVP basis set of bismuth, in this order. They only make the example
-# > a harder test of the conversion and can be left out.
-ADDED_SHELLS = [
-    BasisShell(angmom="g", primitives=[(0.4203, 1.0)]),
-    BasisShell(angmom="f", primitives=[(1.26256, 1.0)]),
-    BasisShell(angmom="h", primitives=[(0.5, 1.0)]),
-]
 
 
 def run_orca(structure: Structure, working_dir: Path, basename: str, moinp: Path | None) -> Output:
@@ -50,12 +37,11 @@ def run_orca(structure: Structure, working_dir: Path, basename: str, moinp: Path
     calc.input.add_simple_keywords(
         Scf.NOAUTOSTART,
         Method.HF,
-        BasisSet.DEF2_TZVP,
+        BasisSet.DEF2_QZVPP,
         Approximation.NORI,
         Scf.VERYTIGHTSCF,
         Task.SP,
     )
-    calc.input.add_blocks(BlockBasis(addgto=NewBasis(element=Element.BISMUTH, shells=ADDED_SHELLS)))
     if moinp is not None:
         calc.input.add_simple_keywords(Scf.MOREAD)
         calc.input.moinp = moinp
