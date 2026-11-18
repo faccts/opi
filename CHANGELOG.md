@@ -64,6 +64,8 @@
 - Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
 - Added `csf` and `det` as Literals to `printwf` in the `%casscf` block. (#311)
 - Added AUTOCI convergence check `output.autoci_converged()` and complete list of methods to `BlockAutoCI` (#318).
+- Added export of gbw molecular orbitals to PySCF (`GbwResults.to_pyscf()`) and import from PySCF (`GbwResults.from_pyscf()`), including ECPs parsed into the new `Atoms.ecps` field. PySCF is added as an optional dependency (`orca-pi[pyscf]`). (#319)
+- `NewBasis` in `BlockBasis` (e.g. `addgto`, `newgto`) accepts explicit shells (`BasisShell`) in addition to a basis set keyword. (#319)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)

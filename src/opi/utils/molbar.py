@@ -6,7 +6,6 @@ MolBar is an optional dependency of OPI. See pyproject.toml for details.
 
 from __future__ import annotations
 
-import importlib.util
 from collections.abc import Sequence
 from functools import wraps
 from importlib import import_module
@@ -17,6 +16,7 @@ import numpy.typing as npt
 
 from opi.models.string_enum import StringEnum
 from opi.utils.element import Element
+from opi.utils.optional import requires_optional
 
 __all__ = (
     "MolBarMode",
@@ -62,28 +62,15 @@ class MolBarMode(StringEnum):
 _T = TypeVar("_T")
 
 
-def _molbar_available() -> bool:
-    """Return `True` if MolBar is installed, without importing it."""
-    return importlib.util.find_spec("molbar") is not None
+requires_molbar = requires_optional("molbar", name="MolBar", package="molbar")
+"""
+Decorator that raises `ImportError` if MolBar is not installed.
 
-
-def requires_molbar(func: Callable[..., _T]) -> Callable[..., _T]:
-    """
-    Decorator that raises `ImportError` if MolBar is not installed.
-
-    Apply to any method that calls `call_molbar()` to ensure a clear error
-    message is raised at call time rather than at import time. Availability is
-    checked via `importlib.util.find_spec` so the decorator does not import
-    MolBar itself.
-    """
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> _T:
-        if not _molbar_available():
-            raise ImportError("MolBar is not installed. It is an optional dependency of OPI.")
-        return func(*args, **kwargs)
-
-    return wrapper
+Apply to any method that calls `call_molbar()` to ensure a clear error
+message is raised at call time rather than at import time. Availability is
+checked via `importlib.util.find_spec` so the decorator does not import
+MolBar itself.
+"""
 
 
 def _import_molbar(func: Callable[..., _T]) -> Callable[..., _T]:

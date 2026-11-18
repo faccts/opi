@@ -1,18 +1,26 @@
 import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import TYPE_CHECKING
 
+import numpy.typing as npt
 from pydantic import Field
 
 from opi.execution.core import Runner
 from opi.input.structures.atom import Atom, GhostAtom
 from opi.input.structures.coordinates import Coordinates
 from opi.input.structures.structure import Structure
+from opi.output.models.json.gbw.properties.base import SHELL_LETTERS
 from opi.output.models.json.gbw.properties.cite import Cite
 from opi.output.models.json.gbw.properties.header import OrcaHeader
 from opi.output.models.json.gbw.properties.molecule import Molecule
 from opi.output.models.json_loadable import JSONLoadable
 from opi.utils.element import Element
+from opi.utils.pyscf import requires_pyscf
+
+if TYPE_CHECKING:
+    # > PySCF is an optional dependency and only imported for type annotations
+    from pyscf.scf.hf import SCF
 
 
 class GbwResults(JSONLoadable):
@@ -143,6 +151,129 @@ class GbwResults(JSONLoadable):
 
         return structure
 
+    @requires_pyscf
+    def to_pyscf(self) -> "SCF":
+        """
+        Create a PySCF mean-field object from the molecular orbital data, e.g., to use ORCA's
+        orbitals in PySCF. Requires the optional dependency PySCF.
+
+        The basis set and effective core potentials are transferred exactly and the molecular
+        orbitals are reordered into PySCF's convention for basis functions.
+
+        The returned object holds the orbitals (`mo_coeff`), occupation numbers (`mo_occ`), and
+        orbital energies (`mo_energy`), but no SCF has been run with it. It is a Hartree-Fock
+        object, also for Kohn-Sham calculations, as the functional is not part of the gbw data.
+        Its class follows from the HF type and the multiplicity of the calculation:
+
+        - UHF: `pyscf.scf.uhf.UHF`
+        - ROHF: `pyscf.scf.rohf.ROHF`
+        - RHF: `pyscf.scf.hf.RHF`
+        - CASSCF: `pyscf.scf.hf.RHF` for a singlet and `pyscf.scf.rohf.ROHF` otherwise, holding
+          the natural orbitals with their fractional occupation numbers. Such an object is not
+          meant for running an SCF, as that does not reproduce ORCA's CASSCF result.
+
+        Likewise, a relativistic Hamiltonian (DKH, ZORA, X2C) is not part of the gbw data. For
+        such calculations, the returned object does not reproduce ORCA's energy, unless a
+        corresponding Hamiltonian is set up in PySCF. ORCA's X2C (with its default point nucleus)
+        is reproduced by `mf.x2c()`, if PySCF uses ORCA's speed of light
+        (`pyscf.lib.param.LIGHT_SPEED = 137.0359895`). The agreement depends on the PySCF
+        version: for HI with x2c-SVPall, the energies agree to 1e-8 Eh with PySCF 2.15, but only
+        to 4e-7 Eh with PySCF 2.6.
+
+        For an open shell of degenerate orbitals (e.g., the pi orbitals of OH), ORCA's ROHF
+        averages over the configurations and stores fractional occupation numbers. As PySCF's
+        ROHF represents a single determinant, these are replaced by integer occupation numbers
+        and a warning is issued; the energy then differs from ORCA's.
+
+        Returns
+        -------
+        pyscf.scf.hf.SCF
+            PySCF mean-field object holding the molecular orbitals.
+
+        Raises
+        ------
+        ImportError
+            If PySCF is not installed.
+        ValueError
+            If the gbw data lacks atoms, basis sets, or molecular orbitals.
+
+        Warns
+        -----
+        UserWarning
+            If fractional ROHF occupation numbers are replaced by integer ones.
+        """
+        from opi.output.models.json.gbw._pyscf_converter import gbw_to_pyscf
+
+        return gbw_to_pyscf(self)
+
+    @classmethod
+    @requires_pyscf
+    def from_pyscf(
+        cls,
+        mf: "SCF",
+        /,
+        *,
+        mo_coeff: npt.ArrayLike | None = None,
+        mo_occ: npt.ArrayLike | None = None,
+        mo_energy: npt.ArrayLike | None = None,
+    ) -> "GbwResults":
+        """
+        Create gbw data from a PySCF mean-field object, e.g., to use PySCF's orbitals in ORCA.
+        Requires the optional dependency PySCF.
+
+        Write the result into a gbw file with `to_gbw_file()` and read it in ORCA with
+        `! MORead` and `%moinp`.
+
+        ORCA only takes the molecular orbitals from the gbw file as initial guess. The method,
+        basis set, ECPs, geometry, charge, and multiplicity are those of ORCA's input, and ORCA
+        determines the occupation numbers itself. ORCA compares the basis set of the gbw file
+        with that of its input and, if they differ, projects the orbitals onto the input's basis
+        set. Hence, use the same basis set and ECPs in ORCA's input as in PySCF to get PySCF's
+        orbitals exactly; a different order of the shells (e.g., for def2-QZVPP) is projected
+        without loss.
+
+        Parameters
+        ----------
+        mf : pyscf.scf.hf.SCF
+            PySCF mean-field object of RHF, UHF, or ROHF type (including Kohn-Sham). Its molecule
+            must use spherical basis functions and scalar ECPs.
+        mo_coeff : array_like | None, default: None
+            Molecular orbitals to use instead of `mf.mo_coeff`, e.g., localized or natural
+            orbitals, with the shape (n_ao, n_mo), or (2, n_ao, n_mo) for unrestricted orbitals.
+            Requires `mo_occ`. Restricted orbitals of an open-shell molecule are stored as ROHF
+            type orbitals. Note that a gbw file can only be written with as many orbitals as
+            basis functions.
+        mo_occ : array_like | None, default: None
+            Occupation numbers to use instead of `mf.mo_occ`.
+        mo_energy : array_like | None, default: None
+            Orbital energies to use instead of `mf.mo_energy`. If `mo_coeff` is given without
+            orbital energies, these are set to zero.
+
+        Returns
+        -------
+        GbwResults
+            gbw data holding the structure, basis set, effective core potentials, and molecular
+            orbitals.
+
+        Raises
+        ------
+        ImportError
+            If PySCF is not installed.
+        ValueError
+            If the molecule uses Cartesian basis functions or ECPs with spin-orbit terms, if the
+            calculation is periodic, if the orbitals are generalized, four-component, or complex,
+            or if orbitals or occupation numbers are missing or of inconsistent shape.
+
+        Warns
+        -----
+        UserWarning
+            If the mean-field object uses a relativistic (X2C) Hamiltonian, which is not part of
+            the gbw data.
+        """
+        from opi.output.models.json.gbw._pyscf_converter import gbw_from_pyscf
+
+        return gbw_from_pyscf(mf, mo_coeff=mo_coeff, mo_occ=mo_occ, mo_energy=mo_energy)
+
     def to_gbw_file(self, gbw_file: Path | str, /, *, runner: Runner | None = None) -> Path:
         """
         Write a gbw file from the results by dumping them into a gbw-JSON file and converting that
@@ -196,11 +327,26 @@ class GbwResults(JSONLoadable):
             # > `orca_2json` appends "_copy" to the stem of the JSON file
             tmp_gbw_file = json_file.with_name(f"{json_file.stem}_copy.gbw")
             if not result.returncode_ok() or not tmp_gbw_file.is_file():
-                raise RuntimeError(
-                    f"orca_2json failed to create a gbw file from {gbw_file.stem}.json"
-                )
+                message = f"orca_2json failed to create a gbw file from {gbw_file.stem}.json"
+                # > `orca_2json` of ORCA 6.1.1 fails silently for shells above l = 8
+                if self._max_shell_letter() in ("m", "n"):
+                    message += (
+                        ". The basis set contains shells above l = 8, which orca_2json may not "
+                        "support."
+                    )
+                raise RuntimeError(message)
 
             return Path(shutil.move(tmp_gbw_file, gbw_file))
+
+    def _max_shell_letter(self) -> str | None:
+        """Letter of the highest angular momentum of the basis set, or None if there is none."""
+        letters: list[str] = []
+        if self.molecule is not None:
+            for atom in self.molecule.atoms or []:
+                for shell in atom.basis or []:
+                    if shell.shell is not None and shell.shell.lower() in SHELL_LETTERS:
+                        letters.append(shell.shell.lower())
+        return max(letters, key=SHELL_LETTERS.index) if letters else None
 
     def _check_gbw_writable(self) -> None:
         """
@@ -229,4 +375,15 @@ class GbwResults(JSONLoadable):
         if any(mo.mocoefficients is None for mo in molecular_orbitals.mos):
             raise ValueError(
                 "Cannot write gbw file: MO coefficients of at least one molecular orbital are missing"
+            )
+        # > `orca_2json` silently writes a corrupt gbw file, if there are fewer orbitals than basis
+        # > functions, e.g., after removing linear dependencies
+        n_ao = len(molecular_orbitals.mos[0].mocoefficients or [])
+        n_spin = 2 if molecule.hftyp.lower() == "uhf" else 1
+        if any(len(mo.mocoefficients or []) != n_ao for mo in molecular_orbitals.mos):
+            raise ValueError("Cannot write gbw file: molecular orbitals differ in size")
+        if len(molecular_orbitals.mos) != n_spin * n_ao:
+            raise ValueError(
+                f"Cannot write gbw file: {len(molecular_orbitals.mos)} molecular orbitals present, "
+                f"but {n_spin * n_ao} are required for {n_ao} basis functions"
             )

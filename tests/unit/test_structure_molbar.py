@@ -30,6 +30,8 @@ from opi.input.structures.structure import Structure
 from opi.utils.element import Element
 from opi.utils.molbar import MolBarMode, call_molbar, requires_molbar
 
+pytestmark = pytest.mark.molbar
+
 # > Version of the installed MolBar, read from package metadata rather than a
 # > hard-coded literal so the tests stay valid across MolBar releases.
 MOLBAR_VERSION = version("molbar")

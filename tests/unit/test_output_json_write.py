@@ -81,6 +81,9 @@ def test_to_json_file(
             lambda r: setattr(r.molecule.molecularorbitals.mos[0], "mocoefficients", None),
             "MO coefficients",
         ),
+        # > Fewer orbitals than basis functions, e.g., after removing linear dependencies
+        (lambda r: r.molecule.molecularorbitals.mos.pop(), "are required for"),
+        (lambda r: r.molecule.molecularorbitals.mos[0].mocoefficients.pop(), "differ in size"),
     ],
 )
 def test_to_gbw_file_incomplete_results(

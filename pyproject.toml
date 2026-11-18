@@ -44,6 +44,9 @@ ase = [
 molbar = [
     "molbar~=1.1",
 ]
+pyscf = [
+    "pyscf>=2.6,<3",
+]
 
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
@@ -74,6 +77,7 @@ tests = [
     "ase<4,>=3.23",
     "hypothesis>=6.133.0,<7",
     "jsonschema>=4.24.0,<5",
+    "pyscf>=2.6,<3",
     "pytest>=9,<10",
     "pytest-randomly>=4,<5",
 ]
@@ -147,6 +151,8 @@ addopts = [
 ]
 markers = [
     "ase: tests that require ASE",
+    "molbar: tests that require MolBar",
+    "pyscf: tests that require PySCF",
     "examples: tests that run an example",
     "orca: tests that require ORCA",
     "slow: tests that take longer",
@@ -169,6 +175,10 @@ plugins = ['pydantic.mypy']
 [[tool.mypy.overrides]]
 module = ["semantic_versioning.*"]
 follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pyscf.*"]
+ignore_missing_imports = true
 
 
 # ////  RUFF  ////

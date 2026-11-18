@@ -1,6 +1,9 @@
+import math
 import re
+from textwrap import indent
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from opi.input.blocks import BlockABC
@@ -11,6 +14,7 @@ from opi.input.simple_keywords import (
 from opi.utils.element import Element
 
 __all__ = (
+    "BasisShell",
     "NewBasis",
     "FragBasis",
     "FragAux",
@@ -23,25 +27,121 @@ __all__ = (
 )
 
 
+# > Indentation of the options of a block, as written by `BlockABC.format_orca()`
+_BLOCK_INDENT = "    "
+# > Indentation of nested lines relative to their parent line
+_NESTED_INDENT = "  "
+
+
+class BasisShell(BaseModel):
+    """
+    Class to model a contracted shell of basis functions given explicitly in `NewBasis`.
+
+    Attributes
+    ----------
+    angmom: Literal["s", "p", "d", "f", "g", "h", "i", "k", "l", "m", "n"]
+        Angular momentum of the shell
+    primitives: list[tuple[float, float]]
+        Exponent and contraction coefficient of each primitive Gaussian
+
+    Examples
+    --------
+    >>> print(BasisShell(angmom="g", primitives=[(0.4203, 1.0)]))
+    G 1
+      1 0.4203 1.0
+    """
+
+    angmom: Literal["s", "p", "d", "f", "g", "h", "i", "k", "l", "m", "n"]
+    primitives: list[tuple[float, float]]
+
+    @field_validator("angmom", mode="before")
+    @classmethod
+    def lowercase_angmom(cls, value: object) -> object:
+        """
+        ORCA prints the angular momentum in uppercase, so both cases are accepted.
+
+        Parameters
+        ----------
+        value : object
+        """
+        return value.lower() if isinstance(value, str) else value
+
+    @field_validator("primitives")
+    @classmethod
+    def check_primitives(cls, values: list[tuple[float, float]]) -> list[tuple[float, float]]:
+        """
+        Parameters
+        ----------
+        values : list[tuple[float, float]]
+        """
+        if not values:
+            raise ValueError("A shell needs at least one primitive")
+        for exponent, coefficient in values:
+            if not (math.isfinite(exponent) and exponent > 0):
+                raise ValueError("All exponents must be positive and finite")
+            if not math.isfinite(coefficient):
+                raise ValueError("All contraction coefficients must be finite")
+        return values
+
+    def __str__(self) -> str:
+        lines = [f"{self.angmom.upper()} {len(self.primitives)}"]
+        lines += [
+            f"{_NESTED_INDENT}{i} {exponent} {coefficient}"
+            for i, (exponent, coefficient) in enumerate(self.primitives, start=1)
+        ]
+        return "\n".join(lines)
+
+
 class NewBasis(BaseModel):
     """
-    Class to model `newauxgto`, `addauxgto`,`newauxjgto`,`addauxjgto`,`newauxcgto`,`addauxcgto`,`newauxxgto`,`addauxxgto` attributes in `BlockBasis`.
+    Class to model `newgto`, `addgto`, `newauxgto`, `addauxgto`, `newauxjgto`, `addauxjgto`,
+    `newauxcgto`, `addauxcgto`, `newauxxgto`, `addauxxgto`, `newauxjkgto`, `addauxjkgto`, and
+    `newecp` attributes in `BlockBasis`.
+
+    The basis is either a basis set keyword or, except for `newecp`, a list of explicit shells.
 
     Attributes
     -----------
     element: `Element`
         Element for which basis is defined
-    basis: `ORCAKeyword`
+    basis: `ORCAKeyword` | None, default: None
         Basis set keyword to be defined
+    shells: list[BasisShell] | None, default: None
+        Explicit shells to be defined, in the given order
 
+    Examples
+    --------
+    Add a g shell to the basis set of bismuth:
+
+    >>> BlockBasis(
+    ...     addgto=NewBasis(
+    ...         element=Element.BISMUTH, shells=[BasisShell(angmom="g", primitives=[(0.4203, 1.0)])]
+    ...     )
+    ... )
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
     element: Element
-    basis: ORCAKeyword
+    basis: ORCAKeyword | None = None
+    shells: list[BasisShell] | None = None
+
+    @model_validator(mode="after")
+    def check_basis_or_shells(self) -> Self:
+        if (self.basis is None) == (self.shells is None):
+            raise ValueError("Exactly one of `basis` and `shells` must be given")
+        if self.shells is not None and not self.shells:
+            raise ValueError("`shells` must not be empty")
+        return self
 
     def __str__(self) -> str:
-        return f'{str(self.element)} "{self.basis.format_orca()}" end'
+        if self.basis is not None:
+            return f'{str(self.element)} "{self.basis.format_orca()}" end'
+        assert self.shells is not None
+        # > The first line follows the name of the option, all others are lines of their own
+        lines = [str(self.element)]
+        lines += [indent(str(shell), _BLOCK_INDENT + _NESTED_INDENT) for shell in self.shells]
+        lines.append(f"{_BLOCK_INDENT}end")
+        return "\n".join(lines)
 
 
 class FragBasis(BaseModel):
@@ -264,6 +364,33 @@ class BlockBasis(BlockABC):
     readfragecp: InputFilePath | None = None
     newecp: NewBasis | None = None
     delecp: Element | None = None
+
+    @field_validator("newecp")
+    @classmethod
+    def check_newecp(cls, value: NewBasis | None) -> NewBasis | None:
+        """
+        Explicit shells use the syntax of basis sets, which is not valid for ECPs.
+
+        Parameters
+        ----------
+        value : NewBasis | None
+        """
+        if value is not None and value.shells is not None:
+            raise ValueError("`newecp` only supports an ECP keyword, not explicit shells")
+        return value
+
+    def format_orca(self) -> str:
+        """
+        Method to convert the block into string for the ORCA input file.
+
+        Raises
+        ------
+        ValueError
+            If `newecp` holds explicit shells. These are rejected when the block is created, but
+            fields assigned afterwards are not validated.
+        """
+        self.check_newecp(self.newecp)
+        return super().format_orca()
 
     @field_validator(
         "readfragbasis",
