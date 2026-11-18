@@ -65,6 +65,7 @@
 - Added `OpiError`, `OpiExecutionError`, and `OrcaMmError`. (#224)
 - Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
 - Added `csf` and `det` as Literals to `printwf` in the `%casscf` block. (#311)
+- Added AUTOCI convergence check `output.autoci_converged()` and complete list of methods to `BlockAutoCI` (#318).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
@@ -96,6 +97,7 @@
 - The "ORCA aborted the run" error is now also detected for ORCA's lower-case "aborting the run" message (#303).
 - The pydantic output fields `EfgTensor.nuc`, `SpinSpinCoupling.pairsinfo` and `Tensor.nuc` now accept zero as valid output values (#305).
 - Allow direct initialization of `Scan` input object from the class instead of producing malformed input (#308).
+- OPI now finds the ORCA helper binaries (e.g. `orca_plot`) when the `orca` it is pointed to, directly or through `$PATH`, sits at the top of an installation that keeps its binaries in `bin/` and its libraries in `lib/`.(#321)
 
 ## [2.0.0] - 2026-02-10
 
