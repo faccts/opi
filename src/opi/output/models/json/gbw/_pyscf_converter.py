@@ -4,6 +4,11 @@ Conversion of the molecular orbital data of a gbw file (`GbwResults`) from and t
 This module is internal to OPI and may change or move without notice. Use
 `GbwResults.to_pyscf()` and `GbwResults.from_pyscf()` instead.
 
+Entry points
+------------
+`GbwResults.to_pyscf()` calls `gbw_to_pyscf()`, and `GbwResults.from_pyscf()` calls
+`gbw_from_pyscf()`. Everything else in this module serves these two functions.
+
 Structure
 ---------
 The module has four sections:
@@ -108,6 +113,8 @@ if TYPE_CHECKING:
     from pyscf.scf.hf import SCF
 
     from opi.output.models.json.gbw.gbw_results import GbwResults
+
+__all__ = ("gbw_to_pyscf", "gbw_from_pyscf")
 
 # > Pattern for the ghost atom prefixes that PySCF accepts in atom symbols
 _GHOST_PREFIX = re.compile(r"^(GHOST-?|X-)", re.IGNORECASE)
