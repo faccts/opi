@@ -10,6 +10,7 @@ from opi.execution.core import Runner
 from opi.input.structures.atom import Atom, GhostAtom
 from opi.input.structures.coordinates import Coordinates
 from opi.input.structures.structure import Structure
+from opi.output.models.json.gbw.properties.base import SHELL_LETTERS
 from opi.output.models.json.gbw.properties.cite import Cite
 from opi.output.models.json.gbw.properties.header import OrcaHeader
 from opi.output.models.json.gbw.properties.molecule import Molecule
@@ -323,14 +324,13 @@ class GbwResults(JSONLoadable):
 
     def _max_shell_letter(self) -> str | None:
         """Letter of the highest angular momentum of the basis set, or None if there is none."""
-        order = "spdfghiklmn"
         letters: list[str] = []
         if self.molecule is not None:
             for atom in self.molecule.atoms or []:
                 for shell in atom.basis or []:
-                    if shell.shell is not None and shell.shell.lower() in order:
+                    if shell.shell is not None and shell.shell.lower() in SHELL_LETTERS:
                         letters.append(shell.shell.lower())
-        return max(letters, key=order.index) if letters else None
+        return max(letters, key=SHELL_LETTERS.index) if letters else None
 
     def _check_gbw_writable(self) -> None:
         """

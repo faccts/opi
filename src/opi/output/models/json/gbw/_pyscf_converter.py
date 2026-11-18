@@ -38,7 +38,7 @@ import numpy.typing as npt
 
 from opi.output.hftyp import Hftyp
 from opi.output.models.json.gbw.properties.atoms import Atoms
-from opi.output.models.json.gbw.properties.base import Base
+from opi.output.models.json.gbw.properties.base import SHELL_LETTERS, Base
 from opi.output.models.json.gbw.properties.ecp import Ecp, EcpShell
 from opi.output.models.json.gbw.properties.mo import MO
 from opi.output.models.json.gbw.properties.molecular_orbitals import MolecularOrbitals
@@ -49,9 +49,6 @@ if TYPE_CHECKING:
     from pyscf.scf.hf import SCF
 
     from opi.output.models.json.gbw.gbw_results import GbwResults
-
-# > Angular momentum letters as used by ORCA, which skips "j" and supports up to l = 10
-SHELL_LETTERS = "spdfghiklmn"
 
 # > Names of the p and d functions in ORCA's orbital labels; higher shells are labeled by m
 _ORCA_FUNCTION_NAMES = {0: ("s",), 1: ("pz", "px", "py"), 2: ("dz2", "dxz", "dyz", "dx2y2", "dxy")}
