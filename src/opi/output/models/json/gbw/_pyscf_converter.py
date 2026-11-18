@@ -29,8 +29,8 @@ from __future__ import annotations
 
 import re
 import warnings
-from collections.abc import Iterable
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -364,6 +364,134 @@ class AOMap:
 
 
 # ============================================================
+# Molecular orbitals
+# ============================================================
+
+
+@dataclass(frozen=True)
+class Orbitals:
+    """
+    Molecular orbitals (MOs) of a restricted or unrestricted calculation.
+
+    Restricted and unrestricted MOs are stored alike, with a leading spin axis of length n_spin =
+    1 (restricted) or 2 (unrestricted: alpha, beta). The MO coefficients refer to either ORCA's or
+    PySCF's basis functions (AOs); `transformed()` changes between them.
+
+    The class is independent of ORCA and PySCF and is meant to stay so, e.g., to be reused for
+    further formats. Do not add program-specific fields.
+
+    Attributes
+    ----------
+    coeff : npt.NDArray[np.float64]
+        MO coefficients with shape (n_spin, n_ao, n_mo).
+    occ : npt.NDArray[np.float64]
+        Occupation numbers with shape (n_spin, n_mo).
+    energy : npt.NDArray[np.float64]
+        Orbital energies in Hartree with shape (n_spin, n_mo).
+    """
+
+    coeff: npt.NDArray[np.float64]
+    occ: npt.NDArray[np.float64]
+    energy: npt.NDArray[np.float64]
+
+    @property
+    def n_spin(self) -> int:
+        """Number of spin components: 1 for restricted, 2 for unrestricted MOs."""
+        return int(self.coeff.shape[0])
+
+    def transformed(
+        self,
+        transform: Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]],
+        /,
+    ) -> Orbitals:
+        """
+        Transform the MO coefficients of each spin, e.g., from ORCA's to PySCF's AOs.
+
+        Parameters
+        ----------
+        transform : Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]]
+            Transformation of MO coefficients with shape (n_ao, n_mo), i.e.,
+            `AOMap.orca_to_pyscf` or `AOMap.pyscf_to_orca`.
+
+        Returns
+        -------
+        Orbitals
+            The same MOs with transformed coefficients; occupation numbers and orbital energies
+            are kept.
+        """
+        return replace(self, coeff=np.stack([transform(coeff) for coeff in self.coeff]))
+
+
+def _orca_orbitals(mos: list[MO], hftyp: Hftyp, /) -> Orbitals:
+    """
+    Read the MOs of the gbw data.
+
+    Parameters
+    ----------
+    mos : list[MO]
+        MOs of the gbw data. For UHF, the alpha MOs come first, followed by as many beta MOs.
+    hftyp : Hftyp
+        HF type of the gbw data, which tells whether the MOs are unrestricted.
+
+    Returns
+    -------
+    Orbitals
+        The MOs, with coefficients with respect to ORCA's AOs. Missing occupation numbers and
+        orbital energies are set to zero.
+
+    Raises
+    ------
+    ValueError
+        If the MO coefficients of at least one MO are missing.
+    """
+    if any(mo.mocoefficients is None for mo in mos):
+        raise ValueError("MO coefficients of at least one molecular orbital are missing")
+    # > Shape (n_ao, n_mo) of all spins together
+    coeff = np.array([mo.mocoefficients for mo in mos], dtype=np.float64).T
+    occ = np.array([mo.occupancy or 0.0 for mo in mos], dtype=np.float64)
+    energy = np.array([mo.orbitalenergy or 0.0 for mo in mos], dtype=np.float64)
+    if hftyp == Hftyp.UHF:
+        # > The gbw data lists the alpha MOs first, then the beta MOs: [a0, ..., a(n-1), b0, ...,
+        # > b(n-1)]. The columns :n_mo are the alpha MOs and n_mo: the beta MOs, which are stacked
+        # > along a new spin axis.
+        n_mo = len(mos) // 2
+        return Orbitals(
+            coeff=np.stack((coeff[:, :n_mo], coeff[:, n_mo:])),
+            occ=np.stack((occ[:n_mo], occ[n_mo:])),
+            energy=np.stack((energy[:n_mo], energy[n_mo:])),
+        )
+    return Orbitals(coeff=coeff[None], occ=occ[None], energy=energy[None])
+
+
+def _orca_mos(orbitals: Orbitals, /) -> list[MO]:
+    """
+    Create the MOs of the gbw data.
+
+    Parameters
+    ----------
+    orbitals : Orbitals
+        The MOs, with coefficients with respect to ORCA's AOs.
+
+    Returns
+    -------
+    list[MO]
+        MOs of the gbw data. For unrestricted MOs, the alpha MOs come first, followed by the beta
+        MOs. Symmetry is not assigned.
+    """
+    return [
+        MO(
+            mocoefficients=coeff[:, i].tolist(),
+            occupancy=float(occ[i]),
+            orbitalenergy=float(energy[i]),
+            orbitalsymlabel="A",
+            orbitalsymmetry=0,
+        )
+        for coeff, occ, energy in zip(orbitals.coeff, orbitals.occ, orbitals.energy, strict=True)
+        for i in range(coeff.shape[1])
+    ]
+
+
+# ============================================================
 # ORCA -> PySCF
 # ============================================================
 
@@ -527,31 +655,26 @@ def gbw_to_pyscf(gbw: GbwResults, /) -> SCF:
             f"Basis set of PySCF ({mol.nao}) and gbw data ({ao_map.n_ao}) differ in size"
         )
 
-    mos = mo_data.mos
-    if any(mo.mocoefficients is None for mo in mos):
-        raise ValueError("MO coefficients of at least one molecular orbital are missing")
-    coeff_orca = np.array([mo.mocoefficients for mo in mos], dtype=np.float64).T
-    if coeff_orca.shape[0] != ao_map.n_ao:
+    orca_orbitals = _orca_orbitals(mo_data.mos, hftyp)
+    if orca_orbitals.coeff.shape[1] != ao_map.n_ao:
         raise ValueError("Number of MO coefficients does not match the basis set size")
-    coeff = ao_map.orca_to_pyscf(coeff_orca)
-    occ = np.array([mo.occupancy or 0.0 for mo in mos], dtype=np.float64)
-    energies = np.array([mo.orbitalenergy or 0.0 for mo in mos], dtype=np.float64)
+    orbitals = orca_orbitals.transformed(ao_map.orca_to_pyscf)
 
     if hftyp == Hftyp.UHF:
-        n_mo = len(mos) // 2
         mf = scf.UHF(mol)
-        mf.mo_coeff = np.stack((coeff[:, :n_mo], coeff[:, n_mo:]))
-        mf.mo_occ = np.stack((occ[:n_mo], occ[n_mo:]))
-        mf.mo_energy = np.stack((energies[:n_mo], energies[n_mo:]))
+        mf.mo_coeff = orbitals.coeff
+        mf.mo_occ = orbitals.occ
+        mf.mo_energy = orbitals.energy
     else:
+        occ = orbitals.occ[0]
         if hftyp == Hftyp.ROHF:
             mf = scf.ROHF(mol)
             occ = _integer_rohf_occupations(occ, mol.nelec)
         else:
             mf = scf.RHF(mol)
-        mf.mo_coeff = coeff
+        mf.mo_coeff = orbitals.coeff[0]
         mf.mo_occ = occ
-        mf.mo_energy = energies
+        mf.mo_energy = orbitals.energy[0]
     return mf
 
 
@@ -634,35 +757,16 @@ def _ecp_from_pyscf(n_core: int, channels: list[Any], /) -> Ecp:
     return Ecp(n_core=n_core, lmax=SHELL_LETTERS[lmax], potential=potential)
 
 
-def _mo_list(
-    coeff: npt.NDArray[np.float64],
-    occ: npt.NDArray[np.float64],
-    energies: npt.NDArray[np.float64] | None,
-    /,
-) -> list[MO]:
-    """Create the gbw data models of molecular orbitals (coefficients in ORCA's AO order)."""
-    return [
-        MO(
-            mocoefficients=coeff[:, i].tolist(),
-            occupancy=float(occ[i]),
-            orbitalenergy=float(energies[i]) if energies is not None else 0.0,
-            orbitalsymlabel="A",
-            orbitalsymmetry=0,
-        )
-        for i in range(coeff.shape[1])
-    ]
-
-
-def _orbital_data(
+def _pyscf_orbitals(
     mf: SCF,
     n_ao: int,
     mo_coeff: npt.ArrayLike | None,
     mo_occ: npt.ArrayLike | None,
     mo_energy: npt.ArrayLike | None,
     /,
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64] | None]:
+) -> Orbitals:
     """
-    Collect and validate the orbitals, occupation numbers, and orbital energies to convert.
+    Collect and validate the MOs, occupation numbers, and orbital energies to convert.
 
     Parameters
     ----------
@@ -679,10 +783,10 @@ def _orbital_data(
 
     Returns
     -------
-    tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64] | None]
-        Orbitals with shape (n_ao, n_mo), or (2, n_ao, n_mo) for unrestricted orbitals, and
-        occupation numbers and orbital energies with shape (n_mo,), or (2, n_mo). The orbital
-        energies are None, if there are none for the orbitals.
+    Orbitals
+        The MOs, with coefficients with respect to PySCF's AOs. They are unrestricted, if the MO
+        coefficients have the shape (2, n_ao, n_mo). The orbital energies are zero, if there are
+        none for the MOs.
 
     Raises
     ------
@@ -735,7 +839,12 @@ def _orbital_data(
         raise ValueError(
             f"`mo_energy` has the shape {energies.shape}, but `mo_coeff` requires {expected_shape}"
         )
-    return coeff, occ, energies
+    if energies is None:
+        energies = np.zeros_like(occ)
+    if coeff.ndim == 2:
+        # > Restricted MOs get a spin axis of length 1
+        return Orbitals(coeff=coeff[None], occ=occ[None], energy=energies[None])
+    return Orbitals(coeff=coeff, occ=occ, energy=energies)
 
 
 def gbw_from_pyscf(
@@ -775,11 +884,11 @@ def gbw_from_pyscf(
             stacklevel=2,
         )
 
-    mo_coeff, mo_occ, energies = _orbital_data(mf, mol.nao, mo_coeff, mo_occ, mo_energy)
+    pyscf_orbitals = _pyscf_orbitals(mf, mol.nao, mo_coeff, mo_occ, mo_energy)
 
     # > The HF type has to be consistent with the multiplicity, which is taken from the molecule:
     # > restricted orbitals of an open-shell molecule are ROHF type orbitals
-    if mo_coeff.ndim == 3:
+    if pyscf_orbitals.n_spin == 2:
         hftyp = Hftyp.UHF
     elif isinstance(mf, scf.rohf.ROHF) or mol.spin != 0:
         hftyp = Hftyp.ROHF
@@ -850,16 +959,10 @@ def gbw_from_pyscf(
     if ao_map.n_ao != mol.nao:
         raise ValueError("Basis set conversion failed: number of basis functions differs")
 
-    if hftyp == Hftyp.UHF:
-        # > ORCA lists the orbital labels once per spin
-        labels = labels * 2
-        mos = _mo_list(
-            ao_map.pyscf_to_orca(mo_coeff[0]), mo_occ[0], None if energies is None else energies[0]
-        ) + _mo_list(
-            ao_map.pyscf_to_orca(mo_coeff[1]), mo_occ[1], None if energies is None else energies[1]
-        )
-    else:
-        mos = _mo_list(ao_map.pyscf_to_orca(mo_coeff), mo_occ, energies)
+    orbitals = pyscf_orbitals.transformed(ao_map.pyscf_to_orca)
+    mos = _orca_mos(orbitals)
+    # > ORCA lists the orbital labels once per spin
+    labels = labels * orbitals.n_spin
 
     molecule = Molecule(
         atoms=atoms,
