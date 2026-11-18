@@ -38,4 +38,5 @@ def test_x2c(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         results = GbwResults.from_pyscf(mf)
     gbw_file = results.to_gbw_file(moread_dir / "guess.gbw")
     output_moread = run_orca(moread_dir, mol, "HF RHF X2C x2c-svpall NoRI", moinp=gbw_file)
-    assert output_moread.get_final_energy() == pytest.approx(mf.e_tot, abs=1e-7)
+    # > PySCF's X2C agrees with ORCA's to 1e-8 Eh in PySCF 2.15, but only to 4e-7 Eh in PySCF 2.6
+    assert output_moread.get_final_energy() == pytest.approx(mf.e_tot, abs=1e-6)

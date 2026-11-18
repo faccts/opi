@@ -85,7 +85,23 @@ modifying the gbw data of PySCF's orbitals:
 Hence, the user has to specify the method, basis set, ECPs, geometry, charge, and multiplicity
 in ORCA's input; to get PySCF's orbitals exactly, the same basis set and ECPs as in PySCF.
 
-PySCF is imported locally in each function, as it is an optional dependency of OPI.
+Dependence on PySCF
+-------------------
+PySCF is imported locally in each function, as it is an optional dependency of OPI. The module
+was tested with PySCF 2.6 and 2.15. Most of what it uses is PySCF's public, long-standing API
+(`gto.M()`, the `Mole` methods for atoms and shells, the SCF classes), and PySCF's order and sign
+of the AOs are fixed by its integral library. After a PySCF update, check these places, which
+may change without notice:
+
+- `mol._ecp` (in `_pyscf_to_orca_atoms()`): a private attribute holding the ECPs of the molecule
+  in PySCF's internal format. PySCF has no public accessor for the formatted ECPs. A change
+  breaks the conversion of ECPs to ORCA, which the unit tests catch.
+- The attribute checks in `_check_pyscf_convertible()`: `with_x2c` detects an X2C Hamiltonian,
+  `cell` and `kpts` a periodic calculation. If PySCF renames these attributes, the X2C warning
+  or the rejection of periodic calculations silently stops working.
+- PySCF's factory functions `scf.RHF()`, `scf.UHF()`, and `scf.ROHF()` choose the class of the
+  object returned by `GbwResults.to_pyscf()` (see `_pyscf_mean_field()`), which is documented
+  for users.
 """
 
 from __future__ import annotations
@@ -1021,7 +1037,8 @@ def _check_pyscf_convertible(mf: SCF, /) -> None:
             "only RHF, UHF, and ROHF type orbitals"
         )
 
-    # > Orbitals at k-points have the same array rank as unrestricted orbitals
+    # > Orbitals at k-points have the same array rank as unrestricted orbitals. These attribute
+    # > checks depend on PySCF's naming (see the module docstring).
     if hasattr(mf, "cell") or hasattr(mf, "kpts"):
         raise ValueError("Periodic calculations are not supported")
     if getattr(mf, "with_x2c", None) is not None:
@@ -1193,7 +1210,8 @@ def _pyscf_to_orca_atoms(mol: Mole, /) -> list[Atoms]:
 
         ecp = None
         if n_core:
-            # > PySCF stores the ECP under the atom's symbol (e.g., "I1") or its element
+            # > PySCF stores the ECP under the atom's symbol (e.g., "I1") or its element. `_ecp` is
+            # > private to PySCF (see the module docstring), as there is no public accessor.
             ecp_data = mol._ecp.get(mol.atom_symbol(idx)) or mol._ecp.get(element.value)
             if ecp_data is None:
                 raise ValueError(f"ECP of atom {idx} not found in PySCF molecule")

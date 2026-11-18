@@ -176,7 +176,9 @@ class GbwResults(JSONLoadable):
         such calculations, the returned object does not reproduce ORCA's energy, unless a
         corresponding Hamiltonian is set up in PySCF. ORCA's X2C (with its default point nucleus)
         is reproduced by `mf.x2c()`, if PySCF uses ORCA's speed of light
-        (`pyscf.lib.param.LIGHT_SPEED = 137.0359895`).
+        (`pyscf.lib.param.LIGHT_SPEED = 137.0359895`). The agreement depends on the PySCF
+        version: for HI with x2c-SVPall, the energies agree to 1e-8 Eh with PySCF 2.15, but only
+        to 4e-7 Eh with PySCF 2.6.
 
         For an open shell of degenerate orbitals (e.g., the pi orbitals of OH), ORCA's ROHF
         averages over the configurations and stores fractional occupation numbers. As PySCF's
