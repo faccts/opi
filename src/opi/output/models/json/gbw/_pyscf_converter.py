@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import re
 import warnings
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
@@ -873,35 +873,99 @@ def _integer_rohf_occupations(
 # ============================================================
 
 
-def _ecp_from_pyscf(n_core: int, channels: list[Any], /) -> Ecp:
-    """Convert an ECP from PySCF's format into the gbw data model."""
-    semi_local = {int(ang): data for ang, data in channels if int(ang) >= 0}
-    local = next((data for ang, data in channels if int(ang) < 0), None)
-    lmax = max(semi_local, default=-1) + 1
+def gbw_from_pyscf(
+    mf: SCF,
+    /,
+    *,
+    mo_coeff: npt.ArrayLike | None = None,
+    mo_occ: npt.ArrayLike | None = None,
+    mo_energy: npt.ArrayLike | None = None,
+) -> GbwResults:
+    """
+    Create gbw data from a PySCF mean-field object.
 
-    def to_channel(ang: int, data: list[Any] | None) -> EcpShell:
-        exponents: list[float] = []
-        coefficients: list[float] = []
-        powers: list[float] = []
-        for power, primitives in enumerate(data or []):
-            for primitive in primitives:
-                if len(primitive) != 2:
-                    raise ValueError(
-                        "ECPs with spin-orbit terms are not supported, ORCA's gbw data only "
-                        "holds scalar ECPs"
-                    )
-                exponent, coefficient = primitive
-                exponents.append(float(exponent))
-                coefficients.append(float(coefficient))
-                powers.append(float(power))
-        if not exponents:
-            # > ORCA expects at least one primitive per channel
-            exponents, coefficients, powers = [1.0], [0.0], [2.0]
-        return EcpShell(shell=SHELL_LETTERS[ang], ecp=[exponents, coefficients, powers])
+    The conversion proceeds in four steps:
 
-    potential = [to_channel(ang, semi_local.get(ang)) for ang in range(lmax)]
-    potential.append(to_channel(lmax, local))
-    return Ecp(n_core=n_core, lmax=SHELL_LETTERS[lmax], potential=potential)
+    1. Check that the mean-field object can be converted (`_check_pyscf_convertible()`).
+    2. Collect the MOs (`_pyscf_orbitals()`) and choose ORCA's HF type for them
+       (`_pyscf_to_orca_hftyp()`).
+    3. Convert the atoms with their geometry, basis set, and ECPs (`_pyscf_to_orca_atoms()`) and
+       relate PySCF's basis functions (AOs) to ORCA's (`_pyscf_to_orca_ao_map()`).
+    4. Transform the MO coefficients to ORCA's AOs and assemble the gbw data.
+
+    See `GbwResults.from_pyscf()` for details.
+    """
+    from opi.output.models.json.gbw.gbw_results import GbwResults
+
+    _check_pyscf_convertible(mf)
+    mol = mf.mol
+    pyscf_orbitals = _pyscf_orbitals(mf, mol.nao, mo_coeff, mo_occ, mo_energy)
+    hftyp = _pyscf_to_orca_hftyp(mf, pyscf_orbitals)
+
+    atoms = _pyscf_to_orca_atoms(mol)
+    ao_map = _pyscf_to_orca_ao_map(mol)
+    orbitals = pyscf_orbitals.transformed(ao_map.pyscf_to_orca)
+
+    molecule = Molecule(
+        atoms=atoms,
+        molecularorbitals=MolecularOrbitals(
+            energyunit="Eh",
+            mos=_orca_mos(orbitals),
+            # > ORCA lists the orbital labels once per spin
+            orbitallabels=_pyscf_to_orca_ao_labels(mol) * orbitals.n_spin,
+        ),
+        coordinateunits="Angs",
+        multiplicity=int(mol.spin) + 1,
+        charge=int(mol.charge),
+        hftyp=hftyp.value.upper(),
+        origin=(0.0, 0.0, 0.0),
+    )
+    # > The ORCA header has no default value and is set via its alias
+    return GbwResults.model_validate({"orca header": None, "molecule": molecule})
+
+
+def _check_pyscf_convertible(mf: SCF, /) -> None:
+    """
+    Check that a PySCF mean-field object can be converted into gbw data.
+
+    Parameters
+    ----------
+    mf : pyscf.scf.hf.SCF
+        PySCF mean-field object.
+
+    Raises
+    ------
+    ValueError
+        If the molecule uses Cartesian basis functions, if the orbitals are generalized or
+        four-component, or if the calculation is periodic.
+
+    Warns
+    -----
+    UserWarning
+        If the mean-field object uses a relativistic (X2C) Hamiltonian, which is not part of the
+        gbw data.
+    """
+    from pyscf import scf
+
+    if mf.mol.cart:
+        raise ValueError("Cartesian basis functions are not supported, ORCA uses spherical ones")
+
+    if isinstance(mf, scf.ghf.GHF | scf.dhf.DHF):
+        raise ValueError(
+            "Generalized and four-component orbitals are not supported, "
+            "only RHF, UHF, and ROHF type orbitals"
+        )
+
+    # > Orbitals at k-points have the same array rank as unrestricted orbitals
+    if hasattr(mf, "cell") or hasattr(mf, "kpts"):
+        raise ValueError("Periodic calculations are not supported")
+    if getattr(mf, "with_x2c", None) is not None:
+        # > Points to the line of `GbwResults.from_pyscf()` that calls `gbw_from_pyscf()`
+        warnings.warn(
+            "The mean-field object uses a relativistic (X2C) Hamiltonian, which is not part of "
+            "the gbw data. Request a corresponding Hamiltonian in ORCA.",
+            stacklevel=3,
+        )
 
 
 def _pyscf_orbitals(
@@ -922,7 +986,7 @@ def _pyscf_orbitals(
     n_ao : int
         Number of basis functions.
     mo_coeff : array_like | None
-        Molecular orbitals to use instead of `mf.mo_coeff`.
+        MO coefficients to use instead of `mf.mo_coeff`.
     mo_occ : array_like | None
         Occupation numbers to use instead of `mf.mo_occ`.
     mo_energy : array_like | None
@@ -994,101 +1058,81 @@ def _pyscf_orbitals(
     return Orbitals(coeff=coeff, occ=occ, energy=energies)
 
 
-def gbw_from_pyscf(
-    mf: SCF,
-    /,
-    *,
-    mo_coeff: npt.ArrayLike | None = None,
-    mo_occ: npt.ArrayLike | None = None,
-    mo_energy: npt.ArrayLike | None = None,
-) -> GbwResults:
+def _pyscf_to_orca_hftyp(mf: SCF, orbitals: Orbitals, /) -> Hftyp:
     """
-    Create gbw data from a PySCF mean-field object.
+    Choose ORCA's HF type for the MOs of a PySCF mean-field object.
 
-    See `GbwResults.from_pyscf()` for details.
+    The HF type follows from the MOs, not from the class of the mean-field object, as custom MOs
+    may be given. It has to be consistent with the multiplicity, which is taken from PySCF's
+    molecule: restricted MOs of an open-shell molecule are ROHF type MOs.
+
+    Parameters
+    ----------
+    mf : pyscf.scf.hf.SCF
+        PySCF mean-field object.
+    orbitals : Orbitals
+        The MOs to convert.
+
+    Returns
+    -------
+    Hftyp
+        UHF for unrestricted MOs; ROHF for restricted MOs of an ROHF object or an open-shell
+        molecule; RHF otherwise.
     """
     from pyscf import scf
 
-    from opi.output.models.json.gbw.gbw_results import GbwResults
+    if orbitals.n_spin == 2:
+        return Hftyp.UHF
+    if isinstance(mf, scf.rohf.ROHF) or mf.mol.spin != 0:
+        return Hftyp.ROHF
+    return Hftyp.RHF
 
-    mol = mf.mol
-    if mol.cart:
-        raise ValueError("Cartesian basis functions are not supported, ORCA uses spherical ones")
 
-    if isinstance(mf, scf.ghf.GHF | scf.dhf.DHF):
-        raise ValueError(
-            "Generalized and four-component orbitals are not supported, "
-            "only RHF, UHF, and ROHF type orbitals"
-        )
+def _pyscf_to_orca_atoms(mol: Mole, /) -> list[Atoms]:
+    """
+    Convert the atoms of PySCF's molecule with their geometry, basis set, and ECPs.
 
-    # > Orbitals at k-points have the same array rank as unrestricted orbitals
-    if hasattr(mf, "cell") or hasattr(mf, "kpts"):
-        raise ValueError("Periodic calculations are not supported")
-    if getattr(mf, "with_x2c", None) is not None:
-        warnings.warn(
-            "The mean-field object uses a relativistic (X2C) Hamiltonian, which is not part of "
-            "the gbw data. Request a corresponding Hamiltonian in ORCA.",
-            stacklevel=2,
-        )
+    Parameters
+    ----------
+    mol : pyscf.gto.Mole
+        PySCF's molecule.
 
-    pyscf_orbitals = _pyscf_orbitals(mf, mol.nao, mo_coeff, mo_occ, mo_energy)
+    Returns
+    -------
+    list[Atoms]
+        Atoms of the gbw data with coordinates in Angstrom. A ghost atom has the nuclear charge
+        zero; an atom with an ECP has the nuclear charge reduced by its core electrons.
 
-    # > The HF type has to be consistent with the multiplicity, which is taken from the molecule:
-    # > restricted orbitals of an open-shell molecule are ROHF type orbitals
-    if pyscf_orbitals.n_spin == 2:
-        hftyp = Hftyp.UHF
-    elif isinstance(mf, scf.rohf.ROHF) or mol.spin != 0:
-        hftyp = Hftyp.ROHF
-    else:
-        hftyp = Hftyp.RHF
-
-    # > Basis set: one ORCA shell per contraction, keeping PySCF's shell order within each atom
-    ao_loc = mol.ao_loc_nr()
-    # > Angular momentum and position of the first basis function in ORCA's and PySCF's basis of
-    # > each ORCA shell
-    shell_positions: list[tuple[int, int, int]] = []
-    orca_start = 0
-    labels: list[str] = []
-    atoms: list[Atoms] = []
+    Raises
+    ------
+    ValueError
+        If an atom symbol is not an element, or if the ECP of an atom is not found or has
+        spin-orbit terms.
+    """
     coords = mol.atom_coords(unit="Angstrom")
+    atoms: list[Atoms] = []
     for idx in range(mol.natm):
-        symbol = _GHOST_PREFIX.sub("", mol.atom_pure_symbol(idx))
-        element = Element(symbol)
-        atomic_number = element.atomic_number
+        element = _pyscf_element(mol, idx)
         is_ghost = mol.atom_charge(idx) == 0
         n_core = int(mol.atom_nelec_core(idx))
 
         shells: list[Base] = []
-        shell_count: dict[int, int] = {}
-        for ish in mol.atom_shell_ids(idx):
-            ang = int(mol.bas_angular(ish))
-            exponents = [float(e) for e in mol.bas_exp(ish)]
-            coefficients = mol.bas_ctr_coeff(ish)
-            for ictr in range(mol.bas_nctr(ish)):
-                shells.append(
-                    Base(
-                        shell=SHELL_LETTERS[ang],
-                        exponents=exponents,
-                        coefficients=[float(c) for c in coefficients[:, ictr]],
-                    )
+        for ish, ictr, ang in _pyscf_to_orca_shells(mol, idx):
+            shells.append(
+                Base(
+                    shell=SHELL_LETTERS[ang],
+                    exponents=[float(e) for e in mol.bas_exp(ish)],
+                    coefficients=[float(c) for c in mol.bas_ctr_coeff(ish)[:, ictr]],
                 )
-                # > ORCA's shells follow each other in ORCA's basis. In PySCF's basis, the
-                # > contractions of a PySCF shell follow each other.
-                pyscf_start = int(ao_loc[ish]) + ictr * (2 * ang + 1)
-                shell_positions.append((ang, orca_start, pyscf_start))
-                orca_start += 2 * ang + 1
-                shell_count[ang] = shell_count.get(ang, 0) + 1
-                labels.extend(
-                    f"{idx}{element.value:<2}  {shell_count[ang]}{name}"
-                    for name in _orca_function_names(ang)
-                )
+            )
 
         ecp = None
         if n_core:
-            ecp_data = mol._ecp.get(mol.atom_symbol(idx)) or mol._ecp.get(symbol)
+            # > PySCF stores the ECP under the atom's symbol (e.g., "I1") or its element
+            ecp_data = mol._ecp.get(mol.atom_symbol(idx)) or mol._ecp.get(element.value)
             if ecp_data is None:
                 raise ValueError(f"ECP of atom {idx} not found in PySCF molecule")
-            ecp = _ecp_from_pyscf(n_core, ecp_data[1])
+            ecp = _pyscf_to_orca_ecp(n_core, ecp_data[1])
 
         atoms.append(
             Atoms(
@@ -1096,29 +1140,196 @@ def gbw_from_pyscf(
                 coords=[float(x) for x in coords[idx]],
                 ecps=ecp,
                 elementlabel=element.value,
-                elementnumber=atomic_number,
+                elementnumber=element.atomic_number,
                 idx=idx,
-                nuclearcharge=0.0 if is_ghost else float(atomic_number - n_core),
+                nuclearcharge=0.0 if is_ghost else float(element.atomic_number - n_core),
             )
         )
+    return atoms
 
+
+def _pyscf_element(mol: Mole, atom_idx: int, /) -> Element:
+    """
+    Element of an atom of PySCF's molecule.
+
+    Parameters
+    ----------
+    mol : pyscf.gto.Mole
+        PySCF's molecule.
+    atom_idx : int
+        Index of the atom.
+
+    Returns
+    -------
+    Element
+        Element of the atom, also for ghost atoms (e.g., "GHOST-O" or "X-O" is oxygen).
+
+    Raises
+    ------
+    ValueError
+        If the atom symbol is not an element.
+    """
+    return Element(_GHOST_PREFIX.sub("", mol.atom_pure_symbol(atom_idx)))
+
+
+def _pyscf_to_orca_shells(mol: Mole, atom_idx: int, /) -> Iterator[tuple[int, int, int]]:
+    """
+    Iterate over the ORCA shells of an atom of PySCF's molecule.
+
+    A PySCF shell may hold several contractions of the same exponents (general contraction),
+    while an ORCA shell holds one. Hence, each contraction of a PySCF shell becomes an ORCA shell,
+    keeping PySCF's order of shells and contractions.
+
+    The contractions of PySCF shell `ish` are the columns of `mol.bas_ctr_coeff(ish)`, which has
+    the shape (n_prim, nctr) with `nctr = mol.bas_nctr(ish)`; the contraction index `ictr` picks
+    one column. For example, cc-pVDZ of oxygen holds the 1s and 2s functions as one PySCF shell
+    with 8 exponents and nctr = 2, followed by an uncontracted s shell:
+
+    ===  =  ======  ====  ============================
+    ish  l  n_prim  nctr  ORCA shells (ish, ictr, l)
+    ===  =  ======  ====  ============================
+    0    0  8       2     1s: (0, 0, 0), 2s: (0, 1, 0)
+    1    0  1       1     3s: (1, 0, 0)
+    ===  =  ======  ====  ============================
+
+    For a segmented basis set (e.g., def2-SVP), each PySCF shell holds a single contraction, so
+    `ictr` is always 0.
+
+    Parameters
+    ----------
+    mol : pyscf.gto.Mole
+        PySCF's molecule.
+    atom_idx : int
+        Index of the atom.
+
+    Yields
+    ------
+    tuple[int, int, int]
+        For each ORCA shell, in ORCA's order: the index of its PySCF shell, the index of its
+        contraction within the PySCF shell, and its angular momentum.
+    """
+    for ish in mol.atom_shell_ids(atom_idx):
+        for ictr in range(mol.bas_nctr(ish)):
+            yield int(ish), ictr, int(mol.bas_angular(ish))
+
+
+def _pyscf_to_orca_ecp(n_core: int, channels: list[Any], /) -> Ecp:
+    """
+    Convert an ECP from PySCF's format into the gbw data.
+
+    Both programs store an ECP as a local part plus semi-local parts relative to it, with
+    primitives c * r^(n-2) * exp(-a * r^2). PySCF marks the local part with l = -1, the gbw data
+    as the channel of the highest angular momentum (`Ecp.lmax`), one above the highest
+    semi-local channel. ORCA expects every channel up to `Ecp.lmax`, so missing channels are
+    added with a single primitive of zero coefficient.
+
+    Parameters
+    ----------
+    n_core : int
+        Number of core electrons replaced by the ECP.
+    channels : list[Any]
+        Channels of the ECP in PySCF's format: [[l, [primitives of n = 0, primitives of n = 1,
+        ...]], ...] with the primitives as [a, c] pairs.
+
+    Returns
+    -------
+    Ecp
+        ECP of the gbw data.
+
+    Raises
+    ------
+    ValueError
+        If the ECP has spin-orbit terms, which the gbw data cannot hold.
+    """
+    semi_local = {int(ang): data for ang, data in channels if int(ang) >= 0}
+    local = next((data for ang, data in channels if int(ang) < 0), None)
+    lmax = max(semi_local, default=-1) + 1
+
+    def to_channel(ang: int, data: list[Any] | None) -> EcpShell:
+        exponents: list[float] = []
+        coefficients: list[float] = []
+        powers: list[float] = []
+        for power, primitives in enumerate(data or []):
+            for primitive in primitives:
+                if len(primitive) != 2:
+                    raise ValueError(
+                        "ECPs with spin-orbit terms are not supported, ORCA's gbw data only "
+                        "holds scalar ECPs"
+                    )
+                exponent, coefficient = primitive
+                exponents.append(float(exponent))
+                coefficients.append(float(coefficient))
+                powers.append(float(power))
+        if not exponents:
+            # > ORCA expects at least one primitive per channel
+            exponents, coefficients, powers = [1.0], [0.0], [2.0]
+        return EcpShell(shell=SHELL_LETTERS[ang], ecp=[exponents, coefficients, powers])
+
+    potential = [to_channel(ang, semi_local.get(ang)) for ang in range(lmax)]
+    potential.append(to_channel(lmax, local))
+    return Ecp(n_core=n_core, lmax=SHELL_LETTERS[lmax], potential=potential)
+
+
+def _pyscf_to_orca_ao_map(mol: Mole, /) -> AOMap:
+    """
+    Relate PySCF's basis functions (AOs) to ORCA's AOs of the converted basis set.
+
+    ORCA's shells follow each other in ORCA's basis (see `_pyscf_to_orca_shells()`). In PySCF's
+    basis, the contractions of a PySCF shell follow each other.
+
+    Parameters
+    ----------
+    mol : pyscf.gto.Mole
+        PySCF's molecule.
+
+    Returns
+    -------
+    AOMap
+        Relation between ORCA's and PySCF's AOs.
+
+    Raises
+    ------
+    ValueError
+        If the basis sets differ in size.
+    """
+    ao_loc = mol.ao_loc_nr()
+    shell_positions: list[tuple[int, int, int]] = []
+    orca_start = 0
+    for idx in range(mol.natm):
+        for ish, ictr, ang in _pyscf_to_orca_shells(mol, idx):
+            pyscf_start = int(ao_loc[ish]) + ictr * (2 * ang + 1)
+            shell_positions.append((ang, orca_start, pyscf_start))
+            orca_start += 2 * ang + 1
     ao_map = AOMap.from_shells(shell_positions)
     if ao_map.n_ao != mol.nao:
         raise ValueError("Basis set conversion failed: number of basis functions differs")
+    return ao_map
 
-    orbitals = pyscf_orbitals.transformed(ao_map.pyscf_to_orca)
-    mos = _orca_mos(orbitals)
-    # > ORCA lists the orbital labels once per spin
-    labels = labels * orbitals.n_spin
 
-    molecule = Molecule(
-        atoms=atoms,
-        molecularorbitals=MolecularOrbitals(energyunit="Eh", mos=mos, orbitallabels=labels),
-        coordinateunits="Angs",
-        multiplicity=int(mol.spin) + 1,
-        charge=int(mol.charge),
-        hftyp=hftyp.value.upper(),
-        origin=(0.0, 0.0, 0.0),
-    )
-    # > The ORCA header has no default value and is set via its alias
-    return GbwResults.model_validate({"orca header": None, "molecule": molecule})
+def _pyscf_to_orca_ao_labels(mol: Mole, /) -> list[str]:
+    """
+    Create ORCA's labels of the basis functions (AOs) of the converted basis set.
+
+    Parameters
+    ----------
+    mol : pyscf.gto.Mole
+        PySCF's molecule.
+
+    Returns
+    -------
+    list[str]
+        One label per AO, in ORCA's order: atom index, element, number of the shell among the
+        atom's shells of the same angular momentum, and function name, e.g., "0O   1s",
+        "0O   2pz", or "1H   1s".
+    """
+    labels: list[str] = []
+    for idx in range(mol.natm):
+        element = _pyscf_element(mol, idx)
+        shell_count: dict[int, int] = {}
+        for _, _, ang in _pyscf_to_orca_shells(mol, idx):
+            shell_count[ang] = shell_count.get(ang, 0) + 1
+            labels.extend(
+                f"{idx}{element.value:<2}  {shell_count[ang]}{name}"
+                for name in _orca_function_names(ang)
+            )
+    return labels
