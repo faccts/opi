@@ -162,9 +162,15 @@ class GbwResults(JSONLoadable):
 
         The returned object holds the orbitals (`mo_coeff`), occupation numbers (`mo_occ`), and
         orbital energies (`mo_energy`), but no SCF has been run with it. It is a Hartree-Fock
-        object (`scf.RHF`, `scf.UHF`, or `scf.ROHF`) according to the HF type of the
-        calculation, also for Kohn-Sham calculations, as the functional is not part of the gbw
-        data. CASSCF orbitals are returned as `scf.RHF` object holding the natural orbitals.
+        object, also for Kohn-Sham calculations, as the functional is not part of the gbw data.
+        Its class follows from the HF type and the multiplicity of the calculation:
+
+        - UHF: `pyscf.scf.uhf.UHF`
+        - ROHF: `pyscf.scf.rohf.ROHF`
+        - RHF: `pyscf.scf.hf.RHF`
+        - CASSCF: `pyscf.scf.hf.RHF` for a singlet and `pyscf.scf.rohf.ROHF` otherwise, holding
+          the natural orbitals with their fractional occupation numbers. Such an object is not
+          meant for running an SCF, as that does not reproduce ORCA's CASSCF result.
 
         Likewise, a relativistic Hamiltonian (DKH, ZORA, X2C) is not part of the gbw data. For
         such calculations, the returned object does not reproduce ORCA's energy, unless a
@@ -215,6 +221,14 @@ class GbwResults(JSONLoadable):
 
         Write the result into a gbw file with `to_gbw_file()` and read it in ORCA with
         `! MORead` and `%moinp`.
+
+        ORCA only takes the molecular orbitals from the gbw file as initial guess. The method,
+        basis set, ECPs, geometry, charge, and multiplicity are those of ORCA's input, and ORCA
+        determines the occupation numbers itself. ORCA compares the basis set of the gbw file
+        with that of its input and, if they differ, projects the orbitals onto the input's basis
+        set. Hence, use the same basis set and ECPs in ORCA's input as in PySCF to get PySCF's
+        orbitals exactly; a different order of the shells (e.g., for def2-QZVPP) is projected
+        without loss.
 
         Parameters
         ----------

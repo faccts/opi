@@ -4,23 +4,81 @@ Conversion of the molecular orbital data of a gbw file (`GbwResults`) from and t
 This module is internal to OPI and may change or move without notice. Use
 `GbwResults.to_pyscf()` and `GbwResults.from_pyscf()` instead.
 
-ORCA and PySCF both use contracted, real spherical Gaussian basis functions whose contraction
+Structure
+---------
+The module has four sections:
+
+- Conventions of the basis functions: how ORCA's and PySCF's basis functions (AOs) relate, as
+  explicit data per angular momentum (`ORCA_TO_PYSCF_SHELLS`), and `AOMap`, which applies it to
+  the AOs of a molecule.
+- Molecular orbitals: `Orbitals`, which holds restricted and unrestricted MOs alike, and the
+  reading and writing of the gbw data's MOs.
+- ORCA -> PySCF: `gbw_to_pyscf()` and its steps.
+- PySCF -> ORCA: `gbw_from_pyscf()` and its steps.
+
+Every function that converts between the programs names its source and target, e.g.,
+`_orca_to_pyscf_ecp()`. `Orbitals` and `AOMap.from_shells()` depend on neither program.
+
+Both programs use contracted, real spherical Gaussian basis functions whose contraction
 coefficients refer to normalized primitives, and both store effective core potentials (ECPs) as a
-local part plus semi-local parts relative to it. Hence, basis set and ECP data are transferred
-as they are. The two programs differ only in the order and the sign of the basis functions
-within a shell:
+local part plus semi-local parts relative to it. Hence, basis set and ECP data are transferred as
+they are; only the order and sign of the AOs within a shell differ (see `ORCA_TO_PYSCF_SHELLS`).
+ORCA supports shells up to l = 10, PySCF up to l = 12. PySCF sorts the shells of an atom by
+angular momentum, while ORCA keeps the order of the basis set definition, so ORCA's shells are
+matched to PySCF's by angular momentum and exponents.
 
-- ORCA orders the functions of a shell by m = 0, +1, -1, +2, -2, ...
-- PySCF orders them by m = -l, ..., +l, except for p shells, which are ordered x, y, z
-  (m = +1, -1, 0).
-- Up to l = 8, ORCA's functions with |m| = 3, 4, 7, and 8 have the opposite sign of PySCF's,
-  all others have the same sign. For l = 9 and 10, all functions have the same sign.
+ORCA -> PySCF
+-------------
+Transferred:
 
-ORCA supports shells up to l = 10 (letters s, p, d, f, g, h, i, k, l, m, n), PySCF up to l = 12.
-The order and sign convention was verified for all of them against ORCA's overlap matrix.
+- geometry (in the unit of the gbw data), charge, and multiplicity
+- ghost atoms (atoms with nuclear charge zero)
+- basis set and ECPs, exactly, with a unique label per atom (an ECP that ORCA lists for an atom
+  is only transferred, if it replaces core electrons of that atom)
+- MO coefficients, occupation numbers, and orbital energies
 
-PySCF sorts the shells of an atom by angular momentum, while ORCA keeps the order of the basis
-set definition, so shells are matched by angular momentum and exponents.
+The result is a Hartree-Fock object, whose class follows from the HF type and the multiplicity
+(see `_pyscf_mean_field()`). Fractional ROHF occupation numbers are replaced by integer ones.
+
+Not transferred, as not part of the gbw data: the functional, a relativistic Hamiltonian, point
+charges, and solvation. No SCF is run, so `e_tot` and `converged` are not set.
+
+PySCF -> ORCA
+-------------
+Accepted are RHF, UHF, and ROHF objects (including Kohn-Sham), optionally with custom MOs, with
+spherical basis functions and scalar ECPs. Generalized, four-component, complex, and periodic
+calculations are rejected.
+
+Transferred:
+
+- geometry (always in Angstrom), charge, and multiplicity
+- ghost atoms
+- basis set, with each contraction of a generally contracted PySCF shell as a separate shell
+  in PySCF's order, and ECPs
+- MO coefficients, occupation numbers, and orbital energies (zero for custom MOs without
+  energies)
+
+The HF type follows from the MOs and the multiplicity (see `_pyscf_to_orca_hftyp()`). ORCA's
+orbital labels are generated; orbital symmetry is not assigned. Not transferred: the functional
+and a relativistic (X2C) Hamiltonian, which only raises a warning.
+
+What ORCA reads back
+--------------------
+The two directions are not symmetric: ORCA reads a gbw file with `! MORead` only as initial
+guess, and only takes the MO coefficients from it. This was checked with ORCA 6.1.1 by
+modifying the gbw data of PySCF's orbitals:
+
+- Geometry: ORCA notes a different geometry, but uses the MOs as they are.
+- Charge, multiplicity, occupation numbers, orbital energies: ignored. ORCA takes charge and
+  multiplicity from its input and determines the occupation numbers itself. Restricted MOs are
+  also accepted as guess of an unrestricted calculation and vice versa.
+- Basis set: compared with the input's. If they differ, ORCA projects the MOs onto the input's
+  basis set, so the basis set of the gbw data must correctly describe the MO coefficients. A
+  different order of the shells (e.g., for def2-QZVPP, whose shells PySCF sorts) is projected
+  without loss.
+
+Hence, the user has to specify the method, basis set, ECPs, geometry, charge, and multiplicity
+in ORCA's input; to get PySCF's orbitals exactly, the same basis set and ECPs as in PySCF.
 
 PySCF is imported locally in each function, as it is an optional dependency of OPI.
 """
