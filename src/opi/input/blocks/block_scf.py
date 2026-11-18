@@ -207,21 +207,21 @@ class Rotate(BaseModel):
         v : list[list[int | float]]
         """
         for rot in v:
-            # Check valid lengths (2, 3, or 5 elements)
+            # > Check valid lengths (2, 3, or 5 elements)
             if len(rot) not in (2, 3, 5):
                 raise ValueError("Rotate must have either 2, 3, or 5 elements")
 
-            # For all formats, first two elements must be integers
+            # > For all formats, first two elements must be integers
             if not isinstance(rot[0], int):
                 raise TypeError("First element must be an integer")
             if not isinstance(rot[1], int):
                 raise TypeError("Second element must be an integer")
 
-            # If we have at least 3 elements, third must be of type float
+            # > If we have at least 3 elements, third must be of type float
             if len(rot) >= 3 and not isinstance(rot[2], float):
                 raise TypeError("Third element must be a float")
 
-            # If we have 5 elements, fourth and fifth must be integers
+            # > If we have 5 elements, fourth and fifth must be integers
             if len(rot) == 5:
                 if not isinstance(rot[3], int):
                     raise TypeError("Fourth element must be an integer")
