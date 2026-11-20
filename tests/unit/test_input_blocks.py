@@ -578,3 +578,32 @@ def test_scan_from_string_rejects_invalid(scan: str):
     """Test for `Scan.from_string()`: malformed or trailing input is rejected, not truncated."""
     with pytest.raises(ValueError, match="Invalid scan string"):
         BlockGeom(scan=scan)
+
+
+# ---------------------------------------------------------------------------
+# `Rotate` (formatting of `BlockScf.rotate`)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize(
+    "rotate, expected",
+    [
+        ([19, 20], "rotate {19, 20} end\n"),
+        ([19, 20, 90.0], "rotate {19, 20, 90.0} end\n"),
+        ([[251, 253], [252, 255], [263, 267]], "rotate {251, 253} {252, 255} {263, 267} end\n"),
+        ([[251, 253], [252, 255, 45.0]], "rotate {251, 253} {252, 255, 45.0} end\n"),
+    ],
+)
+def test_rotate_format(rotate: list, expected: str):
+    """Test for `Rotate`: one or several rotations are written inside a single `rotate ... end`."""
+    assert expected in BlockScf(rotate=rotate).format_orca()
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_rotate_rejects_invalid():
+    """Test for `Rotate`: each rotation is validated, also when several are given."""
+    with pytest.raises(TypeError, match="Third element must be a float"):
+        BlockScf(rotate=[[251, 253], [252, 255, 90]])
