@@ -401,12 +401,12 @@ class BlockScf(BlockABC):
         input_list: list[int]
         | list[float]
         | NumList
-        | Literal["centerofmass, centerofnuccharge, centerofnuclearcharge"],
-    ) -> NumList | Literal["centerofmass, centerofnuccharge, centerofnuclearcharge"]:
+        | Literal["centerofmass", "centerofnuccharge", "centerofnuclearcharge"],
+    ) -> NumList | Literal["centerofmass", "centerofnuccharge", "centerofnuclearcharge"]:
         """
         Parameters
         ----------
-        input_list : list[int] | list[float] | NumList | Literal["centerofmass, centerofnuccharge, centerofnuclearcharge"]
+        input_list : list[int] | list[float] | NumList | Literal["centerofmass", "centerofnuccharge", "centerofnuclearcharge"]
         """
         if isinstance(input_list, list):
             if any(isinstance(i, float) for i in input_list):
