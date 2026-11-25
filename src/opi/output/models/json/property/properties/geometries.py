@@ -48,7 +48,10 @@ from opi.output.models.json.property.properties.single_point_data import (
 from opi.output.models.json.property.properties.solvation import (
     SolvDetails,
 )
-from opi.output.models.json.property.properties.spectrum import Spectrum
+from opi.output.models.json.property.properties.spectrum import (
+    AbsorptionSpectrum,
+    EcdSpectrum,
+)
 from opi.output.models.json.property.properties.spin_coupling import (
     SpinSpinCoupling,
 )
@@ -102,9 +105,9 @@ class Geometries(GetItem):
         Contains information about the used solvent and the solvent model
     polarizability: list[Polarizability] | None, default = None
         Contains information about the polarizability of the molecule
-    absorption_spectrum: list[Spectrum] | None, default = None
+    absorption_spectrum: list[AbsorptionSpectrum] | None, default = None
         Contains the information about the calculated UVVis spectra
-    ecd_spectrum: list[Spectrum] | None, default = None
+    ecd_spectrum: list[EcdSpectrum] | None, default = None
         Contains the information about the calculated ecd spectra
     a_tensor: list[Tensor] | None, default = None
         Contains all the A-Tensor of the EPR calculation
@@ -154,8 +157,8 @@ class Geometries(GetItem):
     hessian: Hessian | None = None
     solvation_details: SolvDetails | None = None
     polarizability: list[Polarizability] | None = None
-    absorption_spectrum: list[Spectrum] | None = None
-    ecd_spectrum: list[Spectrum] | None = None
+    absorption_spectrum: list[AbsorptionSpectrum] | None = None
+    ecd_spectrum: list[EcdSpectrum] | None = None
     a_tensor: list[Tensor] | None = None
     efg_tensor: list[EfgTensor] | None = None
     g_tensor: list[Gtensor] | None = None

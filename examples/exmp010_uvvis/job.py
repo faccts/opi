@@ -28,7 +28,8 @@ def run_exmp010(
         Dft.B3LYP, BasisSet.DEF2_TZVP, SolvationModel.CPCM(Solvent.HEXANE)
     )
 
-    calc.input.add_blocks(BlockTddft(nroots=31))
+    # > Also save the natural transition orbitals (NTOs) of each state
+    calc.input.add_blocks(BlockTddft(nroots=31, donto=True))
 
     calc.write_input()
     calc.run()
