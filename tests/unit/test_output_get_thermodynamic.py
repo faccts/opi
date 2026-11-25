@@ -1,6 +1,7 @@
 import pytest
 
 from opi.output.core import Output
+from opi.utils.element import ATOMIC_MASSES_FROM_ELEMENT
 
 """
 Unit test for Output thermodynamic property getters.
@@ -144,6 +145,46 @@ def test_get_frequencies_returns_dict(output_object_factory, task):
 @pytest.mark.unit
 @pytest.mark.output
 @pytest.mark.parametrize("task", ["rama"])
+def test_get_normal_modes_returns_dict(output_object_factory, task):
+    """Test `Output.get_normal_modes()`: one xyz displacement per atom for every frequency."""
+    output_object = output_object_factory(task)
+    normal_modes = output_object.get_normal_modes()
+    assert isinstance(normal_modes, dict)
+    assert normal_modes.keys() == output_object.get_frequencies().keys()
+    n_atoms = len(output_object.get_structure())
+    for mode in normal_modes.values():
+        assert len(mode) == n_atoms
+        assert all(len(displacement) == 3 for displacement in mode)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["rama"])
+def test_get_normal_modes_mass_weighted_normalized(output_object_factory, task):
+    """Test `Output.get_normal_modes()`: vibrational modes satisfy sum_i m_i * |d_i|^2 = 1."""
+    output_object = output_object_factory(task)
+    normal_modes = output_object.get_normal_modes()
+    masses = [
+        ATOMIC_MASSES_FROM_ELEMENT[atom.element] for atom in output_object.get_structure().atoms
+    ]
+    for mode_index, frequency in output_object.get_frequencies().items():
+        norm = sum(
+            mass * sum(component**2 for component in displacement)
+            for mass, displacement in zip(masses, normal_modes[mode_index])
+        )
+        assert norm == pytest.approx(0.0 if frequency == 0.0 else 1.0, abs=1e-3)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_get_normal_modes_returns_none(empty_output_object: Output):
+    """Test if `Output.get_normal_modes()` returns None without frequency data."""
+    assert empty_output_object.get_normal_modes() is None
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["rama"])
 def test_get_imaginary_frequencies_returns_empty_dict_for_minimum(output_object_factory, task):
     """Test if `Output.get_imaginary_frequencies()` returns an empty dict (not None) for a minimum structure."""
     output_object = output_object_factory(task)
@@ -168,3 +209,12 @@ def test_is_pes_transition_state_returns_false_for_minimum(output_object_factory
     """Test if `Output.is_pes_transition_state()` returns False for a minimum structure."""
     output_object = output_object_factory(task)
     assert output_object.is_pes_transition_state() is False
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["rama"])
+def test_get_normal_modes_unavailable_index_returns_none(output_object_factory, task):
+    """Test if `Output.get_normal_modes()` returns None for a geometry index that is not available."""
+    output_object = output_object_factory(task)
+    assert output_object.get_normal_modes(index=100) is None
