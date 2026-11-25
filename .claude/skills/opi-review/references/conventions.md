@@ -10,15 +10,18 @@ output may not be reported as a CI failure.
 **§1 and §8 are the reading pass** — the CHANGELOG, docstring accuracy, prose docs, and naming.
 No `pr_check` session looks at any of it.
 
-CI runs `uv run nox -t pr_check` (see `.github/workflows/pr_checks.yml`) on Python 3.11/3.12/3.13.
-The tag selects **six** sessions: `type_check` (mypy), `check_sort_imports`, `lint`,
+CI runs `uv run nox -t pr_check` and then `nox -s unit_tests` (see
+`.github/workflows/pr_checks.yml`) on Linux with Python 3.11/3.12/3.13 and on Windows/macOS with
+3.13. Nothing in CI executes the notebooks. The tag selects **six** sessions: `type_check` (mypy), `check_sort_imports`, `lint`,
 `check_format_code` (all ruff), `spell_check` (codespell), `dead_code` (vulture).
 `check_unused_imports` is declared `default=False` and is therefore **skipped** by `-t pr_check`;
 F401 is still covered by `lint`. Config lives in `pyproject.toml` under `[tool.mypy]`,
 `[tool.ruff]`, `[tool.codespell]`, `[tool.vulture]`.
 
 Never run `-t fix`, `-t style`, `-t static_check`, or the `format_code` / `sort_imports` /
-`remove_unused_imports` sessions: they rewrite files in place and would edit the diff under review.
+`remove_unused_imports` / `json_gen` / `out_gen` sessions: they rewrite files in place and would
+edit the diff under review. Never run `notebooks` / `all_notebooks` either: they execute every
+cell, need ORCA and the network, and take hours.
 
 ---
 
@@ -30,7 +33,9 @@ Every user-visible change needs a bullet under `## [Unreleased] - ReleaseDate`. 
 
 - **Present at all.** New public class/method/argument, changed behaviour, changed return type,
   new exception, removed API → there must be an entry. Purely internal refactors that no user can
-  observe do not need one; say so rather than demanding a bullet.
+  observe do not need one; say so rather than demanding a bullet. A new tutorial notebook gets
+  one, and so does new developer tooling — a nox session, a script, a dependency group (see the
+  `(#309)` and `(#310)` bullets).
 - **Correct section.** `### Added` / `### Changed` / `### Deprecated` / `### Removed` / `### Fixed`.
   The sections exist even when empty — do not add new ones or reorder them. A behaviour change
   dressed up as `### Added` is a finding.
@@ -74,8 +79,9 @@ Style is [numpydoc](https://numpydoc.readthedocs.io/en/latest/format.html).
 
 ### 1.3 In-code comments
 
-- The house style is the **`# >` prefix** — ~390 uses in `src/opi` versus a handful of plain `#`.
-  New explanatory comments should use `# >`. Flag plain `#` comments added in the diff.
+- The house style is the **`# >` prefix** — the most common comment style in `src/opi`, and the
+  one to prefer. Plain `#` comments are common too, though (several hundred, and recent merges
+  add both), so a plain `#` is at most a nit, and only in a file that otherwise uses `# >`.
 - Banner/section comments use the `# ////` and `# %%%%` box styles (`noxfile.py`,
   `pyproject.toml`, `src/opi/core.py`). Match the surrounding file; do not introduce a new style.
 - Comments explain **why**, not what. A comment restating the line below it is a nit.
@@ -93,18 +99,39 @@ is what makes it importable from the package and visible to AutoAPI. Also check 
 
 - `docs/contents/*.md` — update if the change contradicts something written there
   (`dev_guide.md` describes tooling and style; `install.md`, `how_to_contribute.md`).
-- `README.md` — only if it shows the changed API.
+- `README.md` — only if it shows the changed API. `scripts/README.md` documents the notebook
+  runner; update it if the diff changes `scripts/` or the `notebooks` / `all_notebooks` sessions.
 - `examples/` — new example directories follow the existing `exmpNNN_<name>/job.py` naming;
   examples are covered by ruff (`[tool.ruff] include`), so they must be formatted too.
 - Docstring/markdown code samples must reflect the post-change API. A sample that would now raise
   is a finding.
+
+### 1.6 Notebooks — `docs/contents/notebooks/*.ipynb`
+
+No `pr_check` session sees them (ruff's `include` lists only `.py` globs), and only the
+`notebooks` session — never CI — executes them. Check them by grepping the file, never by reading
+it whole: outputs are embedded, plots as base64, and a notebook runs to megabytes.
+
+- **Listed in `docs/index.md`.** A new notebook needs an entry in its toctree, or no page of the
+  docs links to it; a renamed or deleted one needs its entry updated.
+- **`WHITELIST` in `scripts/sweep_notebooks.py`** decides what a plain `nox -s notebooks` runs. A
+  renamed or deleted notebook must be updated there — a whitelisted name that no longer exists
+  fails the whole sweep. A new notebook that is not on it is worth one line asking whether it can
+  run unattended; that (GPU, licence, runtime) is the only reason to leave one off.
+- **What the cells `pip install`** must be in the `notebooks` dependency group in
+  `pyproject.toml` (the group's own comment says so): the runner sets `PIP_NO_INDEX=1`, so a
+  package missing from the group fails the notebook at its import. A change to that group, like
+  any dependency change in `pyproject.toml`, needs `uv.lock` in the changed-file list too — nox
+  runs with `UV_FROZEN=1` and installs only what the lock holds.
+- **Code cells use the post-change API** — the same rule as docstring examples. When the diff
+  renames or removes a public name, grep the changed notebooks for the old one.
 
 ---
 
 ## 2. Formatting — `ruff format` (`check_format_code`)
 
 Black-compatible, `line-length = 100`, applied to `src/**/*.py`, `tests/**/*.py`,
-`examples/**/*.py`, `pyproject.toml`. **Machine-verified** — `check_format_code` reports the hits.
+`examples/**/*.py`, `scripts/**/*.py`, `pyproject.toml`. **Machine-verified** — `check_format_code` reports the hits.
 Use the list below to explain what the formatter wants, not to predict it:
 
 - **Lines over 100 characters** — count them; this is the most frequent real hit. Long string
@@ -170,7 +197,7 @@ line before reporting it: quote the word from the file.
 - **Misspelled identifiers** are worse than misspelled prose: they are load-bearing and expensive
   to fix later. `recieve_blocks`, `seperator`, `arbitary` in a public name is a blocker.
 - Real domain terms that codespell would false-positive on belong in `.codespellignore`
-  (one term per line, trailing newline). Current entries: `XTB`, `Te`, `Nd`, `hav`, `TE`, `ND`,
+  (one term per line, below its two `#` header lines). Current entries: `XTB`, `Te`, `Nd`, `hav`, `TE`, `ND`,
   `ABD`, `ist`. If the diff adds a chemistry/ORCA term codespell would reject (e.g. an element
   symbol or ORCA keyword that collides with an English typo), flag that `.codespellignore` needs
   the term — and conversely, flag an addition to `.codespellignore` that is just papering over a
@@ -195,12 +222,12 @@ line before reporting it: quote the word from the file.
   `# >` comment explaining it.
 - `ClassVar[...]` on class-level mutable state (see `BlockABC._registry`).
 - Forward references quoted (`type["BlockABC"]`) where needed.
-- Note: mypy covers `src/` only. Missing annotations in `tests/` are not CI failures — mention
-  them as nits at most.
+- Note: mypy covers `src/` only. Missing annotations in `tests/` or `scripts/` are not CI
+  failures — mention them as nits at most.
 
 ## 7. Dead code — `vulture` (`dead_code`)
 
-`paths = ["src/"]`, `min_confidence = 70`, `ignore_names = ["RdkitMol"]`. **Machine-verified** —
+`paths = ["src/"]`, `min_confidence = 70`, `ignore_names = ["RdkitMol", "AseAtoms"]`. **Machine-verified** —
 `dead_code` reports the hits with a confidence percentage.
 
 - A newly added function, method, class, attribute, or import in `src/` that nothing references.

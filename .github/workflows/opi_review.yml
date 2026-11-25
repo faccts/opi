@@ -10,7 +10,9 @@ name: PR convention review (opi-review)
 # > writing the PR comment is done by the surrounding steps.
 
 on:
-  pull_request:
+  # > `pull_request_target` instead of `pull_request` so PRs from forks get the secret too. It
+  # > runs this file as it is on the base branch, so edits here only apply once merged there.
+  pull_request_target:
     # > `**` also matches `/`, so this covers `feat/...` as well as `feat-...`.
     branches: [ "main", "feat**" ]
     # > One event per requested reviewer; the concurrency group collapses them into one run.
@@ -21,11 +23,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  authorize:
+    # > The review runs the PR's own code (`noxfile.py`, the package build) with the secret
+    # > around, so it only goes ahead when the review was requested by someone with write access,
+    # > who thereby vouches for that code. claude-code-action checks the same, but only after the
+    # > PR has been checked out and nox has run. Draft PRs are not reviewed yet.
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      allowed: ${{ steps.check.outputs.allowed }}
+    steps:
+      - name: Check requester permission
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REQUESTER: ${{ github.event.sender.login }}
+        run: |
+          permission=$(gh api "repos/$REPO/collaborators/$REQUESTER/permission" --jq .permission \
+            || echo none)
+          if [ "$permission" = admin ] || [ "$permission" = write ]; then
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Review requested by $REQUESTER ($permission access); opi-review needs a requester with write access."
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   opi-review:
-    # > Fork PRs cannot read repository secrets, and draft PRs are not reviewed yet.
-    if: >-
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      !github.event.pull_request.draft
+    needs: authorize
+    if: needs.authorize.outputs.allowed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

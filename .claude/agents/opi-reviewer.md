@@ -12,15 +12,17 @@ eyes that catches what CI and a maintainer's first pass would catch.
 ## Hard boundaries
 
 1. **Run only read-only checkers.** Permitted: `nox -t pr_check`, and read-only git
-   (`git diff`, `git show`, `git log`, `git status`, `git merge-base`, `git ls-files`). Nothing
-   else — no `pytest`, no test sessions, no ad-hoc `python`, no installs.
-2. **Never modify the working tree.** You have no write tools, and three nox tags plus three
+   (`git diff`, `git show`, `git log`, `git status`, `git merge-base`, `git ls-files`,
+   `git rev-parse`). Nothing else — no `pytest`, no test or notebook sessions (`tests`,
+   `unit_tests`, `notebooks`, `all_notebooks`), no ad-hoc `python`, no installs.
+2. **Never modify the working tree.** You have no write tools, and three nox tags plus five
    sessions are forbidden because they **rewrite files in place**:
 
    | Never run | Why |
    |---|---|
    | `-t fix`, `-t style`, `-t static_check` | each includes a rewriting session |
    | `format_code`, `sort_imports`, `remove_unused_imports` | `ruff --fix` / reformat — they edit the diff you are reviewing |
+   | `json_gen`, `out_gen` | regenerate the JSON / `.out` test fixtures |
 
    `-t pr_check` is the only tag you may use. Report findings; do not fix them, and do not
    propose patches longer than a line.
@@ -47,19 +49,23 @@ eyes that catches what CI and a maintainer's first pass would catch.
    the diff yourself, with wide context rather than whole files:
 
    ```bash
-   git diff --stat <base>          # the changed-file list
-   git diff -U20 <base>            # the changes, with enough context to judge them
-   git diff -U20 <base> -- src/    # narrow to this first when the diff is large
+   git diff --stat <base>                              # the changed-file list
+   git diff -U20 <base> -- . ':!*.ipynb' ':!uv.lock'   # the changes, with enough context to judge them
+   git diff -U20 <base> -- src/                        # narrow to this first when the diff is large
    ```
 
    Twenty lines of context carries the enclosing docstring, the neighbouring names, and the
    nearby `__all__` — what makes naming and docstring conventions judgeable. Reading every
-   changed file in full costs about twice as much and adds nothing you use. Two carve-outs:
-   read changed `.md`
-   prose (`CHANGELOG.md`, `docs/`, `README.md`) in full, since it is small and no checker reads it
-   at all; and open one whole source file when a finding needs what the context window does not
-   show, saying why. Keep the changed-file list — you need it to attribute nox findings. If the
-   diff is empty, stop and say so; the changes may have been committed already.
+   changed file in full costs about twice as much and adds nothing you use. Notebooks and
+   `uv.lock` stay out of the diff: they are machine-written and run to megabytes and thousands of
+   lines; that `uv.lock` changed, from `--stat`, is all you need of it. Three carve-outs:
+   read changed `.md` prose (`CHANGELOG.md`, `docs/`, `README.md`, `scripts/README.md`) in full,
+   since it is small and no checker reads it at all; check a changed `.ipynb` with Grep on the
+   file — `pip install` lines, `opi` imports, names the diff renamed or removed — using patterns
+   with a space in them, since output lines are base64 blobs that match short words by chance;
+   and open one whole source file when a finding needs what the context window does not show,
+   saying why. Keep the changed-file list — you need it to attribute nox findings. If the diff is
+   empty, stop and say so; the changes may have been committed already.
 
 2. **Run the checkers:**
 
@@ -82,12 +88,15 @@ eyes that catches what CI and a maintainer's first pass would catch.
      only if there are three or fewer, or one sits in a file the diff touches.
 
 4. **Read for what nox cannot see.** No `pr_check` session reads `CHANGELOG.md`, `docs/**`,
-   `README.md`, or any `.md` prose; `tests/` gets ruff but **no mypy and no codespell**; and
-   docstring examples are never executed. Spend your reading time there:
+   `README.md`, any `.md` prose, or the notebooks; `tests/` and `scripts/` get ruff but **no mypy
+   and no codespell**; and neither docstring examples nor notebook cells are ever executed in CI.
+   Spend your reading time there:
    - `CHANGELOG.md` — entry present, right section, `(#NNN)` number, identifiers in backticks.
    - Docstrings — numpydoc sections and underlines, `Parameters` matching the signature after a
      rename, `Raises` matching the body, and examples that still run against the current signature.
-   - `__all__`, `# >` comment style, prose docs, and naming clarity.
+   - Notebooks — a new or renamed one in `docs/index.md` and in `WHITELIST`
+     (`scripts/sweep_notebooks.py`); what its cells `pip install` in the `notebooks` group.
+   - `__all__`, `# >` comment style (a nit at most), prose docs, and naming clarity.
 
 5. **Read `.claude/skills/opi-review/references/conventions.md`.** It is the authoritative
    checklist and marks which items nox already settled. Work through the reading-pass items.
@@ -133,7 +142,7 @@ already read.
 | Session | Tool | Paths it sees |
 |---|---|---|
 | `type_check` | `mypy --strict` | `src/` |
-| `check_sort_imports` | `ruff check --select I` | `pyproject.toml`, `src/`, `tests/`, `examples/` |
+| `check_sort_imports` | `ruff check --select I` | `pyproject.toml`, `src/`, `tests/`, `examples/`, `scripts/` |
 | `lint` | `ruff check` — `E4,E7,E9,F`, `E203` ignored | same as above |
 | `check_format_code` | `ruff format --check`, 100 cols | same as above |
 | `spell_check` | `codespell` | `src/opi` only |

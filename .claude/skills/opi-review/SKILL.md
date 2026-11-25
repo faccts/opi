@@ -1,6 +1,6 @@
 ---
 name: opi-review
-description: Cursory convention review of implemented changes in the OPI repo. Runs the read-only `nox -t pr_check` sessions (mypy, ruff, codespell, vulture) and reports their catches in plain language, then reads the diff for what those tools cannot check — CHANGELOG entries, numpydoc docstrings that match their signatures, docstring examples, docs/, and ambiguous naming. Use when asked to review, sanity-check, or pre-flight a diff, branch, or PR before pushing. `--recheck` re-verifies the findings of an earlier review instead of reviewing afresh. Never edits files and does NOT hunt for logic bugs.
+description: Cursory convention review of implemented changes in the OPI repo. Runs the read-only `nox -t pr_check` sessions (mypy, ruff, codespell, vulture) and reports their catches in plain language, then reads the diff for what those tools cannot check — CHANGELOG entries, numpydoc docstrings that match their signatures, docstring examples, docs/ and notebooks, and ambiguous naming. Use when asked to review, sanity-check, or pre-flight a diff, branch, or PR before pushing. `--recheck` re-verifies the findings of an earlier review instead of reviewing afresh. Never edits files and does NOT hunt for logic bugs.
 ---
 
 # opi-review
@@ -20,16 +20,18 @@ earlier review rather than a fresh review — see [Recheck mode](#recheck-mode--
 These are not preferences — they define the skill:
 
 1. **Run only read-only checkers.** `nox -t pr_check` and read-only git plumbing (`git diff`,
-   `git show`, `git log`, `git status`, `git merge-base`, `git ls-files`) are permitted. Nothing
-   else — no `pytest`, no test sessions, no ad-hoc `python`, no installs, no `pip`/`uv` commands
-   of your own.
+   `git show`, `git log`, `git status`, `git merge-base`, `git ls-files`, `git rev-parse`) are
+   permitted. Nothing else — no `pytest`, no test or notebook sessions (`tests`, `unit_tests`,
+   `notebooks`, `all_notebooks` — the last two execute every cell, need ORCA and the network, and
+   take hours), no ad-hoc `python`, no installs, no `pip`/`uv` commands of your own.
 2. **Never modify the working tree.** Report findings; do not fix them. This makes three nox tags
-   and three sessions forbidden, because they **rewrite files in place**:
+   and five sessions forbidden, because they **rewrite files in place**:
 
    | Never run | Why |
    |---|---|
    | `-t fix`, `-t style`, `-t static_check` | each includes at least one rewriting session |
    | `format_code`, `sort_imports`, `remove_unused_imports` | `ruff --fix` / reformat — they edit the diff under review |
+   | `json_gen`, `out_gen` | regenerate the JSON / `.out` test fixtures |
 
    `-t pr_check` contains only `check_*`-style read-only sessions. It is the only tag you may use.
 3. **Never predict a checker's output — run it and quote it.** If you did not see a rule code in
@@ -87,16 +89,27 @@ doubles the cost of the review and adds no coverage. The only exception is
 The reviewing agent reads the diff with **wide context**, not the changed files in full:
 
 ```bash
-git diff -U20 <base>                 # the changes, with enough context to judge them
-git diff -U20 <base> -- src/         # narrow to this first when the diff is large
+git diff -U20 <base> -- . ':!*.ipynb' ':!uv.lock'   # the changes, with enough context to judge them
+git diff -U20 <base> -- src/                        # narrow to this first when the diff is large
 ```
 
 Twenty lines of context carries the enclosing docstring, the neighbouring names, and the nearby
 `__all__` — which is what makes naming and docstring conventions judgeable. Reading every changed
-file in full costs about twice as much and adds nothing the reading pass uses. Two carve-outs:
+file in full costs about twice as much and adds nothing the reading pass uses.
 
-- **Prose in full.** `CHANGELOG.md`, `docs/contents/*.md`, `README.md` — small files, and no
-  checker reads them at all, so read the whole thing rather than a hunk.
+Notebooks and `uv.lock` stay out of that diff: both are machine-written and huge. A notebook
+embeds its outputs, plots as base64, and runs to megabytes (`redox.ipynb` is 7 MB); a dependency
+bump rewrites thousands of lines of `uv.lock`. That the lock file changed, which `--stat` shows,
+is all the review needs of it.
+
+Three carve-outs:
+
+- **Prose in full.** `CHANGELOG.md`, `docs/contents/*.md`, `README.md`, `scripts/README.md` —
+  small files, and no checker reads them at all, so read the whole thing rather than a hunk.
+- **Notebooks by grep, never whole.** Check a changed `docs/contents/notebooks/*.ipynb` with Grep
+  on the file: its `pip install` lines, its `opi` imports, and any name the diff renamed or
+  removed. Use patterns with a space in them (`pip install`, `from opi`) — output lines hold
+  base64 blobs that match short bare words by chance and are megabytes long.
 - **One source file at a time, on cause.** When a finding needs what the context window does not
   show — a signature that sits further up the file, say — open that one file and say why.
 
@@ -136,7 +149,7 @@ Six sessions. Each has a **different scope**, which is what makes the reading pa
 | Session | Tool | Paths it sees |
 |---|---|---|
 | `type_check` | `mypy --strict` (pydantic plugin) | `src/` |
-| `check_sort_imports` | `ruff check --select I` | `pyproject.toml`, `src/`, `tests/`, `examples/` |
+| `check_sort_imports` | `ruff check --select I` | `pyproject.toml`, `src/`, `tests/`, `examples/`, `scripts/` |
 | `lint` | `ruff check` — default `E4,E7,E9,F`, `E203` ignored | same as above |
 | `check_format_code` | `ruff format --check`, `line-length = 100` | same as above |
 | `spell_check` | `codespell` | `src/opi` only |
@@ -153,9 +166,11 @@ Two quirks worth knowing:
 
 ### Nothing checks these
 
-No `pr_check` session reads `CHANGELOG.md`, `docs/**`, `README.md`, or any `.md` prose.
-`tests/` gets ruff but **no mypy and no codespell**. Docstring *examples* are never executed by
-any session, so a sample that would now raise is invisible to CI. This is where the reading pass
+No `pr_check` session reads `CHANGELOG.md`, `docs/**`, `README.md`, or any `.md` prose — nor
+the notebooks in `docs/contents/notebooks/`: ruff's `include` lists only `.py` globs, and the
+`notebooks` session that executes them runs neither in `pr_check` nor in CI. `tests/` and
+`scripts/` get ruff but **no mypy and no codespell**. Docstring *examples* are never executed by
+any session, so a sample that would now raise is invisible to CI — and so is a notebook cell. This is where the reading pass
 earns its keep, and why a green nox run alone is not a clean review — do the reading pass before
 calling it clean.
 
@@ -253,7 +268,7 @@ Relay the agent's findings to the user in full; the agent's report is not shown 
 agent reports a nox failure, relay the rule code and the quoted line, not a paraphrase.
 
 For a diff of one or two small files, reviewing inline is fine: read it yourself with
-`git diff -U20 <base>` and the boundaries apply identically.
+`git diff -U20 <base> -- . ':!*.ipynb' ':!uv.lock'` and the boundaries apply identically.
 
 ## The checklist
 
@@ -271,8 +286,10 @@ unused imports, typing, spelling in `src/opi`, dead code.
    signature after a rename, `Raises` matching the body, and **examples that still run** against
    the current signature.
 3. **`__all__`** and the public surface.
-4. **Prose docs** — `docs/contents/*.md`, `README.md`, new `examples/exmpNNN_<name>/`.
-5. **`# >` comment house style.**
+4. **Prose docs and notebooks** — `docs/contents/*.md`, `README.md`, `scripts/README.md`, new
+   `examples/exmpNNN_<name>/`; a new or renamed notebook in `docs/index.md` and in `WHITELIST`
+   (`scripts/sweep_notebooks.py`), and what its cells `pip install` in the `notebooks` group.
+5. **`# >` comment house style** — a nit, and only where the file already uses it.
 6. **Naming** — ambiguity between related names, names that contradict their type, shadowed
    builtins, consistency with the established spelling elsewhere in the repo.
 7. **Spelling outside `src/opi`** — CHANGELOG, docs, tests, since codespell never reads them.
