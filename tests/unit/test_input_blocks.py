@@ -608,3 +608,27 @@ def test_rotate_rejects_invalid():
     """Test for `Rotate`: each rotation is validated, also when several are given."""
     with pytest.raises(ValidationError, match="Third element must be a float"):
         BlockScf(rotate=[[251, 253], [252, 255, 90]])
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize(
+    "exchange, correlation",
+    [("x_becke", "gga_c_p86"), ("gga_x_b88", "lda_c_pz"), ("hyb_gga_x_cam_s12g", "mgga_c_bc95")],
+)
+def test_block_method_libxc_components(exchange: str, correlation: str):
+    """Test for `BlockMethod`: LibXC exchange and correlation components are accepted and written."""
+    block = BlockMethod(method="dft", exchange=exchange, correlation=correlation)
+    assert f"exchange {exchange}\n" in block.format_orca()
+    assert f"correlation {correlation}\n" in block.format_orca()
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize(
+    "field, value", [("exchange", "gga_c_p86"), ("correlation", "gga_xc_b97_d")]
+)
+def test_block_method_rejects_wrong_libxc_component(field: str, value: str):
+    """Test for `BlockMethod`: a LibXC component of the wrong kind is rejected."""
+    with pytest.raises(ValidationError):
+        BlockMethod(**{field: value})
