@@ -2419,8 +2419,14 @@ class Output:
         """
         Easy access to the NMR chemical shielding tensors from the properties results.
         Requires an NMR calculation (`Property.NMR` or `%eprnmr` with the `shift` flag).
-        ORCA reports one entry per method and density type, e.g. an SCF and an MP2 entry for an
-        MP2 calculation, so the entry of interest has to be selected via `method` and `level`.
+        ORCA reports one entry per method and density type, so the entry of interest has to be
+        selected via `method` and `level`. The following combinations occur:
+
+        - HF and DFT: `("SCF", "Relaxed density")`
+        - MP2 and double hybrids: additionally `("MP2", "Unrelaxed density")` and
+          `("MP2", "Relaxed density")`. The SCF entry contains only the SCF part, e.g. without
+          the perturbative correction of a double hybrid, so the relaxed MP2 entry is usually
+          the one of interest.
 
         Note that these are shielding constants, not shifts relative to a reference compound.
         A chemical shift is obtained as the difference to the shielding of a reference calculated
@@ -2450,7 +2456,9 @@ class Output:
         Easy access to the NMR spin-spin coupling constants from the properties results.
         Requires an NMR calculation with the coupling flags enabled, e.g. `ssall` on the `nuclei`
         option of `BlockEprnmr`. As for the shieldings, ORCA reports one entry per method and
-        density type.
+        density type, selected via `method` and `level`. For HF, DFT, MP2 and double hybrids
+        there is a single `("SCF", "Relaxed density")` entry, as ORCA computes the couplings at
+        the SCF level only, e.g. without the perturbative correction of a double hybrid.
 
         Parameters
         ----------

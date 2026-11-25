@@ -47,6 +47,10 @@ def test_get_spin_spin_coupling_returns_couplings(output_object_factory, task: s
     output_object = output_object_factory(task)
     couplings = output_object.get_spin_spin_coupling()
 
+    # > Unlike the shieldings, an MP2 calculation reports the couplings at the SCF level only
+    assert [(coupling.method, coupling.level) for coupling in couplings] == [
+        ("SCF", "Relaxed density"),
+    ]
     for coupling in couplings:
         assert isinstance(coupling, SpinSpinCoupling)
         assert len(coupling.pairsinfo) == coupling.numofnucpairs
