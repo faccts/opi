@@ -158,7 +158,7 @@ class DftSettings(MethodSettings):
     basis_set: BasisSet | None, default: None
         One-electron basis set used.
     solvation_model: SolvationModel | None, default: None
-        Solvation model to use.
+        Solvation model to use. ALPB is only available for xTB methods.
     solvent: Solvent | None, default: None
         Solvent to model via implicit solvation, requires a solvent model.
     grid: Grid | None, default: None
@@ -331,7 +331,7 @@ class SqmSettings(MethodSettings):
     basis_set: BasisSet | None, default: None
         One-electron basis set used.
     solvation_model: SolvationModel | None, default: None
-        Solvation model to use.
+        Solvation model to use. ALPB is only available for xTB methods.
     solvent: Solvent | None, default: None
         Solvent to model via implicit solvation, requires a solvent model.
     scf_maxiter: int | None, default: None
@@ -390,7 +390,7 @@ class ForceFieldSettings(MethodSettings):
     method: ForceField
         Force field method to use, e.g., GFN-FF.
     solvation_model: SolvationModel | None, default: None
-        Solvation model to use.
+        Solvation model to use. ALPB is only available for xTB methods.
     solvent: Solvent | None, default: None
         Solvent to model via implicit solvation, requires a solvent model.
     """
@@ -427,7 +427,7 @@ class DlpnoCcSettings(MethodSettings):
     basis_set: BasisSet | None, default: None
         One-electron basis set used.
     solvation_model: SolvationModel | None, default: None
-        Solvation model to use.
+        Solvation model to use. ALPB is only available for xTB methods.
     solvent: Solvent | None, default: None
         Solvent to model via implicit solvation, requires a solvent model.
     aux_basis:  AuxBasisSet

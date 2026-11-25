@@ -20,6 +20,8 @@ class SolvationModelAndSolvent(ORCAKeyword):
 class SolvationModel(SimpleKeywordBox):
     """SolvationModel enum to store all valid Solvation Models for ORCA calculations"""
 
+    ALPB = SolvationModelAndSolvent("ALPB")
+    """SimpleKeyword: ALPB implicit solvation, only available for xTB methods, e.g. `ALPB(Water)`."""
     CPCM = SolvationModelAndSolvent("CPCM")
     SMD = SolvationModelAndSolvent("SMD")
     COSMORS = SolvationModelAndSolvent("COSMORS")
