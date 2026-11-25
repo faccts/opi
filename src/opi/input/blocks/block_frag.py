@@ -1,10 +1,10 @@
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import field_validator
 
 from opi.input.blocks import BlockABC
 from opi.input.blocks.fragment import Fragment, Frags
-from opi.input.blocks.util import InputFilePath, InputString
+from opi.input.blocks.util import CaseInsensitiveLiteralModel, InputFilePath, InputString
 
 __all__ = ("FragDefinition", "BlockFrag")
 
@@ -18,7 +18,7 @@ class FragDefinition(Frags):
         return super().__str__() + "\n    end"
 
 
-class FragProc(BaseModel):
+class FragProc(CaseInsensitiveLiteralModel):
     """
     Class to model `fragproc` attribute in `BlockFrag`
     """

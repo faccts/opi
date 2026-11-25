@@ -3,12 +3,12 @@ from typing import Any, Literal, Self
 from pydantic import BaseModel, field_validator
 
 from opi.input.blocks import BlockABC
-from opi.input.blocks.util import InputFilePath, NumList
+from opi.input.blocks.util import CaseInsensitiveLiteralModel, InputFilePath, NumList
 
 __all__ = ("DIIS", "Shift", "Damp", "SOSCF", "Trah", "Stab", "Rotate", "BlockScf")
 
 
-class SubBlock(BaseModel):
+class SubBlock(CaseInsensitiveLiteralModel):
     """
     Class to define a sub block within an input block
     """

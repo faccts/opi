@@ -7,11 +7,16 @@ from opi.input.blocks import (
     BlockABC,
     BlockEprnmr,
     BlockGeom,
+    BlockGoat,
+    BlockIce,
     BlockMethod,
+    BlockQmmm,
     BlockScf,
+    Constraint,
     Nuclei,
     NucleiFlag,
     Scan,
+    Trah,
 )
 from opi.utils.element import Element
 
@@ -608,3 +613,45 @@ def test_rotate_rejects_invalid():
     """Test for `Rotate`: each rotation is validated, also when several are given."""
     with pytest.raises(ValidationError, match="Third element must be a float"):
         BlockScf(rotate=[[251, 253], [252, 255, 90]])
+
+
+# ---------------------------------------------------------------------------
+# Case-insensitive `Literal` options
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize(
+    "block_cls, field, value, expected",
+    [
+        (BlockScf, "scfmode", "Direct", "direct"),
+        (BlockScf, "convergence", "VERYTIGHT", "verytight"),
+        (BlockGoat, "gfnuphill", "xtb2", "XTB2"),
+        (BlockIce, "icetype", "csfs", "CSFs"),
+        (BlockQmmm, "forcefieldinput", "Amber", "amber"),
+    ],
+)
+def test_literal_case_insensitive(block_cls: type, field: str, value: str, expected: str):
+    """Test for `BlockABC`: a `Literal` option accepts any casing and stores the exact value."""
+    assert getattr(block_cls(**{field: value}), field) == expected
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_literal_case_insensitive_sub_blocks():
+    """Test for the sub-block models: their `Literal` fields accept any casing, too."""
+    assert Trah(precond="Full").precond == "full"
+    nuclei = Nuclei(mode="ALL", atom=Element.HYDROGEN, flags=NucleiFlag(aiso=True))
+    assert nuclei.mode == "all"
+    constraint = Constraint(mode="b", atom1=0, atom2=1)
+    assert constraint.mode == "B"
+    assert str(constraint) == "{ B 0 1 C }"
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_literal_case_insensitive_rejects_unknown():
+    """Test for `BlockABC`: a string that matches no `Literal` value is still rejected."""
+    with pytest.raises(ValidationError):
+        BlockScf(scfmode="semi-direct")

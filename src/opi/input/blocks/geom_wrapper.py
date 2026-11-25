@@ -3,10 +3,12 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from opi.input.blocks.util import CaseInsensitiveLiteralModel
+
 __all__ = ("Internal", "Internals")
 
 
-class GeomWrapper(BaseModel):
+class GeomWrapper(CaseInsensitiveLiteralModel):
     """
     Base class for all custom classes used for `BlockGeom`
     """

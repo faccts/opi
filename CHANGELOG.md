@@ -73,6 +73,7 @@
 - Added `Output.get_chemical_shift()` and `Output.get_spin_spin_coupling()` which return the calculated NMR shielding tensors and spin-spin coupling constants (#313).
 - Added the missing `siso`, `saniso`, `sdso`, `spso`, `mult`, `irrep` and `state` fields to `ChemicalShift` and `numofnucpairssd_fc` to `SpinSpinCoupling` (#313).
 - Added a tutorial notebook on the calculation of an NMR spectrum (#313).
+- Literal options of `%block` models, e.g. `BlockScf(scfmode="Direct")`, now accept string values in any casing, as ORCA does, and map them onto the matching `Literal` value (#XXX)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
