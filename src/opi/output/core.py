@@ -2666,9 +2666,7 @@ class Output:
             Returns the spectra or None if there is none in the output for the requested index.
         """
 
-        absorption_spectrum = self._safe_get(
-            "results_properties", "geometries", index, "absorption_spectrum"
-        )
+        absorption_spectrum = self._get_geometry_data(index, "absorption_spectrum")
 
         if absorption_spectrum is not None:
             absorption_spectrum = cast(list[AbsorptionSpectrum], absorption_spectrum)
