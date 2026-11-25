@@ -1,8 +1,9 @@
-from pydantic import Field, StrictInt, field_validator
+from pydantic import Field, StrictInt, StrictStr, field_validator
 
 from opi.output.models.base.get_item import GetItem
 from opi.output.models.base.strict_types import (
     StrictFiniteFloat,
+    StrictNonNegativeInt,
     StrictPositiveInt,
 )
 
@@ -15,31 +16,53 @@ class TdDft(GetItem):
     ----------
     iroot: StrictInt
         The root to be optimized
-    orbwin: list[StrictPositiveInt]
+    energy: StrictFiniteFloat
+        Excitation energy of `iroot` in Hartree
+    irrep: StrictStr
+        Irreducible representation of `iroot`
+    multiplicity: StrictPositiveInt
+        Multiplicity of `iroot`
+    tda: StrictStr
+        Whether the Tamm-Dancoff approximation was used ("ON" or "OFF")
+    orbwin: list[StrictNonNegativeInt]
         Orbital Window
-    x: StrictNonNegativeFloat
-        AO basis amplitudes for cis/tda-td-dft
-    xy: StrictNonNegativeFloat
-        AO basis amplitudes for rpa/td-dft
+    x: list[list[StrictFiniteFloat]]
+        Amplitudes for cis/tda-td-dft (active occupied x virtual)
+    xy: list[list[StrictFiniteFloat]]
+        X+Y amplitudes for rpa/td-dft (active occupied x virtual)
+    x_minus_y: list[list[StrictFiniteFloat]]
+        X-Y amplitudes for rpa/td-dft (active occupied x virtual)
     """
 
     iroot: StrictInt | None = Field(default=None, serialization_alias="IRoot")
-    orbwin: list[StrictPositiveInt] | None = Field(default=None, serialization_alias="OrbWin")
+    energy: StrictFiniteFloat | None = Field(default=None, serialization_alias="Energy")
+    irrep: StrictStr | None = Field(default=None, serialization_alias="Irrep")
+    multiplicity: StrictPositiveInt | None = Field(default=None, serialization_alias="Multiplicity")
+    tda: StrictStr | None = Field(default=None, serialization_alias="TDA")
+    orbwin: list[StrictNonNegativeInt] | None = Field(default=None, serialization_alias="OrbWin")
     x: list[list[StrictFiniteFloat]] | None = Field(default=None, serialization_alias="X")
-    xy: list[StrictFiniteFloat] | None = Field(default=None, alias="x+y", serialization_alias="X+Y")
+    xy: list[list[StrictFiniteFloat]] | None = Field(
+        default=None, alias="x+y", serialization_alias="X+Y"
+    )
+    x_minus_y: list[list[StrictFiniteFloat]] | None = Field(
+        default=None, alias="x-y", serialization_alias="X-Y"
+    )
 
-    @field_validator("x", mode="before")
+    @field_validator("x", "xy", "x_minus_y", mode="before")
     @classmethod
-    def x_init(cls, x: list[float | list[float]]) -> list[list[float]]:
+    def amplitudes_init(
+        cls, amplitudes: list[float | list[float]] | None
+    ) -> list[list[float]] | None:
         """
+        ORCA writes the amplitudes as a list of rows, but a row holding a single value is
+        written as a plain number instead of a list. Those are wrapped here, so that the
+        amplitudes are always 2D.
+
         Parameters
         ----------
-        x
+        amplitudes: list[float | list[float]] | None
+            Amplitudes as written by ORCA
         """
-        x_list = []
-        for x_i in x:
-            if isinstance(x_i, list):
-                x_list.append(x_i)
-            else:
-                x_list.append([x_i])
-        return x_list
+        if amplitudes is None:
+            return None
+        return [row if isinstance(row, list) else [row] for row in amplitudes]
