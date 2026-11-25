@@ -24,6 +24,9 @@ from opi.output.grepper.error_pattern import (
 # > Success strings - String that indicate something finished with success
 TERMINATED_NORMALLY = "****ORCA TERMINATED NORMALLY****"
 SCF_CONVERGED = "SUCCESS"
+# > Printed by the external xtb program (e.g. GFN2-XTB) as
+# > "*** convergence criteria satisfied after X iterations ***"
+XTB_SCF_CONVERGED = "convergence criteria satisfied after"
 GEOMETRY_CONVERGED = "HURRAY"
 NEB_CONVERGED = "H U R R A Y"
 CC_CONVERGED = "The Coupled-Cluster iterations have converged"
@@ -60,6 +63,13 @@ CIS_TDA_NOT_CONVERGED_ERROR = ErrorPattern(
 SCF_NOT_CONVERGED_ERROR = ErrorPattern(
     "SCF NOT CONVERGED",
     "SCF did not converge",
+    critical=True,
+)
+# > Printed by the external xtb program (e.g. GFN2-XTB) as
+# > "*** convergence criteria cannot be satisfied within X iterations ***"
+XTB_SCF_NOT_CONVERGED_ERROR = ErrorPattern(
+    "convergence criteria cannot be satisfied",
+    "xtb SCC did not converge",
     critical=True,
 )
 OPT_NOT_CONVERGED_ERROR = ErrorPattern(
@@ -122,6 +132,7 @@ ERROR_PATTERNS: list[ErrorPattern] = [
     CPSCF_NOT_CONVERGED_ERROR,  # critical
     CC_NOT_CONVERGED_ERROR,  # critical
     SCF_NOT_CONVERGED_ERROR,  # critical
+    XTB_SCF_NOT_CONVERGED_ERROR,  # critical
     # > Memory errors
     NotEnoughMemoryScfError(),  # critical
     TRIPLES_OOM_ERROR,  # critical

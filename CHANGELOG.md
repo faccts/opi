@@ -107,6 +107,7 @@
 - OPI now finds the ORCA helper binaries (e.g. `orca_plot`) when the `orca` it is pointed to, directly or through `$PATH`, sits at the top of an installation that keeps its binaries in `bin/` and its libraries in `lib/`.(#321)
 - Fixed `TdDft.xy` (`X+Y`), which failed validation for full TD-DFT (RPA) runs because the amplitudes are a list of rows, and added the previously unmodelled `X-Y` amplitudes as `TdDft.x_minus_y` (#309).
 - Added the missing `energy`, `irrep`, `multiplicity` and `tda` fields to `TdDft` (#309).
+- `Output.scf_converged()` now also detects the converged SCC of the external xtb program (e.g. `GFN2-XTB`), which does not print "SUCCESS" (#328).
 
 ## [2.0.0] - 2026-02-10
 

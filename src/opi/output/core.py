@@ -822,14 +822,15 @@ class Output:
 
     def scf_converged(self) -> bool:
         """
-        Determine if ORCA SCF converged, by looking for "SUCCESS" in the ".out" file.
+        Determine if ORCA SCF converged, by looking for "SUCCESS" in the ".out" file,
+        or for the convergence message of the external xtb program.
         Check only if ORCA SCF was actually requested.
         If the ".out" file does not exist, also return False.
 
         Returns
         -------
         bool
-            True if "SUCCESS" is found in ".out" file else False
+            True if either message is found in ".out" file else False
         """
         return self._has(has_scf_converged)
 
