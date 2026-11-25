@@ -62,6 +62,28 @@ def run_exmp012(
 
     # > Parse JSON files
     output.parse()
+
+    # > Print the isotropic shieldings. ORCA reports one entry per method and density type,
+    # > here SCF as well as unrelaxed and relaxed MP2.
+    shieldings = output.get_chemical_shift()
+    if shieldings is not None:
+        for shift in shieldings:
+            print(f"Isotropic shieldings ({shift.method}, {shift.level}):")
+            for nuc, elem, siso in zip(shift.nuc, shift.elems, shift.siso):
+                symbol = Element.from_atomic_number(elem).value
+                print(f"  {symbol}{nuc}: {siso:8.3f} ppm")
+    # << END OF IF
+
+    # > Print the isotropic spin-spin coupling constants
+    couplings = output.get_spin_spin_coupling()
+    if couplings is not None:
+        for coupling in couplings:
+            print(f"Spin-spin couplings ({coupling.method}, {coupling.level}):")
+            # > `pairsinfo` holds (index 1, atomic number 1, index 2, atomic number 2)
+            for pair, value in zip(coupling.pairsinfo, coupling.pairstotalssciso):
+                print(f"  J({pair[0]},{pair[2]}): {value[0]:8.3f} Hz")
+    # << END OF IF
+
     return output
 
 
