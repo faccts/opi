@@ -2751,6 +2751,52 @@ class Output:
             if threshold is None or inner[0] < -threshold
         }
 
+    def get_normal_modes(
+        self, *, index: int = -1
+    ) -> dict[int, list[tuple[float, float, float]]] | None:
+        """
+        Returns the normal modes as Cartesian displacements of each atom. Requires a frequency
+        calculation (FREQ or NUMFREQ).
+
+        The modes are given as written by ORCA: the mass-weighted normal modes are orthonormal,
+        so the Cartesian displacements of each mode satisfy sum_i m_i * |d_i|^2 = 1, with the
+        atomic masses m_i in amu. The six (five for linear molecules) translational and
+        rotational modes are included as zero displacements.
+
+        Parameters
+        ----------
+        index : int, default: -1
+            Index of the geometry for which the normal modes should be returned. The default -1
+            refers to the final geometry. Note that in typical ORCA jobs normal modes are only
+            available for the final geometry.
+            Raises `OpiOutputIndexError` if the geometry index is out of range and `TypeError`
+            if it is not an integer.
+
+        Returns
+        -------
+        normal_modes : dict[int, list[tuple[float, float, float]]] | None
+            Dictionary mapping the 1-based mode index, as in `get_frequencies()`, to the
+            (x, y, z) displacement of every atom, in the order of the atoms in the structure.
+            None if no normal modes are found.
+        """
+        modes = self._safe_get("results_properties", "geometries", index, "hessian", "modes")
+
+        if modes is None:
+            return None
+
+        modes = cast(list[list[float]], modes)
+
+        # > ORCA stores one mode per column; the rows are the x, y, z components of each atom
+        n_atoms = len(modes) // 3
+        n_modes = len(modes[0]) if modes else 0
+        return {
+            mode + 1: [
+                (modes[3 * atom][mode], modes[3 * atom + 1][mode], modes[3 * atom + 2][mode])
+                for atom in range(n_atoms)
+            ]
+            for mode in range(n_modes)
+        }
+
     def get_imaginary_frequencies(self, *, threshold: float = 0.0) -> dict[int, float] | None:
         """
         Returns only the imaginary (negative) vibrational frequencies (in cm⁻¹). Requires a frequency
