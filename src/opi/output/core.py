@@ -2768,9 +2768,8 @@ class Output:
         index : int, default: -1
             Index of the geometry for which the normal modes should be returned. The default -1
             refers to the final geometry. Note that in typical ORCA jobs normal modes are only
-            available for the final geometry.
-            Raises `OpiOutputIndexError` if the geometry index is out of range and `TypeError`
-            if it is not an integer.
+            available for the final geometry. Silently ignores if the requested index is not
+            available and returns None.
 
         Returns
         -------
@@ -2781,14 +2780,14 @@ class Output:
         """
         modes = self._safe_get("results_properties", "geometries", index, "hessian", "modes")
 
-        if modes is None:
+        if not modes:
             return None
 
         modes = cast(list[list[float]], modes)
 
         # > ORCA stores one mode per column; the rows are the x, y, z components of each atom
         n_atoms = len(modes) // 3
-        n_modes = len(modes[0]) if modes else 0
+        n_modes = len(modes[0])
         return {
             mode + 1: [
                 (modes[3 * atom][mode], modes[3 * atom + 1][mode], modes[3 * atom + 2][mode])

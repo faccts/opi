@@ -209,3 +209,12 @@ def test_is_pes_transition_state_returns_false_for_minimum(output_object_factory
     """Test if `Output.is_pes_transition_state()` returns False for a minimum structure."""
     output_object = output_object_factory(task)
     assert output_object.is_pes_transition_state() is False
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["rama"])
+def test_get_normal_modes_unavailable_index_returns_none(output_object_factory, task):
+    """Test if `Output.get_normal_modes()` returns None for a geometry index that is not available."""
+    output_object = output_object_factory(task)
+    assert output_object.get_normal_modes(index=100) is None
