@@ -133,17 +133,39 @@ def test_clear_arbitrary_strings_strict(empty_calc: Calculator):
 @pytest.mark.unit
 @pytest.mark.input
 @pytest.mark.parametrize("as_str", [False, True])
-def test_add_arbitrary_string_from_file(empty_calc: Calculator, tmp_path, as_str: bool):
-    """Test for `Input.add_arbitrary_string_from_file()`: the file contents are added as-is."""
-    contents = "%pal\n    nprocs 4\nend\n"
+@pytest.mark.parametrize("pos", [ArbitraryStringPos.TOP, "top"])
+def test_add_arbitrary_string_from_file(
+    empty_calc: Calculator, tmp_path, as_str: bool, pos: ArbitraryStringPos | str
+):
+    """Test for `Input.add_arbitrary_string_from_file()`: the file contents are added at `pos`."""
     file = tmp_path / "extra.inp"
-    file.write_text(contents)
-    empty_calc.input.add_arbitrary_string_from_file(
-        str(file) if as_str else file, pos=ArbitraryStringPos.TOP
-    )
-    assert ArbitraryString(contents, pos=ArbitraryStringPos.TOP) in (
-        empty_calc.input.arbitrary_strings
-    )
+    file.write_text("%pal\n    nprocs 4\nend\n\n", encoding="utf-8")
+    empty_calc.input.add_arbitrary_string_from_file(str(file) if as_str else file, pos=pos)
+    [arbitrary_string] = empty_calc.input.arbitrary_strings
+    assert arbitrary_string.string == "%pal\n    nprocs 4\nend"
+    assert arbitrary_string.pos is ArbitraryStringPos.TOP
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_add_arbitrary_string_from_file_with_bom(empty_calc: Calculator, tmp_path):
+    """Test for `Input.add_arbitrary_string_from_file()`: a UTF-8 byte order mark is not added."""
+    file = tmp_path / "extra.inp"
+    file.write_text("%pal nprocs 4 end", encoding="utf-8-sig")
+    empty_calc.input.add_arbitrary_string_from_file(file)
+    assert empty_calc.input.arbitrary_strings[0].string == "%pal nprocs 4 end"
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize("contents", ["", " \n\n"])
+def test_add_arbitrary_string_from_empty_file(empty_calc: Calculator, tmp_path, contents: str):
+    """Test for `Input.add_arbitrary_string_from_file()` with an empty or whitespace-only file."""
+    file = tmp_path / "extra.inp"
+    file.write_text(contents, encoding="utf-8")
+    with pytest.raises(ValueError):
+        empty_calc.input.add_arbitrary_string_from_file(file)
+    assert not empty_calc.input.arbitrary_strings
 
 
 @pytest.mark.unit

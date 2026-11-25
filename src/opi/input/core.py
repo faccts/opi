@@ -872,12 +872,13 @@ class Input:
     ) -> None:
         """
         Add the contents of a text file as an arbitrary string.
-        The contents are added as-is, see `add_arbitrary_string()`.
+        The contents are handled like a string given to `add_arbitrary_string()`,
+        i.e. trailing whitespace is stripped.
 
         Parameters
         ----------
         path : str | os.PathLike[str]
-            Path to the text file, read with UTF-8 encoding.
+            Path to the text file, read with UTF-8 encoding. A leading byte order mark is removed.
             A relative path is resolved against the current working directory.
         pos : ArbitraryStringPos | str | None, default: None
             Coordinates of the arbitrary string within the input file.
@@ -888,9 +889,10 @@ class Input:
         FileNotFoundError
             If the file does not exist.
         ValueError
-            If the file is empty.
+            If the file is empty or only contains whitespace, or if `pos` is not valid.
         """
-        self.add_arbitrary_string(Path(path).read_text(encoding="utf-8"), pos=pos)
+        # > "utf-8-sig" also reads plain UTF-8, but drops the byte order mark some editors write
+        self.add_arbitrary_string(Path(path).read_text(encoding="utf-8-sig"), pos=pos)
 
     def remove_arbitrary_string(
         self, string: str | ArbitraryString, /, *, strict: bool = False
