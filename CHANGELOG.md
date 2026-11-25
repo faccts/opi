@@ -6,7 +6,7 @@
 - Refactor base `Block` class to `BlockABC` - also cannot be initialized anymore. `Block` is now used to create an arbitrary block.(#276)
 - Rename the class representing a single simple keyword from `SimpleKeyword` to `ORCAKeyword`. `SimpleKeyword` is now the collection of all implemented simple keywords; calling `SimpleKeyword("keyword")` still creates an ad-hoc keyword, but `isinstance(keyword, SimpleKeyword)` is now `False` - use `ORCAKeyword` instead. (#218)
 - Move `POPDISP` from `DispersionCorrection` to `OutputControl`. (#218)
-- `Output` getters now raise `OpiOutputNotParsedError` if the output was not parsed, `OpiOutputIndexError` for an out-of-range index and `TypeError` for a non-integer index instead of returning None (#320)
+- `Output` getters raise `OpiOutputNotParsedError`, `OpiOutputIndexError` or `TypeError` instead of returning None when used incorrectly, read `.out` fallback values per geometry, and `results_gbw` keeps a None entry for unreadable gbw JSON files (#320)
 
 ### Added
 - The ORCA version check now accepts pre-release versions (#301).

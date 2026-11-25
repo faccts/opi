@@ -106,13 +106,15 @@ class Output:
     results_properties: PropertyResults
         Properties parsed from `property.json`.
         Should be preferred over `property_json_data`.
-    results_gbw: GbwResults
-        Data parsed from `<basename>.json`.
+    results_gbw: list[GbwResults | None]
+        Data parsed from the gbw JSON files, one entry per file in `gbw_json_files`. The entry of
+        a file that could not be read is None.
         Should be preferred over `gbw_json_data`.
     property_json_data: dict[str, Any]
         JSON tree read from `<basename>.property.json`.
-    gbw_json_data: dict[str, Any]
-        JSON tree of read from `<basename>.json`.
+    gbw_json_data: list[dict[str, Any] | None]
+        JSON trees read from the gbw JSON files, one entry per file in `gbw_json_files`. The
+        entry of a file that could not be read is None.
     do_redump_jsons: bool, default: False
         Redump JSONs files after parsing. This is mostly meant for debugging.
     config_dict : dict[str, Any] | None, default: None
@@ -132,6 +134,8 @@ class Output:
       gbw indices if no gbw results were found at all. Geometry indices are checked against the
       property JSON, which is authoritative. Only if it was not parsed or contains no geometries
       at all (e.g. for GFN-FF), they are checked against the geometries in the `.out` file.
+      A gbw index refers to the file in `gbw_json_files`. If that file could not be read, the
+      getters return None.
     - `TypeError`: The geometry or gbw index is not an integer (booleans are rejected as well).
 
     Getters with an active `.out` file fallback use it if the property JSON is unavailable or
@@ -204,12 +208,12 @@ class Output:
         self.do_redump_jsons: bool = False
 
         # > // RAW JSON TREES
-        self.gbw_json_data: list[dict[str, Any]] | None = None
+        self.gbw_json_data: list[dict[str, Any] | None] | None = None
         self.property_json_data: dict[str, Any] | None = None
 
         # > // PARSED JSON TREES
         self.results_properties: PropertyResults | None = None
-        self.results_gbw: list[GbwResults] | None = None
+        self.results_gbw: list[GbwResults | None] | None = None
 
         # > // CONFIG DICT
         self.config_dict: dict[str, Any] | None = None
@@ -326,8 +330,10 @@ class Output:
 
         # // read the GBW files
         self.gbw_json_data = self._process_json_files(self.gbw_json_files, continue_on_error=True)
+        # > Files that could not be read keep a None placeholder, so that the indices of
+        # > `results_gbw` match the ones of `gbw_json_files`
         self.results_gbw = [
-            GbwResults.model_validate(data, context={"strict": strict})
+            None if data is None else GbwResults.model_validate(data, context={"strict": strict})
             for data in self.gbw_json_data
         ]
 
@@ -429,7 +435,7 @@ class Output:
         files: Sequence[Path],
         *,
         continue_on_error: bool = False,
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, Any] | None]:
         """
         Process multiple JSON files.
 
@@ -438,22 +444,26 @@ class Output:
         files: Sequence[Path]
             Paths to JSON files to be processed.
         continue_on_error: bool
-            Whether to continue processing when an error occurs.
+            Whether to continue processing when an error occurs. A file that cannot be read is
+            then represented by None, so that the result still has one entry per file. A warning
+            is emitted, unless the file does not exist (e.g. no gbw JSON can be created for GFN-FF).
 
         Returns
         ----------
-        list[dict[str, Any]]
-            The list of the JSON files processed.
+        list[dict[str, Any] | None]
+            The JSON trees of the files, in the order of `files`.
         """
-        results: list[dict[str, Any]] = []
+        results: list[dict[str, Any] | None] = []
 
         for path in files:
             try:
-                data = self._process_json_file(path)
-                results.append(data)
-            except (FileNotFoundError, OSError, json.JSONDecodeError):
+                results.append(self._process_json_file(path))
+            except (FileNotFoundError, OSError, json.JSONDecodeError) as error:
                 if not continue_on_error:
                     raise
+                if not isinstance(error, FileNotFoundError):
+                    warn(f"Could not read JSON file {path}: {error}")
+                results.append(None)
         return results
 
     def _redump_jsons(self) -> None:
@@ -461,10 +471,13 @@ class Output:
 
         assert self.gbw_json_files
         assert self.results_gbw
-        for i, gbw_json_file in enumerate(self.gbw_json_files):
+        for gbw_json_file, result_gbw in zip(self.gbw_json_files, self.results_gbw):
+            # > Files that could not be read have no results
+            if result_gbw is None:
+                continue
             redumped_gbw_json_file = gbw_json_file.with_suffix(".interface.json")
             # > Keeping the empty fields, as they show what could not be parsed
-            self.results_gbw[i].to_json_file(redumped_gbw_json_file, exclude_none=False)
+            result_gbw.to_json_file(redumped_gbw_json_file, exclude_none=False)
 
         assert self.property_json_file
         assert self.results_properties
@@ -959,7 +972,10 @@ class Output:
         if self.results_gbw is not None:
             for i, result_gbw in enumerate(self.results_gbw):
                 print(f"gbw results [{i}]:")
-                print(result_gbw.graph(depth, max_list_length=max_length))
+                if result_gbw is None:
+                    print("Could not be read!")
+                else:
+                    print(result_gbw.graph(depth, max_list_length=max_length))
         else:
             print("No gbw results are available!")
 
@@ -1460,14 +1476,15 @@ class Output:
         Parameters
         ----------
         index : int
-            User-chosen index of the gbw results.
+            User-chosen index of the gbw results, which is the index of the file in
+            `self.gbw_json_files`.
         *attrs : str | int
             Path to follow within the gbw results, see `_safe_get()`.
 
         Returns
         -------
         Any | None
-            The resolved value or None.
+            The resolved value or None, which includes that the gbw JSON file could not be read.
 
         Raises
         ------
@@ -1480,7 +1497,7 @@ class Output:
         """
         # > Check the index type first, so that a wrong type is reported in any case
         index = self._check_index(index, "gbw results")
-        results_gbw = cast(list[GbwResults], self._safe_get("results_gbw"))
+        results_gbw = cast(list[GbwResults | None], self._safe_get("results_gbw"))
         return self._walk(self._select(results_gbw, index, "gbw results"), *attrs)
 
     def _find_in_outfile(
@@ -1584,11 +1601,22 @@ class Output:
         Parameters
         -------
         index: int, default: 0
-            Index of geometry for which the hftype should be retrieved.
+            Index of the gbw file in `self.gbw_json_files` for which the hftype should be retrieved.
+            Negative indices count from the end. Default 0 refers to the main gbw file.
 
         Returns
         -------
         hftype : Hftyp | None
+            The HFType or None if it is not available.
+
+        Raises
+        ------
+        TypeError
+            If `index` is not an integer.
+        OpiOutputNotParsedError
+            If the gbw results were not parsed.
+        OpiOutputIndexError
+            If `index` is out of range.
         """
         hftype = self._get_gbw_data(index, "molecule", "hftyp")
         if hftype is not None:
@@ -3055,19 +3083,18 @@ class Output:
         TypeError
             If `gbw_index` is not an integer.
         """
-        gbw_index = self._check_index(gbw_index, "gbw files")
+        gbw_index = self._check_index(gbw_index, "gbw results")
         # > Normalize negative indices, so that they refer to the same file in all lists below
         if not -self.num_gbw_json_files <= gbw_index < self.num_gbw_json_files:
             return
         gbw_index %= self.num_gbw_json_files
         self.create_gbw_json(force=True, config=config_dict, gbw_index=gbw_index)
-        if self.gbw_json_data is not None and self.gbw_json_files is not None:
-            if 0 <= gbw_index < self.num_gbw_json_data and 0 <= gbw_index < self.num_gbw_json_files:
-                self.gbw_json_data[gbw_index] = self._process_json_file(
-                    self.gbw_json_files[gbw_index]
-                )
-                if self.results_gbw is not None and 0 <= gbw_index < self.num_results_gbw:
-                    self.results_gbw[gbw_index] = GbwResults(**self.gbw_json_data[gbw_index])
+        # > Reload the parsed data, which has one entry per gbw JSON file
+        if self.gbw_json_data is None or self.results_gbw is None:
+            return
+        gbw_json_data = self._process_json_file(self.gbw_json_files[gbw_index])
+        self.gbw_json_data[gbw_index] = gbw_json_data
+        self.results_gbw[gbw_index] = GbwResults.model_validate(gbw_json_data)
 
     def get_int_overlap(
         self, recreate_json: bool = False, gbw_index: int = 0

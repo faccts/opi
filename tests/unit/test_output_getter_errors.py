@@ -354,3 +354,75 @@ def test_recreate_gbw_results_with_negative_index(
     output_object.recreate_gbw_results({}, -1)
     assert output_object.results_gbw[-1] is not old_results
     assert output_object.results_gbw[-1] == old_results
+
+
+def _output_with_unreadable_gbw_file(source: Path, tmp_path: Path, unreadable: int) -> Output:
+    """
+    Output whose three gbw JSON files are copies of `source`, except for the one at index
+    `unreadable`, which contains invalid JSON.
+    """
+    gbw_json_files = [tmp_path / f"job.{i}.json" for i in range(3)]
+    for i, gbw_json_file in enumerate(gbw_json_files):
+        if i == unreadable % len(gbw_json_files):
+            gbw_json_file.write_text("invalid JSON")
+        else:
+            shutil.copy(source, gbw_json_file)
+    output = Output("job", working_dir=tmp_path, version_check=False)
+    output.gbw_json_files = gbw_json_files
+    with pytest.warns(UserWarning, match="Could not read JSON file"):
+        output.parse_gbw(do_create_gbw_json=False)
+    return output
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_missing_gbw_json_file_without_warning(tmp_path: Path, recwarn: pytest.WarningsRecorder):
+    """
+    Test that a missing gbw JSON file is represented by None without a warning, as ORCA cannot
+    create it for some methods (e.g. GFN-FF).
+    """
+    output = Output("job", working_dir=tmp_path, version_check=False)
+    output.gbw_json_files = [tmp_path / "job.json"]
+    output.parse_gbw(do_create_gbw_json=False)
+    assert output.results_gbw == [None]
+    assert not [w for w in recwarn if "Could not read JSON file" in str(w.message)]
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["led"])
+def test_unreadable_gbw_file_keeps_indices(output_object_factory, tmp_path: Path, task: str):
+    """
+    Test that a gbw JSON file that cannot be read is represented by None, so that the gbw
+    indices still refer to the files in `gbw_json_files`.
+    """
+    source = output_object_factory(task).gbw_json_files[0]
+    output = _output_with_unreadable_gbw_file(source, tmp_path, 1)
+    assert len(output.results_gbw) == len(output.gbw_json_files)
+    assert output.results_gbw[1] is None
+    assert output.get_mos(gbw_index=1) is None
+    assert output.get_mos(gbw_index=2) is not None
+    with pytest.raises(OpiOutputIndexError, match="3 gbw results"):
+        output.get_mos(gbw_index=3)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["led"])
+def test_recreate_gbw_results_for_unreadable_file(
+    output_object_factory, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, task: str
+):
+    """
+    Test that `recreate_gbw_results()` with a negative index fills in the results of the gbw JSON
+    file that could not be read before, without touching the others.
+    """
+    source = output_object_factory(task).gbw_json_files[0]
+    output = _output_with_unreadable_gbw_file(source, tmp_path, -1)
+    first_results = output.results_gbw[0]
+    # > Recreating the gbw JSON needs ORCA, the file is copied instead
+    monkeypatch.setattr(
+        output, "create_gbw_json", lambda **_: shutil.copy(source, output.gbw_json_files[-1])
+    )
+    output.recreate_gbw_results({}, -1)
+    assert output.results_gbw[-1] is not None
+    assert output.results_gbw[0] is first_results
