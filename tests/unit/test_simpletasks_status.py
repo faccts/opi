@@ -45,6 +45,9 @@ only need the raw output file, never `Output.parse()`.
 
 SCF_CONVERGED = "SUCCESS\n"
 SCF_NOT_CONVERGED = "SCF NOT CONVERGED AFTER 1 CYCLES\n"
+# > The external xtb program (e.g. GFN2-XTB) does not print "SUCCESS", but its own messages
+XTB_SCF_CONVERGED = "   *** convergence criteria satisfied after 8 iterations ***\n"
+XTB_SCF_NOT_CONVERGED = "   *** convergence criteria cannot be satisfied within 2 iterations ***\n"
 OPT_CONVERGED = "HURRAY\n"
 TERMINATED_NORMALLY = "****ORCA TERMINATED NORMALLY****\n"
 
@@ -102,6 +105,22 @@ def test_status_false_when_scf_not_converged(
     _patch_output(monkeypatch, tmp_path, SCF_NOT_CONVERGED + TERMINATED_NORMALLY)
     results = _make_results(SinglePointResults, DftSettings)
     assert results.status is False
+
+
+@pytest.mark.unit
+@pytest.mark.simpletasks
+@pytest.mark.parametrize(
+    "scf_message, expected",
+    [(XTB_SCF_CONVERGED, True), (XTB_SCF_NOT_CONVERGED, False)],
+)
+def test_status_for_external_xtb(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scf_message: str, expected: bool
+) -> None:
+    """Sqm method family: the SCF messages of the external xtb program decide the status."""
+    _patch_output(monkeypatch, tmp_path, scf_message + TERMINATED_NORMALLY)
+    results = _make_results(SinglePointResults, SqmSettings)
+    assert results.output.scf_converged() is expected
+    assert results.status is expected
 
 
 @pytest.mark.unit

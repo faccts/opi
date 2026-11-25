@@ -15,6 +15,7 @@ from opi.output.grepper.patterns import (
     NEB_CONVERGED,
     SCF_CONVERGED,
     TERMINATED_NORMALLY,
+    XTB_SCF_CONVERGED,
 )
 
 # > Coordinate line of the input file as echoed in the output, e.g. "| 10> * xyz 0 1"
@@ -361,7 +362,8 @@ def has_scf(file_name: Path, /) -> bool:
 
 def has_scf_converged(file_name: Path, /) -> bool:
     """
-    Searches for the message 'SUCCESS' as indicator that the SCF converged.
+    Searches for the message 'SUCCESS' as indicator that the SCF converged,
+    or for the convergence message of the external xtb program.
 
     Parameter
     ---------
@@ -373,7 +375,9 @@ def has_scf_converged(file_name: Path, /) -> bool:
     bool
         True if expression is found in file else False
     """
-    return has_string_in_file(file_name, SCF_CONVERGED)
+    return has_string_in_file(file_name, SCF_CONVERGED) or has_string_in_file(
+        file_name, XTB_SCF_CONVERGED
+    )
 
 
 def has_casscf_converged(file_name: Path, /) -> bool:
