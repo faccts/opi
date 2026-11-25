@@ -73,7 +73,7 @@
 - Added `Output.get_chemical_shift()` and `Output.get_spin_spin_coupling()` which return the calculated NMR shielding tensors and spin-spin coupling constants (#313).
 - Added the missing `siso`, `saniso`, `sdso`, `spso`, `mult`, `irrep` and `state` fields to `ChemicalShift` and `numofnucpairssd_fc` to `SpinSpinCoupling` (#313).
 - Added a tutorial notebook on the calculation of an NMR spectrum (#313).
-- Added `Input.add_arbitrary_string_from_file()` to add the contents of a text file as an arbitrary string (#XXX)
+- Added `Input.add_arbitrary_string_from_file()` to add the contents of a text file as an arbitrary string (#329).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
