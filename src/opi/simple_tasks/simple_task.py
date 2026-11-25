@@ -52,8 +52,8 @@ class SimpleTask(ABC, typing.Generic[_RT]):
     Concrete subclasses (``SinglePointTask``, ``OptTask``, …) bind the
     specific settings and results types through ``_task_settings_type`` and
     ``_results_type``.  Each subclass is parameterised with its concrete
-    results type (e.g. ``SimpleTask[FreqResults]``) so that ``run``,
-    ``restart``, and ``from_string`` all return the exact subtype without
+    results type (e.g. ``SimpleTask[FreqResults]``) so that ``run``
+    and ``from_string`` both return the exact subtype without
     casts.
 
     Method family switching via the ``method`` setter automatically migrates
@@ -656,98 +656,6 @@ class SimpleTask(ABC, typing.Generic[_RT]):
         self.execute(calculator)
 
         return self.make_results(calculator)
-
-    def restart(
-        self,
-        previous_results: "TaskResults",
-        basename: str | None = None,
-        structure: Structure | BaseStructureFile | None = None,
-        working_dir: Path | None = None,
-        ncores: int | None = None,
-        memory: int | None = None,
-        moinp: Path | None = None,
-        use_previous_orbitals: bool = False,
-    ) -> _RT:
-        """
-        Re-run the task, inheriting settings from a previous calculation.
-
-        All parameters default to the values used in ``previous_results`` and
-        only need to be supplied when overriding them.  The target working
-        directory is wiped and recreated by the underlying ``run()`` call, so
-        the previous output files are not preserved unless ``working_dir`` is
-        changed.
-
-        Parameters
-        ----------
-        previous_results : TaskResults
-            Results object from the earlier run.  Provides fallback values for
-            ``basename``, ``struct``, ``working_dir``, ``ncores``, and
-            ``memory``.
-        basename : str, optional
-            Job name for the new calculation.  Defaults to the basename of the
-            previous run.
-        structure : Structure or BaseStructureFile, optional
-            Input structure.  Defaults to the structure used in the previous
-            run.  Raises ``ValueError`` if no structure can be determined.
-        working_dir : Path, optional
-            Directory in which to run the new calculation.  Defaults to the
-            working directory of the previous run (which will be overwritten).
-        ncores : int, optional
-            Number of CPU cores.  Defaults to the value from the previous run.
-        memory : int, optional
-            Memory in MB.  Defaults to the value from the previous run.
-        moinp : Path, optional
-            Explicit path to an MO input file.  Ignored when
-            ``use_previous_orbitals=True``.  Defaults to the ``moinp`` of the
-            previous run.
-        use_previous_orbitals : bool, optional
-            If ``True``, passes the ``.gbw`` file from the previous calculation
-            as ``moinp`` to seed the SCF guess.  Raises ``FileNotFoundError``
-            if the file does not exist.
-
-        Returns
-        -------
-        TaskResults
-            Results of the new calculation, of the same concrete type as this
-            task's ``_results_type``.
-
-        Raises
-        ------
-        ValueError
-            If no structure is available from either the argument or the
-            previous results.
-        FileNotFoundError
-            If ``use_previous_orbitals=True`` and the ``.gbw`` file from the
-            previous run is missing.
-        """
-        prev_calc = previous_results.calculator
-
-        basename = basename if basename else prev_calc.basename
-        struct = structure if structure else prev_calc.structure
-        if struct is None:
-            raise ValueError(
-                "No structure available for restart: previous calculation had no structure set"
-            )
-        working_dir = working_dir if working_dir else prev_calc.working_dir
-        ncores = ncores if ncores else prev_calc.input.ncores
-        memory = memory if memory else prev_calc.input.memory
-
-        if use_previous_orbitals:
-            prev_gbw = prev_calc.working_dir / f"{prev_calc.basename}.gbw"
-            if not prev_gbw.exists():
-                raise FileNotFoundError(f"GBW file not found: {prev_gbw}")
-            moinp = prev_gbw
-        else:
-            moinp = moinp if moinp else prev_calc.input.moinp
-
-        return self.run(
-            basename,
-            struct,
-            working_dir=working_dir,
-            ncores=ncores,
-            memory=memory,
-            moinp=moinp,
-        )
 
 
 class TaskResults(ABC):
