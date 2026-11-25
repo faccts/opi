@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from opi.input.blocks import BlockABC
-from opi.input.blocks.util import InputFilePath, NumList
+from opi.input.blocks.util import CaseInsensitiveLiteralModel, InputFilePath, NumList
 from opi.models import IntGroup
 from opi.utils.element import Element
 
@@ -84,7 +84,7 @@ class NucleiFlag(BaseModel):
         return instance
 
 
-class Nuclei(BaseModel):
+class Nuclei(CaseInsensitiveLiteralModel):
     """
     Class to model `nuclei` attribute in `BlockEprnmr`
 

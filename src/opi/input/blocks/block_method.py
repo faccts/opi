@@ -176,18 +176,3 @@ class BlockMethod(BlockABC):
             return ExternalParam(field_name=field_name, parameters=inp)
         else:
             return ExternalParam.from_string(field_name, inp)
-
-    @field_validator("method", "exchange", "correlation", "ldaopt", mode="before")
-    @classmethod
-    def string_tolower(cls, inp: str) -> str:
-        """If input is a string, convert it to lowercase. This allows for case-insensitive validation.
-
-        Examples
-        --------
-        BlockMethod(method='DFT')
-        BlockMethod(method='dft')
-        BlockMethod(method='dFT')
-
-        All of these will be accepted if `dft` is valid literal.
-        """
-        return inp.lower()

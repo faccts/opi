@@ -2,15 +2,15 @@ from abc import ABC
 from pathlib import Path
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import ConfigDict, field_validator
 
-from opi.input.blocks.util import InputFilePath, NoCaseDict
+from opi.input.blocks.util import CaseInsensitiveLiteralModel, InputFilePath, NoCaseDict
 from opi.input.simple_keywords import ORCAKeyword, Solvent
 
 __all__ = ["BlockABC"]
 
 
-class BlockABC(BaseModel, ABC):
+class BlockABC(CaseInsensitiveLiteralModel, ABC):
     """
     Base Class for Block.
     Each ORCA input block is defined in the module block_<block_name>.py

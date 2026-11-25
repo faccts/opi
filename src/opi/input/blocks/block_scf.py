@@ -3,12 +3,12 @@ from typing import Any, Literal, Self
 from pydantic import BaseModel, field_validator
 
 from opi.input.blocks import BlockABC
-from opi.input.blocks.util import InputFilePath, NumList
+from opi.input.blocks.util import CaseInsensitiveLiteralModel, InputFilePath, NumList
 
 __all__ = ("DIIS", "Shift", "Damp", "SOSCF", "Trah", "Stab", "Rotate", "BlockScf")
 
 
-class SubBlock(BaseModel):
+class SubBlock(CaseInsensitiveLiteralModel):
     """
     Class to define a sub block within an input block
     """
@@ -401,12 +401,12 @@ class BlockScf(BlockABC):
         input_list: list[int]
         | list[float]
         | NumList
-        | Literal["centerofmass, centerofnuccharge, centerofnuclearcharge"],
-    ) -> NumList | Literal["centerofmass, centerofnuccharge, centerofnuclearcharge"]:
+        | Literal["centerofmass", "centerofnuccharge", "centerofnuclearcharge"],
+    ) -> NumList | Literal["centerofmass", "centerofnuccharge", "centerofnuclearcharge"]:
         """
         Parameters
         ----------
-        input_list : list[int] | list[float] | NumList | Literal["centerofmass, centerofnuccharge, centerofnuclearcharge"]
+        input_list : list[int] | list[float] | NumList | Literal["centerofmass", "centerofnuccharge", "centerofnuclearcharge"]
         """
         if isinstance(input_list, list):
             if any(isinstance(i, float) for i in input_list):

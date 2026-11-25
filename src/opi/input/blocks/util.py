@@ -1,10 +1,128 @@
 from collections import UserDict
+from functools import cache
 from pathlib import Path
-from typing import Any, Self
+from types import UnionType
+from typing import Annotated, Any, Literal, Self, Union, get_args, get_origin
 
-from pydantic import BaseModel, ConfigDict, conlist
+from pydantic import BaseModel, ConfigDict, conlist, model_validator
 
-__all__ = ("InputString", "InputFilePath", "NumList", "NoCaseDict")
+__all__ = (
+    "CaseInsensitiveLiteralModel",
+    "InputString",
+    "InputFilePath",
+    "NumList",
+    "NoCaseDict",
+)
+
+
+def _collect_literal_strings(annotation: Any) -> list[str]:
+    """
+    Collect the string values of all `Literal`s in a type annotation.
+
+    Descends into unions and `Annotated`, but not into containers such as `list`,
+    as only a plain string value is matched against the `Literal`s.
+
+    Parameters
+    ----------
+    annotation : Any
+        Type annotation of a pydantic field.
+
+    Returns
+    -------
+    list[str]
+        The string values of the `Literal`s found, in order of appearance.
+    """
+    origin = get_origin(annotation)
+    if origin is Literal:
+        return [arg for arg in get_args(annotation) if isinstance(arg, str)]
+    if origin is Annotated:
+        return _collect_literal_strings(get_args(annotation)[0])
+    if origin is Union or origin is UnionType:
+        return [value for arg in get_args(annotation) for value in _collect_literal_strings(arg)]
+    return []
+
+
+@cache
+def _literal_lookup(model: type[BaseModel], field_name: str) -> dict[str, str]:
+    """
+    Map the lowercased `Literal` string values of a model field onto their exact spelling.
+
+    Parameters
+    ----------
+    model : type[BaseModel]
+        Model class that defines the field.
+    field_name : str
+        Name of the field.
+
+    Returns
+    -------
+    dict[str, str]
+        Lowercased `Literal` value mapped onto the `Literal` value as defined.
+    """
+    field = model.model_fields.get(field_name)
+    if field is None:
+        return {}
+    return {value.lower(): value for value in _collect_literal_strings(field.annotation)}
+
+
+class CaseInsensitiveLiteralModel(BaseModel):
+    """
+    Base model whose `Literal` fields accept string values in any casing, as ORCA does.
+
+    A string given for a field whose annotation contains a `Literal` is mapped
+    case-insensitively onto the matching `Literal` value, e.g. "Direct" onto "direct".
+    Strings that match no `Literal` value are passed on unchanged, so that pydantic
+    validates them against the rest of the annotation.
+
+    Values are mapped and validated both on construction and on assignment.
+    On construction, the mapping is done by a model validator, so that it precedes all field
+    validators, including the field-specific "before" validators of subclasses.
+    On assignment, pydantic validates the assigned value on its own, so `__setattr__()` maps it
+    before it is validated.
+    """
+
+    model_config = ConfigDict(validate_assignment=True)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """
+        Map a string value case-insensitively onto the matching `Literal` value of the field,
+        then assign and validate it.
+
+        Parameters
+        ----------
+        name : str
+            Name of the attribute.
+        value : Any
+            Value to assign.
+        """
+        if isinstance(value, str):
+            value = _literal_lookup(type(self), name).get(value.lower(), value)
+        super().__setattr__(name, value)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_literal_case(cls, data: Any) -> Any:
+        """
+        Map string values case-insensitively onto the matching `Literal` value of their field.
+
+        Parameters
+        ----------
+        data : Any
+            Input data of the model, usually a dict mapping field names onto values.
+
+        Returns
+        -------
+        Any
+            `data` with every string value replaced by its matching `Literal` value, if any.
+        """
+        if not isinstance(data, dict):
+            return data
+        normalized = dict(data)
+        for field_name, value in data.items():
+            if isinstance(field_name, str) and isinstance(value, str):
+                lookup = _literal_lookup(cls, field_name)
+                normalized[field_name] = lookup.get(value.lower(), value)
+        return normalized
 
 
 class InputFilePath(BaseModel):

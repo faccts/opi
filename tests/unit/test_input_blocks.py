@@ -5,13 +5,19 @@ from opi.core import Calculator
 from opi.input.blocks import (
     Block,
     BlockABC,
+    BlockAutoCI,
     BlockEprnmr,
     BlockGeom,
+    BlockGoat,
+    BlockIce,
     BlockMethod,
+    BlockQmmm,
     BlockScf,
+    Constraint,
     Nuclei,
     NucleiFlag,
     Scan,
+    Trah,
 )
 from opi.utils.element import Element
 
@@ -569,7 +575,7 @@ def test_add_blocks_merge_does_not_mutate_previously_stored_block(calc: Calculat
 )
 def test_scan_valuelist_format(scan: Scan | str):
     """Test for `Scan`: a valuelist is written space-separated and terminated with `end`."""
-    assert "scan B 0 1 [1.0 2.0 3.0] end\n" in BlockGeom(scan=scan).format_orca()
+    assert "scan b 0 1 [1.0 2.0 3.0] end\n" in BlockGeom(scan=scan).format_orca()
 
 
 @pytest.mark.unit
@@ -608,3 +614,72 @@ def test_rotate_rejects_invalid():
     """Test for `Rotate`: each rotation is validated, also when several are given."""
     with pytest.raises(ValidationError, match="Third element must be a float"):
         BlockScf(rotate=[[251, 253], [252, 255, 90]])
+
+
+# ---------------------------------------------------------------------------
+# Case-insensitive `Literal` options
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize(
+    "block_cls, field, value, expected",
+    [
+        (BlockScf, "scfmode", "Direct", "direct"),
+        (BlockScf, "convergence", "VERYTIGHT", "verytight"),
+        (BlockGoat, "gfnuphill", "XTB2", "xtb2"),
+        (BlockIce, "icetype", "CSFs", "csfs"),
+        (BlockQmmm, "forcefieldinput", "Amber", "amber"),
+        (BlockAutoCI, "citype", "CCSD(T)", "ccsd(t)"),
+    ],
+)
+def test_literal_case_insensitive(block_cls: type, field: str, value: str, expected: str):
+    """Test for `BlockABC`: a `Literal` option accepts any casing and stores it in lowercase."""
+    assert getattr(block_cls(**{field: value}), field) == expected
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_literal_case_insensitive_sub_blocks():
+    """Test for the sub-block models: their `Literal` fields accept any casing, too."""
+    assert Trah(precond="Full").precond == "full"
+    nuclei = Nuclei(mode="ALL", atom=Element.HYDROGEN, flags=NucleiFlag(aiso=True))
+    assert nuclei.mode == "all"
+    constraint = Constraint(mode="B", atom1=0, atom2=1)
+    assert constraint.mode == "b"
+    assert str(constraint) == "{ b 0 1 c }"
+    assert Constraint.from_string("{ B 0 1 C }") == constraint
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_literal_case_insensitive_rejects_unknown():
+    """Test for `BlockABC`: a string that matches no `Literal` value is still rejected."""
+    with pytest.raises(ValidationError):
+        BlockScf(scfmode="semi-direct")
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_literal_case_insensitive_on_assignment():
+    """Test for `BlockABC` and the sub-block models: an assigned `Literal` option is lowercased."""
+    block = BlockAutoCI()
+    block.citype = "CCSD"
+    assert block.citype == "ccsd"
+    assert "citype ccsd\n" in block.format_orca()
+    constraint = Constraint(mode="b", atom1=0, atom2=1)
+    constraint.mode = "B"
+    assert constraint.mode == "b"
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_assignment_is_validated():
+    """Test for `BlockABC` and the sub-block models: an invalid assigned value is rejected."""
+    block = BlockScf()
+    with pytest.raises(ValidationError):
+        block.scfmode = "semi-direct"
+    assert block.scfmode is None
+    with pytest.raises(ValidationError):
+        Trah().precond = "partial"

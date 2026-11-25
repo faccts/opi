@@ -49,7 +49,7 @@ class Potential(GeomWrapper):
 
     Attributes
     ----------
-    mode: "C"
+    mode: "c"
 
     atom1: int
         Specify first atom
@@ -59,7 +59,7 @@ class Potential(GeomWrapper):
         Define value
     """
 
-    mode: Literal["C"] = "C"
+    mode: Literal["c"] = "c"
     atom1: Annotated[int, Field(ge=0)]
     atom2: Annotated[int, Field(ge=0)]
     value: float
@@ -71,7 +71,7 @@ class Constraint(GeomWrapper):
 
     Attributes
     ----------
-    mode: {"A","B","C","D"}
+    mode: {"a","b","c","d"}
         Define mode of constraint
     atom1: int | "*"
         Specify the first atom ( can also be *)
@@ -85,7 +85,7 @@ class Constraint(GeomWrapper):
         Specify value of the constraint
     """
 
-    mode: Literal["A", "B", "C", "D"]
+    mode: Literal["a", "b", "c", "d"]
     atom1: Annotated[int, Field(ge=0)] | Literal["*"]
     atom2: Annotated[int, Field(ge=0)] | Literal["*"] | None = None
     atom3: Annotated[int, Field(ge=0)] | Literal["*"] | None = None
@@ -96,7 +96,7 @@ class Constraint(GeomWrapper):
     def validate_attributes(self) -> "Constraint":
         super().validate_mode(self)
         # Mode C should only have atom1, all others must be None
-        if self.mode == "C":
+        if self.mode == "c":
             if any(x is not None for x in [self.atom2, self.atom3, self.atom4, self.value]):
                 raise ValueError("Wrong format for mode C")
 
@@ -132,7 +132,7 @@ class Constraint(GeomWrapper):
 
     def __str__(self) -> str:
         return (
-            f"{{ {' '.join(str(val) for key, val in self.__dict__.items() if val is not None)} C }}"
+            f"{{ {' '.join(str(val) for key, val in self.__dict__.items() if val is not None)} c }}"
         )
 
 
@@ -160,7 +160,7 @@ class Scan(GeomWrapper):
 
     Attributes
     ----------
-    mode: {"A","B","D"}
+    mode: {"a","b","d"}
         Defines mode for modification
     atom1: int
         Specify first atom
@@ -181,7 +181,7 @@ class Scan(GeomWrapper):
 
     """
 
-    mode: Literal["A", "B", "D"]
+    mode: Literal["a", "b", "d"]
     atom1: Annotated[int, Field(ge=0)]
     atom2: Annotated[int, Field(ge=0)]
     atom3: Annotated[int, Field(ge=0)] | None = None
@@ -260,7 +260,7 @@ class TSMode(GeomWrapper):
 
     Attributes
     ----------
-    mode: {"A","B","D","M"}
+    mode: {"a","b","d","m"}
         Defines mode for modification
     x: int
         choose mode to follow uphill in TS optimization
@@ -274,7 +274,7 @@ class TSMode(GeomWrapper):
         Specify fourth atom
     """
 
-    mode: Literal["A", "B", "D", "M"] = "M"
+    mode: Literal["a", "b", "d", "m"] = "m"
     x: Annotated[int, Field(ge=0)] | None = None  # choose mode to follow uphill in TS optimization
     atom1: Annotated[int, Field(ge=0)] | None = None
     atom2: Annotated[int, Field(ge=0)] | None = None
@@ -285,14 +285,14 @@ class TSMode(GeomWrapper):
     def validate_attributes(self) -> "TSMode":
         super().validate_mode(self)
 
-        if self.mode == "M":
+        if self.mode == "m":
             if not self.x:
                 raise ValueError("Wrong format for mode M")
 
         return self
 
     def __str__(self) -> str:
-        if self.mode == "M":
+        if self.mode == "m":
             return f"{{ {self.mode} {self.x} }}"
         else:
             atoms = [str(self.atom1), str(self.atom2)]
@@ -349,7 +349,7 @@ class Modify(GeomWrapper):
 
     Attributes
     ----------
-    mode: {"A","B","D"}
+    mode: {"a","b","d"}
         Defines mode for modification
     atom1: int
         Specify first atom
@@ -362,12 +362,12 @@ class Modify(GeomWrapper):
 
     """
 
-    mode: Literal["A", "B", "D"]
+    mode: Literal["a", "b", "d"]
     atom1: Annotated[int, Field(ge=0)]
     atom2: Annotated[int, Field(ge=0)]
     atom3: Annotated[int, Field(ge=0)] | None = None
     atom4: Annotated[int, Field(ge=0)] | None = None
-    action: Literal["A", "R"]
+    action: Literal["a", "r"]
 
     @model_validator(mode="after")
     def validate_attributes(self) -> "Modify":
@@ -438,7 +438,7 @@ class FragConstraint(GeomWrapper):
         Define first fragment
     fragment2: int
         Define second fragment
-    action: {"C", "O"}
+    action: {"c", "o"}
         Define action
     atom1: int
         Specify first atom
@@ -448,7 +448,7 @@ class FragConstraint(GeomWrapper):
 
     fragment1: Annotated[int, Field(gt=0)]
     fragment2: Annotated[int, Field(gt=0)]
-    action: Literal["C", "O"]
+    action: Literal["c", "o"]
     atom1: Annotated[int, Field(ge=0)] | None = None
     atom2: Annotated[int, Field(ge=0)] | None = None
 
