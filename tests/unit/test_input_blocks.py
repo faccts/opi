@@ -658,3 +658,28 @@ def test_literal_case_insensitive_rejects_unknown():
     """Test for `BlockABC`: a string that matches no `Literal` value is still rejected."""
     with pytest.raises(ValidationError):
         BlockScf(scfmode="semi-direct")
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_literal_case_insensitive_on_assignment():
+    """Test for `BlockABC` and the sub-block models: an assigned `Literal` option is lowercased."""
+    block = BlockAutoCI()
+    block.citype = "CCSD"
+    assert block.citype == "ccsd"
+    assert "citype ccsd\n" in block.format_orca()
+    constraint = Constraint(mode="b", atom1=0, atom2=1)
+    constraint.mode = "B"
+    assert constraint.mode == "b"
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_assignment_is_validated():
+    """Test for `BlockABC` and the sub-block models: an invalid assigned value is rejected."""
+    block = BlockScf()
+    with pytest.raises(ValidationError):
+        block.scfmode = "semi-direct"
+    assert block.scfmode is None
+    with pytest.raises(ValidationError):
+        Trah().precond = "partial"

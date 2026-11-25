@@ -74,9 +74,30 @@ class CaseInsensitiveLiteralModel(BaseModel):
     Strings that match no `Literal` value are passed on unchanged, so that pydantic
     validates them against the rest of the annotation.
 
-    The mapping is done by a model validator, so that it precedes all field validators,
-    including the field-specific "before" validators of subclasses.
+    Values are mapped and validated both on construction and on assignment.
+    On construction, the mapping is done by a model validator, so that it precedes all field
+    validators, including the field-specific "before" validators of subclasses.
+    On assignment, pydantic validates the assigned value on its own, so `__setattr__()` maps it
+    before it is validated.
     """
+
+    model_config = ConfigDict(validate_assignment=True)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """
+        Map a string value case-insensitively onto the matching `Literal` value of the field,
+        then assign and validate it.
+
+        Parameters
+        ----------
+        name : str
+            Name of the attribute.
+        value : Any
+            Value to assign.
+        """
+        if isinstance(value, str):
+            value = _literal_lookup(type(self), name).get(value.lower(), value)
+        super().__setattr__(name, value)
 
     @model_validator(mode="before")
     @classmethod
