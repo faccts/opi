@@ -7,8 +7,8 @@ Covers SCF, coupled-cluster, geometry optimization, and CP-SCF convergence failu
 import pytest
 
 from opi.core import Calculator
-from opi.input.blocks import BlockGeom, BlockMdci, BlockMethod, BlockScf, BlockTddft
-from opi.input.simple_keywords import AuxBasisSet, Dft, Task, Wft
+from opi.input.blocks import BlockGeom, BlockMdci, BlockMethod, BlockScf, BlockTddft, BlockXtb
+from opi.input.simple_keywords import AuxBasisSet, Dft, Sqm, Task, Wft
 from opi.input.structures import Structure
 from opi.output.grepper.patterns import (
     CC_NOT_CONVERGED_ERROR,
@@ -16,6 +16,7 @@ from opi.output.grepper.patterns import (
     CPSCF_NOT_CONVERGED_ERROR,
     OPT_NOT_CONVERGED_ERROR,
     SCF_NOT_CONVERGED_ERROR,
+    XTB_SCF_NOT_CONVERGED_ERROR,
 )
 
 
@@ -38,6 +39,23 @@ def test_scf_conv_fail(calc):
     output = calc.get_output()
     assert not output.terminated_normally()
     assert output.error_message() == SCF_NOT_CONVERGED_ERROR.message
+
+
+@pytest.mark.orca
+def test_xtb_scf_conv_fail(calc):
+    """Test error_message for the SCC of the external xtb program not converging"""
+    calc.input.add_simple_keywords(Sqm.GFN2_XTB)
+    xtb = BlockXtb()
+    xtb.add_option("xtbinputstring", '"--iterations 2"')
+    calc.input.add_blocks(xtb)
+    # > write the input and run the calculation
+    calc.write_and_run()
+
+    # > get the output and check some results
+    output = calc.get_output()
+    assert not output.terminated_normally()
+    assert not output.scf_converged()
+    assert output.error_message() == XTB_SCF_NOT_CONVERGED_ERROR.message
 
 
 @pytest.mark.orca
