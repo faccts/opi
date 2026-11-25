@@ -31,14 +31,14 @@ class GeomWrapper(CaseInsensitiveLiteralModel):
         obj : "GeomWrapper"
         """
         # Mode B requires atom1, atom2; atom3 and atom4 must be None
-        if obj.mode == "B":
+        if obj.mode == "b":
             if not (obj.atom1 is not None and obj.atom2 is not None) or any(
                 x is not None for x in [obj.atom3, obj.atom4]
             ):
                 raise ValueError("Wrong format for mode B")
 
         # Mode A requires atom1, atom2, atom3; atom4 must be None
-        elif obj.mode == "A":
+        elif obj.mode == "a":
             if (
                 not all(x is not None for x in [obj.atom1 and obj.atom2 and obj.atom3])
                 or obj.atom4 is not None
@@ -46,7 +46,7 @@ class GeomWrapper(CaseInsensitiveLiteralModel):
                 raise ValueError("Wrong format for mode A")
 
         # Mode D requires all atoms
-        elif obj.mode == "D":
+        elif obj.mode == "d":
             if not all(
                 x is not None for x in [obj.atom1 and obj.atom2 and obj.atom3 and obj.atom4]
             ):
@@ -66,7 +66,7 @@ class Internal(GeomWrapper):
 
     Attributes
     -----------
-    mode: {"A","B","D","I"}
+    mode: {"a","b","d","i"}
         Define mode
     atom1: int
         Define first atom
@@ -78,7 +78,7 @@ class Internal(GeomWrapper):
         Define fourth atom
     """
 
-    mode: Literal["A", "B", "D", "I"]
+    mode: Literal["a", "b", "d", "i"]
     atom1: Annotated[int, Field(gt=0)]
     atom2: Annotated[int, Field(gt=0)]
     atom3: Annotated[int, Field(gt=0)] | None = None
@@ -88,7 +88,7 @@ class Internal(GeomWrapper):
     def validate_attributes(self) -> "Internal":
         super().validate_mode(self)
 
-        if self.mode == "I":
+        if self.mode == "i":
             if not (self.atom1 and self.atom2 and self.atom3 and self.atom4):
                 raise ValueError("Wrong format for mode I")
 

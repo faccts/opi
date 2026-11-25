@@ -6,6 +6,7 @@
 - Refactor base `Block` class to `BlockABC` - also cannot be initialized anymore. `Block` is now used to create an arbitrary block.(#276)
 - Rename the class representing a single simple keyword from `SimpleKeyword` to `ORCAKeyword`. `SimpleKeyword` is now the collection of all implemented simple keywords; calling `SimpleKeyword("keyword")` still creates an ad-hoc keyword, but `isinstance(keyword, SimpleKeyword)` is now `False` - use `ORCAKeyword` instead. (#218)
 - Move `POPDISP` from `DispersionCorrection` to `OutputControl`. (#218)
+- `Literal` options of `%block` models are now stored and written in lowercase, in line with the rest of the ORCA input, e.g. `BlockAutoCI(citype="CISD").citype` is now `"cisd"`, and the modes of the `BlockGeom` coordinate models (`Constraint`, `Scan`, `TSMode`, ...) are written as `{ b 0 1 c }`. Any casing is still accepted as input. (#XXX)
 
 ### Added
 - The ORCA version check now accepts pre-release versions (#301).

@@ -85,7 +85,7 @@ class BlockGoat(BlockABC):
     reduceinternals: bool | None = None
     sortbytopo: bool | None = None
     pushfraguphill: bool | None = None
-    gfnuphill: Literal["XTB0", "XTB1", "XTB2", "GFNFF"] | None = None
+    gfnuphill: Literal["xtb0", "xtb1", "xtb2", "gfnff"] | None = None
     printinternals: bool | None = None
     freeheteroatoms: bool | None = None
     freenonhatoms: bool | None = None
