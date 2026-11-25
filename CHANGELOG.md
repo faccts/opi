@@ -64,6 +64,12 @@
 - Added input-file validation and expected-output verification for `orca_mm` command helpers. (#224)
 - Added `csf` and `det` as Literals to `printwf` in the `%casscf` block. (#311)
 - Added AUTOCI convergence check `output.autoci_converged()` and complete list of methods to `BlockAutoCI` (#318).
+- Added `Output.get_absorption_spectrum()` which returns the calculated electronic absorption (UV/Vis) spectrum (#309).
+- Added `AbsorptionSpectrum` and `EcdSpectrum` with properties (e.g. `energies_ev`, `oscillator_strengths`, `rotatory_strengths`) that access the columns of `excitationenergies` by name (#309).
+- Added `Output.plot_nto()` which generates the cube file of a natural transition orbital (NTO) of an excited state (#309).
+- Added the unit conversion constants `EV_TO_CM`, `EV_TO_NM` and `CM_TO_MHZ` to `opi.utils.units` (#309).
+- Added a tutorial notebook on the calculation of a UV/Vis spectrum (#309).
+- `BlockScf.rotate` now accepts a list of several rotations. (#317)
 - Added `Output.get_chemical_shift()` and `Output.get_spin_spin_coupling()` which return the calculated NMR shielding tensors and spin-spin coupling constants (#313).
 - Added the missing `siso`, `saniso`, `sdso`, `spso`, `mult`, `irrep` and `state` fields to `ChemicalShift` and `numofnucpairssd_fc` to `SpinSpinCoupling` (#313).
 - Added a tutorial notebook on the calculation of an NMR spectrum (#313).
@@ -99,6 +105,8 @@
 - The pydantic output fields `EfgTensor.nuc`, `SpinSpinCoupling.pairsinfo` and `Tensor.nuc` now accept zero as valid output values (#305).
 - Allow direct initialization of `Scan` input object from the class instead of producing malformed input (#308).
 - OPI now finds the ORCA helper binaries (e.g. `orca_plot`) when the `orca` it is pointed to, directly or through `$PATH`, sits at the top of an installation that keeps its binaries in `bin/` and its libraries in `lib/`.(#321)
+- Fixed `TdDft.xy` (`X+Y`), which failed validation for full TD-DFT (RPA) runs because the amplitudes are a list of rows, and added the previously unmodelled `X-Y` amplitudes as `TdDft.x_minus_y` (#309).
+- Added the missing `energy`, `irrep`, `multiplicity` and `tda` fields to `TdDft` (#309).
 
 ## [2.0.0] - 2026-02-10
 
