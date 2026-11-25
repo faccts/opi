@@ -213,20 +213,20 @@ class Rotate(BaseModel):
 
             # > For all formats, first two elements must be integers
             if not isinstance(rot[0], int):
-                raise TypeError("First element must be an integer")
+                raise ValueError("First element must be an integer")
             if not isinstance(rot[1], int):
-                raise TypeError("Second element must be an integer")
+                raise ValueError("Second element must be an integer")
 
             # > If we have at least 3 elements, third must be of type float
             if len(rot) >= 3 and not isinstance(rot[2], float):
-                raise TypeError("Third element must be a float")
+                raise ValueError("Third element must be a float")
 
             # > If we have 5 elements, fourth and fifth must be integers
             if len(rot) == 5:
                 if not isinstance(rot[3], int):
-                    raise TypeError("Fourth element must be an integer")
+                    raise ValueError("Fourth element must be an integer")
                 if not isinstance(rot[4], int):
-                    raise TypeError("Fifth element must be an integer")
+                    raise ValueError("Fifth element must be an integer")
 
         return v
 

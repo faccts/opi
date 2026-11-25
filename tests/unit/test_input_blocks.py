@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from opi.core import Calculator
 from opi.input.blocks import (
@@ -605,5 +606,5 @@ def test_rotate_format(rotate: list, expected: str):
 @pytest.mark.input
 def test_rotate_rejects_invalid():
     """Test for `Rotate`: each rotation is validated, also when several are given."""
-    with pytest.raises(TypeError, match="Third element must be a float"):
+    with pytest.raises(ValidationError, match="Third element must be a float"):
         BlockScf(rotate=[[251, 253], [252, 255, 90]])
