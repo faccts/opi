@@ -67,10 +67,8 @@ def _literal_lookup(model: type[BaseModel], field_name: str) -> dict[str, str]:
 
 class CaseInsensitiveLiteralModel(BaseModel):
     """
-    Base model whose `Literal` fields accept string values in any casing.
+    Base model whose `Literal` fields accept string values in any casing, as ORCA does.
 
-    ORCA reads these options case-insensitively, so only OPI's validation against the exact
-    `Literal` spelling stood in the way of any other casing.
     A string given for a field whose annotation contains a `Literal` is mapped
     case-insensitively onto the matching `Literal` value, e.g. "Direct" onto "direct".
     Strings that match no `Literal` value are passed on unchanged, so that pydantic
