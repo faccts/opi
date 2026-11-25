@@ -165,27 +165,28 @@ def get_float_from_line(
             return None
 
 
-def count_occurrences(file_name: Path, search_for: str, /) -> int:
+def get_lines_with_strings(file_name: Path, /, *search_for: str) -> list[str] | None:
     """
-    Count the lines of `file_name` that contain a string.
+    Get the lines of `file_name` that contain any of several strings, in the order of the file.
 
     Parameters
     ----------
     file_name : Path
         Path to the file that should be searched.
-    search_for : str
-        String that is searched for (case-sensitive).
+    *search_for : str
+        Strings that are searched for (case-sensitive).
 
     Returns
     -------
-    int
-        Number of lines that contain `search_for`, 0 if `file_name` does not exist.
+    list[str] | None
+        The matching lines, or None if `file_name` does not exist.
     """
+    pattern = re.compile("|".join(re.escape(string) for string in search_for))
     try:
-        results = Grepper(file_name).search(search_for, fallback=[], case_sensitive=True)
+        lines: list[str] = Grepper(file_name).search(pattern, fallback=[])
     except FileNotFoundError:
-        return 0
-    return len(results)
+        return None
+    return lines
 
 
 def get_charge_and_mult_from_input(file_name: Path, /) -> tuple[int, int] | None:

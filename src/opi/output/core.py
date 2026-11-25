@@ -20,13 +20,20 @@ from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
 from opi.output.fcidump import Fcidump
 from opi.output.gbw_suffix import GbwSuffix
+from opi.output.grepper.patterns import (
+    FINAL_ENERGY,
+    GEOMETRY_BLOCK,
+    GRADIENT_BLOCK,
+    S2_EXPECTATION_VALUE,
+    S2_IDEAL_VALUE,
+)
 from opi.output.grepper.recipes import (
-    count_occurrences,
     get_charge_and_mult_from_input,
     get_error_message,
     get_error_messages,
     get_float_from_line,
     get_lines_from_block,
+    get_lines_with_strings,
     has_autoci_converged,
     has_casscf_converged,
     has_cc_converged,
@@ -122,12 +129,18 @@ class Output:
       raise if that file does not exist either. Getters that read other files (e.g. `get_ir()`
       or `get_fcidump()`) do not need parsed JSON files.
     - `OpiOutputIndexError`: The requested geometry or gbw index does not exist. This includes
-      gbw indices if no gbw results were found at all. Getters with an active `.out` file
-      fallback only use the fallback if the property JSON was not parsed or contains no
-      geometries at all (e.g. for GFN-FF); otherwise the JSON output is authoritative and a
-      missing value is returned as None. If the fallback is used, they raise if the `.out` file
-      contains the requested kind of block, but not the requested index.
+      gbw indices if no gbw results were found at all. Geometry indices are checked against the
+      property JSON, which is authoritative. Only if it was not parsed or contains no geometries
+      at all (e.g. for GFN-FF), they are checked against the geometries in the `.out` file.
     - `TypeError`: The geometry or gbw index is not an integer (booleans are rejected as well).
+
+    Getters with an active `.out` file fallback use it if the property JSON is unavailable or
+    lacks the requested value (e.g. the gradients of an ExtOpt run). The value is then taken from
+    the section of the `.out` file that belongs to the requested geometry, i.e., from its
+    "CARTESIAN COORDINATES (ANGSTROEM)" block to the next one. If the number of these blocks does
+    not match the geometries of the property JSON, only the final geometry is assigned to the last
+    section, and None is returned for the other geometries. If the `.out` file contains no such
+    blocks at all, the values are counted in the order in which they appear.
     """
 
     # > Results that have to be loaded with `Output.parse()`, mapped to their error message
@@ -1260,7 +1273,7 @@ class Output:
 
         return CubeOutput(cube_file)
 
-    def _safe_get(self, *attrs: str | int) -> Any | None:
+    def _safe_get(self, *attrs: str | int, fallback: bool = False) -> Any | None:
         """
         Safely access a nested chain of attributes or list indices on the output object.
 
@@ -1270,7 +1283,8 @@ class Output:
         or None encountered in the chain—it returns None.
 
         If the chain starts with results (`results_properties` or `results_gbw`) that were not
-        parsed, `OpiOutputNotParsedError` is raised instead, as this is a usage error.
+        parsed, `OpiOutputNotParsedError` is raised instead, as this is a usage error. Getters with
+        an active `.out` file fallback get None instead if the `.out` file exists.
         Indices chosen by the user (geometry or gbw index) are not validated here; use
         `_get_geometry_data()` or `_get_gbw_data()` for them.
 
@@ -1279,6 +1293,8 @@ class Output:
         *attrs : str | int
             A sequence of strings (attribute names) and/or integers (list or indexable
             container indices) that define the path to follow.
+        fallback : bool, default: False
+            Whether the getter uses the `.out` file fallback.
 
         Returns
         -------
@@ -1289,7 +1305,7 @@ class Output:
         Raises
         ------
         OpiOutputNotParsedError
-            If the requested results were not parsed.
+            If the requested results were not parsed and the `.out` file fallback cannot be used.
 
         Examples
         --------
@@ -1299,6 +1315,8 @@ class Output:
             but returns None if any part of the chain is missing or None, in a mypy-friendly way.
         """
         if attrs and attrs[0] in self._PARSED_RESULTS and getattr(self, str(attrs[0])) is None:
+            if fallback and self.get_outfile().is_file():
+                return None
             raise OpiOutputNotParsedError(
                 self._PARSED_RESULTS[str(attrs[0])].format(basename=self.basename)
             )
@@ -1397,7 +1415,9 @@ class Output:
                 pass
         raise TypeError(f"Index into the {name} has to be an integer, got {index!r}.")
 
-    def _get_geometry_data(self, index: int, /, *attrs: str | int) -> Any | None:
+    def _get_geometry_data(
+        self, index: int, /, *attrs: str | int, fallback: bool = False
+    ) -> Any | None:
         """
         Safely access `self.results_properties.geometries[index].<attrs>`.
         If the property JSON contains no geometries (e.g. GFN-FF), None is returned.
@@ -1408,6 +1428,9 @@ class Output:
             User-chosen index of the geometry.
         *attrs : str | int
             Path to follow within the geometry, see `_safe_get()`.
+        fallback : bool, default: False
+            Whether the getter uses the `.out` file fallback, see `_safe_get()`. The index is
+            then checked by `_find_in_outfile()`, if the property JSON is unavailable.
 
         Returns
         -------
@@ -1419,60 +1442,16 @@ class Output:
         TypeError
             If `index` is not an integer.
         OpiOutputNotParsedError
-            If the property results were not parsed.
+            If the property results were not parsed and the `.out` file fallback cannot be used.
         OpiOutputIndexError
             If `index` is out of range.
         """
         # > Check the index type first, so that a wrong type is reported in any case
         index = self._check_index(index, "geometries")
-        geometries = self._safe_get("results_properties", "geometries")
+        geometries = self._safe_get("results_properties", "geometries", fallback=fallback)
         if not geometries:
             return None
         return self._walk(self._select(geometries, index, "geometries"), *attrs)
-
-    def _get_geometry_data_with_fallback(
-        self, index: int, /, *attrs: str | int, fallback: bool
-    ) -> tuple[Any | None, bool]:
-        """
-        `_get_geometry_data()` for getters with a `.out` file fallback.
-
-        The fallback is only used if the property JSON is unavailable, i.e., it was not parsed
-        but the `.out` file exists, or it contains no geometries (e.g. GFN-FF). Otherwise the
-        property JSON is the authoritative source: the `.out` file may contain more blocks, e.g.
-        from a final evaluation, that do not belong to the requested index.
-
-        Parameters
-        ----------
-        index : int
-            User-chosen index of the geometry.
-        *attrs : str | int
-            Path to follow within the geometry, see `_safe_get()`.
-        fallback : bool
-            Whether the getter uses the `.out` file fallback.
-
-        Returns
-        -------
-        tuple[Any | None, bool]
-            The value (or None) and whether the getter should use the `.out` file fallback.
-
-        Raises
-        ------
-        TypeError
-            If `index` is not an integer.
-        OpiOutputNotParsedError
-            If the property results were not parsed and the fallback cannot be used.
-        OpiOutputIndexError
-            If `index` is out of range.
-        """
-        index = self._check_index(index, "geometries")
-        try:
-            geometries = self._safe_get("results_properties", "geometries")
-        except OpiOutputNotParsedError as error:
-            self._raise_unless_fallback(error, fallback=fallback)
-            return None, True
-        if not geometries:
-            return None, fallback
-        return self._walk(self._select(geometries, index, "geometries"), *attrs), False
 
     def _get_gbw_data(self, index: int, /, *attrs: str | int) -> Any | None:
         """
@@ -1504,46 +1483,99 @@ class Output:
         results_gbw = cast(list[GbwResults], self._safe_get("results_gbw"))
         return self._walk(self._select(results_gbw, index, "gbw results"), *attrs)
 
-    def _raise_unless_fallback(self, error: OpiOutputNotParsedError, /, *, fallback: bool) -> None:
+    def _find_in_outfile(
+        self, index: int, /, *search_for: str, last_if_missing: bool = False
+    ) -> list[int | None]:
         """
-        Raise the not-parsed `error` unless the getter can use the `.out` file fallback instead,
-        i.e., `fallback` is True and the `.out` file exists.
+        Find the occurrences of strings in the `.out` file that belong to the geometry with `index`.
 
-        Parameters
-        ----------
-        error : OpiOutputNotParsedError
-            Error raised by `_safe_get()`.
-        fallback : bool
-            Whether the getter uses the `.out` file fallback.
-        """
-        if not fallback or not self.get_outfile().is_file():
-            raise error
-
-    def _check_outfile_index(self, index: int, search_for: str, name: str, /) -> None:
-        """
-        Check that a block with `index` exists in the `.out` file, if `search_for` is found at
-        all. If it is not found, the value is just not available and the getter returns None.
+        ORCA usually prints a "CARTESIAN COORDINATES (ANGSTROEM)" block for every geometry, so the
+        section of a geometry reaches from its coordinates block to the next one. Values that ORCA
+        prints only for some geometries (e.g. the gradients of an ExtOpt run) are thereby assigned
+        to the correct geometry. If a section contains a string several times, the last occurrence
+        is used. If the number of sections does not match the geometries of the property JSON,
+        only the final geometry is assigned, to the last section. If the `.out` file contains no
+        coordinates blocks at all (e.g. for some xTB jobs), `index` counts the occurrences instead.
 
         Parameters
         ----------
         index : int
-            User-chosen index of the block.
-        search_for : str
-            String marking the blocks in the `.out` file.
-        name : str
-            Name of the blocks for the error message.
+            User-chosen index of the geometry.
+        *search_for : str
+            Strings marking the values in the `.out` file.
+        last_if_missing : bool, default: False
+            Use the last occurrence in the file if the section of the final geometry contains none,
+            e.g. for the energy of an optimization that was aborted.
+
+        Returns
+        -------
+        list[int | None]
+            For each string, its occurrence (counting from 0) or None if the geometry has none.
 
         Raises
         ------
+        TypeError
+            If `index` is not an integer.
+        OpiOutputNotParsedError
+            If neither the property results were parsed nor the `.out` file exists.
         OpiOutputIndexError
-            If `search_for` is found in the `.out` file but `index` is out of range.
+            If `index` is out of range of the geometries in the property JSON or, if it contains
+            none, in the `.out` file.
         """
-        count = count_occurrences(self.get_outfile(), search_for)
-        if count and not -count <= index < count:
-            raise OpiOutputIndexError(
-                f"Index {index} is out of range: the output file of '{self.basename}' contains"
-                f" {count} {name}."
-            )
+        index = self._check_index(index, "geometries")
+        geometries = self._safe_get("results_properties", "geometries", fallback=True)
+
+        # > Assign every occurrence to the geometry of the preceding coordinates block, counting
+        # > from 0 (-1 before the first block)
+        num_blocks = 0
+        occurrences: list[list[int]] = [[] for _ in search_for]
+        for line in get_lines_with_strings(self.get_outfile(), GEOMETRY_BLOCK, *search_for) or []:
+            num_blocks += GEOMETRY_BLOCK in line
+            for found, string in zip(occurrences, search_for):
+                if string in line:
+                    found.append(num_blocks - 1)
+
+        # > Check the index against the geometries of the property JSON or of the `.out` file
+        if geometries:
+            num_geometries = len(geometries)
+            self._select(geometries, index, "geometries")
+        else:
+            num_geometries = num_blocks or max(map(len, occurrences))
+            name = "geometries" if num_blocks else "values"
+            if num_geometries and not -num_geometries <= index < num_geometries:
+                raise OpiOutputIndexError(
+                    f"Index {index} is out of range: the output file of '{self.basename}'"
+                    f" contains {num_geometries} {name}."
+                )
+        if not num_geometries:
+            return [None] * len(search_for)
+        index %= num_geometries
+        is_final = index == num_geometries - 1
+
+        # > Without any geometries, the index counts the occurrences
+        if not num_blocks and not geometries:
+            return [index if index < len(found) else None for found in occurrences]
+
+        # > Geometry of the `.out` file that belongs to the requested one
+        if num_blocks == num_geometries:
+            geometry = index
+        elif is_final:
+            geometry = num_blocks - 1
+        else:
+            return [None] * len(search_for)
+
+        result: list[int | None] = []
+        for found in occurrences:
+            in_geometry = [
+                i for i, found_geometry in enumerate(found) if found_geometry == geometry
+            ]
+            if in_geometry:
+                result.append(in_geometry[-1])
+            elif last_if_missing and is_final and found:
+                result.append(len(found) - 1)
+            else:
+                result.append(None)
+        return result
 
     def get_hftype(self, index: int = 0) -> Hftyp | None:
         """
@@ -1587,11 +1619,9 @@ class Output:
         -------
         charge : StrictInt | None
         """
-        try:
-            charge = self._safe_get("results_properties", "calculation_info", "charge")
-        except OpiOutputNotParsedError as error:
-            self._raise_unless_fallback(error, fallback=fallback)
-            charge = None
+        charge = self._safe_get(
+            "results_properties", "calculation_info", "charge", fallback=fallback
+        )
 
         if charge is not None:
             return cast(StrictInt, charge)
@@ -1628,11 +1658,7 @@ class Output:
         -------
         mult : StrictPositiveInt | None
         """
-        try:
-            mult = self._safe_get("results_properties", "calculation_info", "mult")
-        except OpiOutputNotParsedError as error:
-            self._raise_unless_fallback(error, fallback=fallback)
-            mult = None
+        mult = self._safe_get("results_properties", "calculation_info", "mult", fallback=fallback)
 
         if mult is not None:
             return cast(StrictPositiveInt, mult)
@@ -1742,8 +1768,10 @@ class Output:
             Index of the geometry for which the energy should be returned. The default -1 refers to the final geometry.
             Raises an `OpiOutputIndexError` if the requested index is not available.
         fallback : bool, default: True
-            If True and the JSON output is unavailable, attempt to parse the energy from the plain-text
-            `.out` file by grepping for "FINAL SINGLE POINT ENERGY".
+            If True and the JSON output is unavailable or lacks the energy, attempt to parse the energy
+            from the plain-text `.out` file by grepping for "FINAL SINGLE POINT ENERGY" in the section of the
+            requested geometry. If a geometry optimization was aborted before the energy of its last geometry
+            was calculated, the last calculated energy is returned for the final geometry.
 
         Returns
         ----------
@@ -1752,16 +1780,20 @@ class Output:
         """
 
         # > Get the final energy
-        final_energy, use_fallback = self._get_geometry_data_with_fallback(
+        final_energy = self._get_geometry_data(
             index, "single_point_data", "finalenergy", fallback=fallback
         )
 
-        if not use_fallback:
-            return cast(StrictFiniteFloat | None, final_energy)
+        if final_energy is not None:
+            return cast(StrictFiniteFloat, final_energy)
 
-        search_for = "FINAL SINGLE POINT ENERGY"
-        self._check_outfile_index(index, search_for, "final single point energies")
-        return get_float_from_line(self.get_outfile(), search_for, index, -1, strict=False)
+        if not fallback:
+            return None
+
+        (occurrence,) = self._find_in_outfile(index, FINAL_ENERGY, last_if_missing=True)
+        if occurrence is None:
+            return None
+        return get_float_from_line(self.get_outfile(), FINAL_ENERGY, occurrence, -1, strict=False)
 
     def get_energies(self, *, index: int = -1) -> dict[str, Energy] | None:
         """
@@ -1999,10 +2031,12 @@ class Output:
             **Attention:** In a normal geometry optimization ORCA does not calculate the gradient for the final
             geometry, so the default index will return None. You can request the gradient for the structure one step
             before the final one with the index -2. For most intents and purposes, the last and second to last
-            geometries, energies and gradients are the same within the given tolerances.
+            geometries, energies and gradients are the same within the given tolerances. This also applies if the
+            gradient is taken from the `.out` file.
         fallback : bool, default: True
-            If True and the JSON output is unavailable, attempt to parse the gradient from the plain-text
-            `.out` file by grepping for "CARTESIAN GRADIENT".
+            If True and the JSON output is unavailable or lacks the gradient, attempt to parse the gradient
+            from the plain-text `.out` file by grepping for "CARTESIAN GRADIENT" in the section of the
+            requested geometry.
 
         Returns
         ----------
@@ -2011,18 +2045,17 @@ class Output:
             or None if it cannot be obtained.
         """
         # > Safely get the gradient
-        gradient, use_fallback = self._get_geometry_data_with_fallback(
-            index, "nuclear_gradient", 0, "grad", fallback=fallback
-        )
-
-        if use_fallback:
-            return self._grep_gradient(index)
+        gradient = self._get_geometry_data(index, "nuclear_gradient", 0, "grad", fallback=fallback)
 
         # > Cast them into the correct type
-        if gradient is None:
+        if gradient is not None:
+            gradient = cast(list[list[StrictFiniteFloat]], gradient)
+            return [inner[0] for inner in gradient]
+
+        if not fallback:
             return None
-        gradient = cast(list[list[StrictFiniteFloat]], gradient)
-        return [inner[0] for inner in gradient]
+
+        return self._grep_gradient(index)
 
     def get_structure(
         self, *, index: int = -1, with_fragments: bool = True, fallback: bool = True
@@ -2038,8 +2071,8 @@ class Output:
         with_fragments : bool, default: True
             whether the fragment IDs should be added as well to the structure (if available)
         fallback : bool, default: True
-            If True and the JSON output is unavailable, attempt to parse the structure from the plain-text
-            `.out` file by grepping for "CARTESIAN COORDINATES (ANGSTROEM)". This is useful for recovering
+            If True and the JSON output is unavailable or lacks the structure, attempt to parse the structure
+            from the plain-text `.out` file by grepping for "CARTESIAN COORDINATES (ANGSTROEM)". This is useful for recovering
             structures from failed or incomplete geometry optimisations where no JSON was written.
 
         Returns
@@ -2051,12 +2084,12 @@ class Output:
 
         atoms: list[Atom] = []
         # > Get Cartesian coordinates
-        cartesians, use_fallback = self._get_cartesians(index, fallback=fallback)
+        cartesians = self._get_cartesians(index, fallback=fallback)
 
-        if use_fallback:
-            return self._grep_structure(index)
         if cartesians is None:
-            return None
+            if not fallback:
+                return None
+            return self._grep_structure(index)
 
         for line in cartesians:
             elem, x_au, y_au, z_au = line
@@ -2112,10 +2145,7 @@ class Output:
 
     def _get_cartesians(
         self, index: int, /, *, fallback: bool
-    ) -> tuple[
-        list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None,
-        bool,
-    ]:
+    ) -> list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None:
         """
         Returns cartesian coordinates from the output object for a specified index.
 
@@ -2124,18 +2154,15 @@ class Output:
         index : int
             index of geometry to return.
         fallback : bool
-            Whether the caller uses the `.out` file fallback, see
-            `_get_geometry_data_with_fallback()`.
+            Whether the caller uses the `.out` file fallback, see `_get_geometry_data()`.
 
         Returns
         ----------
         cartesians: list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None
             List containing the cartesian coordinates or None.
-        use_fallback: bool
-            Whether the caller should use the `.out` file fallback.
         """
         # > Safely get the cartesian coordinates
-        cartesians, use_fallback = self._get_geometry_data_with_fallback(
+        cartesians = self._get_geometry_data(
             index, "geometry", "coordinates", "cartesians", fallback=fallback
         )
         # > Cast them into the correct type
@@ -2145,7 +2172,7 @@ class Output:
                 cartesians,
             )
 
-        return cartesians, use_fallback
+        return cartesians
 
     def _get_fragments(self, index: int, /) -> list[list[StrictPositiveInt]] | None:
         """
@@ -2173,11 +2200,12 @@ class Output:
         return fragments
 
     def _grep_structure(self, index: int, /) -> Structure | None:
-        """Parse structure from "CARTESIAN COORDINATES (ANGSTROEM)" block in the .out file."""
-        search_for = "CARTESIAN COORDINATES (ANGSTROEM)"
-        self._check_outfile_index(index, search_for, "geometries")
+        """Parse structure from "CARTESIAN COORDINATES (ANGSTROEM)" block of geometry `index` in the .out file."""
+        (occurrence,) = self._find_in_outfile(index, GEOMETRY_BLOCK)
+        if occurrence is None:
+            return None
         # > Get geometry block in the output file
-        lines = get_lines_from_block(self.get_outfile(), search_for, index=index, offset=2)
+        lines = get_lines_from_block(self.get_outfile(), GEOMETRY_BLOCK, index=occurrence, offset=2)
 
         # > If we found nothing we return None
         if not lines:
@@ -2204,11 +2232,12 @@ class Output:
         return Structure(atoms, charge=self.get_charge(), multiplicity=self.get_mult())
 
     def _grep_gradient(self, index: int, /) -> list[StrictFiniteFloat] | None:
-        """Parse gradient from "CARTESIAN GRADIENT" block in the .out file (Eh/Bohr)."""
-        search_for = "CARTESIAN GRADIENT"
-        self._check_outfile_index(index, search_for, "gradients")
+        """Parse gradient from "CARTESIAN GRADIENT" block of geometry `index` in the .out file (Eh/Bohr)."""
+        (occurrence,) = self._find_in_outfile(index, GRADIENT_BLOCK)
+        if occurrence is None:
+            return None
         # > Get gradient block from the output file
-        lines = get_lines_from_block(self.get_outfile(), search_for, index=index, offset=3)
+        lines = get_lines_from_block(self.get_outfile(), GRADIENT_BLOCK, index=occurrence, offset=3)
 
         # > Return None if no block was found
         if not lines:
@@ -2685,15 +2714,20 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which S² should be returned. The default -1 refers to the final geometry.
-            Raises an `OpiOutputIndexError` if the requested index is not available in the output file.
-            For RHF/ROHF the index is not relevant since the ideal values are returned.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
+            For RHF/ROHF the index is not relevant since the ideal values are returned. For UHF the value
+            is grepped from the section of the output file that belongs to the requested geometry.
 
         Returns
         ----------
         tuple[StrictFiniteFloat, StrictFiniteFloat] | tuple[None, None]
             Return the expectation value and the ideal value or None if nothing is found.
         """
-        index = self._check_index(index, "geometries")
+        # > Find the values first, which checks the index and raises if neither the property JSON
+        # > nor the `.out` file is available
+        expec_occurrence, ideal_occurrence = self._find_in_outfile(
+            index, S2_EXPECTATION_VALUE, S2_IDEAL_VALUE
+        )
         expec_s2: StrictFiniteFloat | None = None
         ideal_s2: StrictFiniteFloat | None = None
         # > Get HFType, without gbw results S² can still be grepped from the output file
@@ -2716,13 +2750,13 @@ class Output:
             case Hftyp.UHF | _:
                 # > Grep from output file
                 outfile = self.get_outfile()
-                # // String for searching the S² expectation value.
-                expec_string = "Expectation value of <S**2>"
-                # // String for searching the ideal S² value.
-                ideal_string = "Ideal value S*(S+1)"
-                self._check_outfile_index(index, expec_string, "S² expectation values")
-                expec_s2 = get_float_from_line(outfile, expec_string, index, strict=False)
-                ideal_s2 = get_float_from_line(outfile, ideal_string, index, strict=False)
+                if expec_occurrence is not None and ideal_occurrence is not None:
+                    expec_s2 = get_float_from_line(
+                        outfile, S2_EXPECTATION_VALUE, expec_occurrence, strict=False
+                    )
+                    ideal_s2 = get_float_from_line(
+                        outfile, S2_IDEAL_VALUE, ideal_occurrence, strict=False
+                    )
 
         if expec_s2 is not None and ideal_s2 is not None:
             return expec_s2, ideal_s2

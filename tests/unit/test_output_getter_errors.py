@@ -18,6 +18,12 @@ from opi.output.core import Output
 
 FALLBACK_OUT = Path(__file__).parents[1] / "fixtures" / "job_fallback.out"
 
+# > Lines as written by ORCA
+_COORDINATES = (
+    "CARTESIAN COORDINATES (ANGSTROEM)\n---------------------------------\n  H  0.0  0.0  0.0\n\n"
+)
+_S2 = "Expectation value of <S**2>     :     {}\nIdeal value S*(S+1) for S=0.5   :     0.750000\n"
+
 
 @pytest.mark.unit
 @pytest.mark.output
@@ -43,10 +49,21 @@ def test_not_parsed_error_for_gbw_results_only(output_object_factory, task: str)
 @pytest.mark.output
 @pytest.mark.parametrize("task", ["led"])
 def test_index_error_for_gbw_index(output_object_factory, task: str):
-    """Test that a gbw index out of range raises `OpiOutputIndexError`."""
+    """
+    Test that gbw indices work within range (also negative ones) and raise `OpiOutputIndexError`
+    outside of it, which includes that no gbw results were found.
+    """
     output_object = output_object_factory(task)
-    with pytest.raises(OpiOutputIndexError, match="gbw results"):
-        output_object.get_mos(gbw_index=len(output_object.results_gbw))
+    n_gbw = len(output_object.results_gbw)
+    assert output_object.get_mos(gbw_index=-n_gbw) == output_object.get_mos(gbw_index=0)
+    for gbw_index in (n_gbw, -n_gbw - 1):
+        with pytest.raises(OpiOutputIndexError, match="gbw results"):
+            output_object.get_mos(gbw_index=gbw_index)
+    output_object.results_gbw = []
+    with pytest.raises(OpiOutputIndexError, match="0 gbw results"):
+        output_object.get_mos()
+    with pytest.raises(OpiOutputIndexError, match="0 gbw results"):
+        output_object.get_int_overlap()
 
 
 @pytest.mark.unit
@@ -64,18 +81,8 @@ def test_index_error_for_negative_index(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 @pytest.mark.parametrize("task", ["led"])
-def test_index_error_when_fallback_finds_nothing(output_object_factory, task: str):
-    """Test that an index out of range still raises if the `.out` file fallback finds nothing."""
-    output_object = output_object_factory(task)
-    with pytest.raises(OpiOutputIndexError):
-        output_object.get_final_energy(index=len(output_object.results_properties.geometries))
-
-
-@pytest.mark.unit
-@pytest.mark.output
-@pytest.mark.parametrize("task", ["led"])
-@pytest.mark.parametrize("getter", ["get_final_energy", "get_structure"])
-def test_index_error_when_fallback_has_more_blocks(
+@pytest.mark.parametrize("getter", ["get_final_energy", "get_structure", "get_gradient"])
+def test_index_error_for_fallback_getters(
     output_object_factory, tmp_path: Path, task: str, getter: str
 ):
     """
@@ -120,48 +127,133 @@ def test_index_error_in_fallback_file(output_no_json: Output, getter: str):
 def test_missing_block_in_fallback_file_returns_none(output_no_json: Output):
     """Test that a value whose block is missing from an existing `.out` file returns None."""
     assert "Expectation value of <S**2>" not in FALLBACK_OUT.read_text()
-    assert output_no_json.get_s2(index=10**6) == (None, None)
+    assert output_no_json.get_s2(index=0) == (None, None)
 
 
 @pytest.mark.unit
 @pytest.mark.output
-@pytest.mark.parametrize("task", ["led"])
-def test_fallback_not_used_for_missing_value_in_json(
-    output_object_factory, tmp_path: Path, task: str
-):
+def test_fallback_for_aborted_optimization(output_no_json: Output):
     """
-    Test that the `.out` file fallback is not used if the property JSON contains the requested
-    geometry but not the value, as the `.out` block with the same index may belong to another
-    geometry.
+    Test that the final geometry of an aborted optimization, whose energy was not calculated
+    anymore, gets the last calculated energy, but no gradient.
     """
-    output_object = output_object_factory(task)
+    outfile = output_no_json.get_outfile()
+    energy = output_no_json.get_final_energy()
+    outfile.write_text(outfile.read_text() + _COORDINATES)
+    assert output_no_json.get_final_energy() == energy
+    assert output_no_json.get_gradient() is None
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_fallback_file_values_belong_to_their_geometry(output_no_json: Output):
+    """
+    Test that the `.out` file fallback reads the values of the requested geometry. ORCA does not
+    calculate a gradient for the final geometry of an optimization, so the last gradient block
+    belongs to the second to last geometry.
+    """
+    text = FALLBACK_OUT.read_text()
+    assert text.count("CARTESIAN GRADIENT") == text.count("CARTESIAN COORDINATES (ANGSTROEM)") - 1
+    assert output_no_json.get_gradient(index=-1) is None
+    assert output_no_json.get_gradient(index=-2) is not None
+
+
+@pytest.fixture
+def output_opt_with_out(output_object_factory, tmp_path: Path) -> Output:
+    """
+    Parsed output of the geometry optimization together with its `.out` file. The `.out` file
+    fixture is extracted from the same calculation as the JSON fixture.
+    """
+    output_object = output_object_factory("opt")
     shutil.copy(FALLBACK_OUT, tmp_path / f"{output_object.basename}.out")
     output_object.working_dir = tmp_path
-    output_object.results_properties.geometries[-1].single_point_data = None
-    assert output_object.get_final_energy() is None
+    return output_object
 
 
 @pytest.mark.unit
 @pytest.mark.output
-@pytest.mark.parametrize("task", ["led"])
-@pytest.mark.parametrize("getter", ["get_structure", "get_gradient"])
-def test_index_error_for_fallback_getters(output_object_factory, task: str, getter: str):
-    """Test that the other getters with a `.out` file fallback raise for an index out of range."""
-    output_object = output_object_factory(task)
-    with pytest.raises(OpiOutputIndexError, match="geometries"):
-        getattr(output_object, getter)(index=len(output_object.results_properties.geometries))
+def test_fallback_for_values_missing_from_json(output_opt_with_out: Output):
+    """
+    Test that values missing from the property JSON (e.g. the gradients of an ExtOpt run) are
+    taken from the section of the `.out` file that belongs to the requested geometry. ORCA does not
+    calculate a gradient for the final geometry of an optimization, so the last gradient block of
+    the `.out` file belongs to the second to last geometry.
+    """
+    geometries = output_opt_with_out.results_properties.geometries
+    gradients = [output_opt_with_out.get_gradient(index=i) for i in range(len(geometries))]
+    assert gradients[-1] is None
+    for geometry in geometries:
+        geometry.nuclear_gradient = None
+    assert output_opt_with_out.get_gradient(index=0, fallback=False) is None
+    for index, gradient in enumerate(gradients):
+        fallback_gradient = output_opt_with_out.get_gradient(index=index)
+        if gradient is None:
+            assert fallback_gradient is None
+        else:
+            assert fallback_gradient == pytest.approx(gradient, abs=1e-8)
 
 
 @pytest.mark.unit
 @pytest.mark.output
-@pytest.mark.parametrize("task", ["led"])
-def test_negative_gbw_index(output_object_factory, task: str):
-    """Test that negative gbw indices work within range and raise `OpiOutputIndexError` outside of it."""
-    output_object = output_object_factory(task)
-    n_gbw = len(output_object.results_gbw)
-    assert output_object.get_mos(gbw_index=-n_gbw) == output_object.get_mos(gbw_index=0)
-    with pytest.raises(OpiOutputIndexError, match="gbw results"):
-        output_object.get_mos(gbw_index=-n_gbw - 1)
+def test_fallback_if_geometries_do_not_match(output_opt_with_out: Output):
+    """
+    Test that only the final geometry is assigned to the last section of the `.out` file if the
+    number of geometries differs from the property JSON, as the other sections cannot be assigned.
+    """
+    text = FALLBACK_OUT.read_text()
+    # > Drop the first geometry from the `.out` file
+    first_geometry = text.index("CARTESIAN COORDINATES (ANGSTROEM)")
+    second_geometry = text.index("CARTESIAN COORDINATES (ANGSTROEM)", first_geometry + 1)
+    output_opt_with_out.get_outfile().write_text(text[second_geometry:])
+    geometries = output_opt_with_out.results_properties.geometries
+    final_energy = geometries[-1].single_point_data.finalenergy
+    for geometry in geometries:
+        geometry.single_point_data = None
+    assert output_opt_with_out.get_final_energy(index=0) is None
+    assert output_opt_with_out.get_final_energy(index=-1) == pytest.approx(final_energy, abs=1e-11)
+    assert output_opt_with_out.get_final_energy(
+        index=len(geometries) - 1
+    ) == output_opt_with_out.get_final_energy(index=-1)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_fallback_without_geometries_in_out_file(output_opt_with_out: Output, tmp_path: Path):
+    """
+    Test the `.out` file fallback for an output without "CARTESIAN COORDINATES (ANGSTROEM)"
+    blocks (e.g. for some xTB jobs): without property JSON, the index counts the values, with
+    property JSON only the final geometry gets the last value.
+    """
+    energies = "FINAL SINGLE POINT ENERGY       -1.5\nFINAL SINGLE POINT ENERGY       -2.5\n"
+    (tmp_path / "job.out").write_text(energies)
+    output = Output("job", working_dir=tmp_path, version_check=False)
+    assert output.get_final_energy(index=0) == -1.5
+    assert output.get_final_energy(index=-1) == -2.5
+    with pytest.raises(OpiOutputIndexError, match="2 values"):
+        output.get_final_energy(index=2)
+
+    output_opt_with_out.get_outfile().write_text(energies)
+    for geometry in output_opt_with_out.results_properties.geometries:
+        geometry.single_point_data = None
+    assert output_opt_with_out.get_final_energy(index=0) is None
+    assert output_opt_with_out.get_final_energy(index=-1) == -2.5
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_json_is_authoritative(output_opt_with_out: Output, output_no_json: Output):
+    """
+    Test that values in the property JSON are preferred over the `.out` file. The property JSON
+    holds the energies with more digits than the `.out` file, so they are only equal to the JSON
+    values if those were used.
+    """
+    geometries = output_opt_with_out.results_properties.geometries
+    for index, geometry in enumerate(geometries):
+        energy = output_opt_with_out.get_final_energy(index=index)
+        energy_from_out = output_no_json.get_final_energy(index=index)
+        assert energy == geometry.single_point_data.finalenergy
+        assert energy == pytest.approx(energy_from_out, abs=1e-11)
+        assert energy != energy_from_out
 
 
 @pytest.mark.unit
@@ -182,84 +274,70 @@ def test_numpy_integer_index(output_object_factory, task: str):
 
 @pytest.mark.unit
 @pytest.mark.output
-@pytest.mark.parametrize("task", ["opt"])
-@pytest.mark.parametrize("index", [0.0, "0", None])
-def test_type_error_for_non_integer_index(output_object_factory, task: str, index):
-    """Test that an index that is not an integer raises a `TypeError` instead of returning None."""
-    output_object = output_object_factory(task)
-    with pytest.raises(TypeError, match="integer"):
-        output_object.get_energies(index=index)
-    with pytest.raises(TypeError, match="integer"):
-        output_object.get_final_energy(index=index)
-    with pytest.raises(TypeError, match="integer"):
-        output_object.get_mos(gbw_index=index)
-
-
-@pytest.mark.unit
-@pytest.mark.output
-@pytest.mark.parametrize("index", [0.0, "0", None])
-def test_type_error_for_non_integer_index_without_parsed_output(
-    output_no_json: Output, empty_output_object: Output, index
+@pytest.mark.parametrize("index", [0.0, "0", None, True, False, np.bool_(True)])
+def test_type_error_for_non_integer_index(
+    output_object_factory, output_no_json: Output, empty_output_object: Output, index
 ):
     """
-    Test that an index that is not an integer raises a `TypeError` also if the output is not
-    parsed, both for getters with `.out` file fallback and without.
+    Test that an index that is not an integer raises a `TypeError` instead of returning None,
+    also if the output is not parsed. Booleans are rejected, although bool is a subclass of int.
     """
-    with pytest.raises(TypeError, match="integer"):
-        output_no_json.get_final_energy(index=index)
-    with pytest.raises(TypeError, match="integer"):
-        empty_output_object.get_dipole(index=index)
+    output_object = output_object_factory("opt")
+    getters = [
+        lambda: output_object.get_energies(index=index),
+        lambda: output_object.get_final_energy(index=index),
+        lambda: output_object.get_mos(gbw_index=index),
+        lambda: output_no_json.get_final_energy(index=index),
+        lambda: output_no_json.get_s2(index=index),
+        lambda: empty_output_object.get_dipole(index=index),
+    ]
+    for getter in getters:
+        with pytest.raises(TypeError, match="integer"):
+            getter()
 
 
 @pytest.mark.unit
 @pytest.mark.output
-@pytest.mark.parametrize("task", ["led"])
-def test_index_error_for_empty_gbw_results(output_object_factory, task: str):
-    """Test that gbw getters raise `OpiOutputIndexError` if no gbw results were found."""
-    output_object = output_object_factory(task)
-    output_object.results_gbw = []
-    with pytest.raises(OpiOutputIndexError, match="0 gbw results"):
-        output_object.get_mos()
-    with pytest.raises(OpiOutputIndexError, match="0 gbw results"):
-        output_object.get_int_overlap()
-
-
-@pytest.mark.unit
-@pytest.mark.output
-@pytest.mark.parametrize("task", ["opt"])
-@pytest.mark.parametrize("index", [True, False, np.bool_(True)])
-def test_type_error_for_boolean_index(output_object_factory, task: str, index):
-    """Test that a boolean index raises a `TypeError`, although bool is a subclass of int."""
-    output_object = output_object_factory(task)
-    with pytest.raises(TypeError, match="integer"):
-        output_object.get_energies(index=index)
-    with pytest.raises(TypeError, match="integer"):
-        output_object.get_mos(gbw_index=index)
-
-
-@pytest.mark.unit
-@pytest.mark.output
-@pytest.mark.parametrize("index", [0.0, "0", None, True])
-def test_type_error_for_non_integer_index_in_get_s2(output_no_json: Output, index):
-    """Test that `get_s2()` raises a `TypeError` for a non-integer index."""
-    with pytest.raises(TypeError, match="integer"):
-        output_no_json.get_s2(index=index)
-
-
-@pytest.mark.unit
-@pytest.mark.output
-def test_index_error_in_get_s2(tmp_path: Path):
-    """Test that `get_s2()` raises `OpiOutputIndexError` for an index out of range of the `.out` file."""
-    # > Lines as written by ORCA for a UHF calculation
+def test_get_s2_per_geometry(tmp_path: Path):
+    """
+    Test that `get_s2()` returns the S² of the requested geometry and raises
+    `OpiOutputIndexError` for an index out of range of the geometries in the `.out` file.
+    """
     (tmp_path / "job.out").write_text(
-        "Expectation value of <S**2>     :     0.758102\n"
-        "Ideal value S*(S+1) for S=0.5   :     0.750000\n"
+        _COORDINATES + _COORDINATES + _S2.format("0.758102") + _COORDINATES + _S2.format("0.753000")
     )
     output = Output("job", version_check=False)
     output.working_dir = tmp_path
-    assert output.get_s2(index=-1) == (0.758102, 0.75)
+    assert output.get_s2(index=0) == (None, None)
+    assert output.get_s2(index=1) == (0.758102, 0.75)
+    assert output.get_s2(index=-1) == (0.753, 0.75)
     with pytest.raises(OpiOutputIndexError, match="output file"):
-        output.get_s2(index=1)
+        output.get_s2(index=3)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_not_parsed_error_in_get_s2(empty_output_object: Output):
+    """Test that `get_s2()` raises `OpiOutputNotParsedError` without parsed output and `.out` file."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_s2()
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task", ["opt"])
+def test_index_error_in_get_s2_for_rhf(output_object_factory, tmp_path: Path, task: str):
+    """
+    Test that `get_s2()` checks the index for RHF as well, against the `.out` file if the property
+    JSON is unavailable.
+    """
+    output_object = output_object_factory(task)
+    output_object.results_properties = None
+    shutil.copy(FALLBACK_OUT, tmp_path / f"{output_object.basename}.out")
+    output_object.working_dir = tmp_path
+    assert output_object.get_s2(index=-1) == (0.0, 0.0)
+    with pytest.raises(OpiOutputIndexError, match="output file"):
+        output_object.get_s2(index=10**6)
 
 
 @pytest.mark.unit

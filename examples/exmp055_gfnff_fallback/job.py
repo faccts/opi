@@ -66,16 +66,16 @@ def run_exmp055(
     print(gradient)
 
     # > The fallback supports iterating over individual optimisation steps.
-    # > get_final_energy raises an OpiOutputIndexError once the index exceeds the number of
-    # > steps in the .out file.
+    # > The getters raise an OpiOutputIndexError once the index exceeds the number of
+    # > geometries in the .out file.
     step = 0
     print("ENERGIES ALONG OPTIMISATION TRAJECTORY")
     while True:
         try:
             e = output.get_final_energy(index=step)
+            s = output.get_structure(index=step)
         except OpiOutputIndexError:
             break
-        s = output.get_structure(index=step)
         print(f"  step {step:3d}  E = {e:.10f}  ({len(s.atoms)} atoms)")
         step += 1
 
