@@ -128,3 +128,28 @@ def test_clear_arbitrary_strings_strict(empty_calc: Calculator):
     is raised if no `ArbitraryString` instance is found."""
     with pytest.raises(ValueError):
         empty_calc.input.clear_arbitrary_strings(strict=True)
+
+
+@pytest.mark.unit
+@pytest.mark.input
+@pytest.mark.parametrize("as_str", [False, True])
+def test_add_arbitrary_string_from_file(empty_calc: Calculator, tmp_path, as_str: bool):
+    """Test for `Input.add_arbitrary_string_from_file()`: the file contents are added as-is."""
+    contents = "%pal\n    nprocs 4\nend\n"
+    file = tmp_path / "extra.inp"
+    file.write_text(contents)
+    empty_calc.input.add_arbitrary_string_from_file(
+        str(file) if as_str else file, pos=ArbitraryStringPos.TOP
+    )
+    assert ArbitraryString(contents, pos=ArbitraryStringPos.TOP) in (
+        empty_calc.input.arbitrary_strings
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.input
+def test_add_arbitrary_string_from_missing_file(empty_calc: Calculator, tmp_path):
+    """Test for `Input.add_arbitrary_string_from_file()` with a file that does not exist."""
+    with pytest.raises(FileNotFoundError):
+        empty_calc.input.add_arbitrary_string_from_file(tmp_path / "missing.inp")
+    assert not empty_calc.input.arbitrary_strings
