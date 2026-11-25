@@ -85,5 +85,6 @@ python3 job.py
 - exmp062_opt_simpletask: B3LYP/def2-SVP geometry optimization with CPCM(water) using the `OptTask` functionality
 - exmp063_engrad_simpletask: r²SCAN-3c energy & gradient calculation using the `EngradTask` functionality
 - exmp064_orca_mm_forcefield: Generate, repeat, merge and split ORCA force field files with `orca_mm` and run a QM/MM calculation
+- exmp065_neb_simpletask: GFN2-xTB climbing-image NEB of the ethane rotation using the `NebTask` functionality
 
 
