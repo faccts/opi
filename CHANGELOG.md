@@ -69,6 +69,7 @@
 - Added `Output.plot_nto()` which generates the cube file of a natural transition orbital (NTO) of an excited state (#309).
 - Added the unit conversion constants `EV_TO_CM`, `EV_TO_NM` and `CM_TO_MHZ` to `opi.utils.units` (#309).
 - Added a tutorial notebook on the calculation of a UV/Vis spectrum (#309).
+- `BlockScf.rotate` now accepts a list of several rotations. (#317)
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
