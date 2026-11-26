@@ -132,8 +132,10 @@ class Output:
       or `get_fcidump()`) do not need parsed JSON files.
     - `OpiOutputIndexError`: The requested geometry or gbw index does not exist. This includes
       gbw indices if no gbw results were found at all. Geometry indices are checked against the
-      property JSON, which is authoritative. Only if it was not parsed or contains no geometries
-      at all (e.g. for GFN-FF), they are checked against the geometries in the `.out` file.
+      property JSON, which is authoritative. If it contains no geometries at all (e.g. for
+      GFN-FF), the getters without `.out` file fallback return None for any index. Getters with
+      an active `.out` file fallback then check the index against the geometries in the `.out`
+      file, as they do if the property JSON was not parsed.
       A gbw index refers to the file in `gbw_json_files`. If that file could not be read, the
       getters return None.
     - `TypeError`: The geometry or gbw index is not an integer (booleans are rejected as well).
@@ -1436,7 +1438,8 @@ class Output:
     ) -> Any | None:
         """
         Safely access `self.results_properties.geometries[index].<attrs>`.
-        If the property JSON contains no geometries (e.g. GFN-FF), None is returned.
+        If the property JSON contains no geometries (e.g. GFN-FF), None is returned without
+        checking the index; getters with `.out` file fallback check it in `_find_in_outfile()`.
 
         Parameters
         ----------
