@@ -84,6 +84,7 @@
 - The gbw-JSON files redumped by `Output` (`do_redump_jsons`) now use the keys of the original ORCA JSON files instead of the field names of the models (#289).
 - A failing ORCA module is now reported as "Error in <MODULE> part of the calculation" for every module, not only MDCI and MP2. It no longer stops the error scan, so `Output.error_messages()` also lists its cause, e.g. an MPI process killed by the out-of-memory killer (#303).
 - `Structure.charge` and `Structure.multiplicity` can now be `None` for cases where they are unknown (#307).
+- Document running all code checks and the test suite via `uv run nox` in the development guide (#XXX).
 
 ### Deprecated
 ### Removed
