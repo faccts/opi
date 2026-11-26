@@ -126,16 +126,17 @@ uv run nox <additional nox arguments>
 
 ### Quick start
 
-For everyday development, a single command is all you need:
+Normal development needs only two commands:
 
 ```
-uv run nox
+uv run nox                  # all static checks and auto-fixers
+uv run nox -s unit_tests    # the unit tests
 ```
 
-It runs all static checks (type checking, linting, spell checking, dead-code detection) together with the
-auto-fixers for formatting and imports.
-These include all static checks the CI runs on every pull request, so if `uv run nox` passes locally, they will pass in the CI.
-Run it before opening a pull request.
+`uv run nox` runs all static checks (type checking, linting, spell checking, dead-code detection) together with the
+auto-fixers for formatting and imports. Use it for everyday work.
+To run the unit tests, use the `unit_tests` session.
+These are the checks the CI runs on every pull request, so run both before opening a pull request.
 
 (sec:dev_running_tests)=
 ### Running the tests
