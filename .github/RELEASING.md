@@ -67,9 +67,13 @@ points to the wrong commit; delete it (`git push origin :refs/tags/vX.Y.Z`,
 `git tag -d vX.Y.Z`) and tag again, nothing has been uploaded at that point. If a bug turns
 up after the TestPyPI upload, release under a new version number instead.
 
-Do not change `.github/build-constraints.txt` between a `testpypi` and a `pypi` run of the
-same tag; otherwise the rebuilt files differ from those on TestPyPI. Update the pins in a
-normal PR between releases (the file explains how).
+Do not change the pinned build tools between a `testpypi` and a `pypi` run of the same tag:
+`.github/build-constraints.txt` and the uv `version:` in `release.yml` (uv also decides which
+Python build compresses the files). Otherwise the rebuilt files differ from those on TestPyPI.
+Update the pins in a normal PR between releases (`build-constraints.txt` explains how).
+
+Wait until a run has finished before starting the next one on the same tag or branch. GitHub
+keeps only one waiting run per tag or branch and cancels an older waiting one.
 
 GitHub runs the `release.yml` contained in the selected tag or branch, so a tag must point to
 a commit that already contains the workflow.
