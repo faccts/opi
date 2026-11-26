@@ -108,76 +108,81 @@ In the end, only one version of the dependency that satisfies all the constraint
 
 ## Nox
 
-[Nox](https://nox.thea.codes/en/stable/) is a framework for automated testing.
-It is configured via a central configuration file `noxfile.py`.
+[Nox](https://nox.thea.codes/en/stable/) drives all tools we use to ensure code quality: the test suite, static type
+checking, linting, formatting, spell checking and dead-code detection.
+It is configured via the central file `noxfile.py`.
 **Only touch this file if you know what you are doing!**
 
-We use Nox not just for testing but also to drive all our tools that we use to ensure code quality and safety.
-The individual tools will be explained in more detail later.
-
-To execute Nox, o execute Nox, navigate to the project's root directory and use the following command:
+**Always run the tools through Nox, and Nox through uv.**
+Do not call `pytest`, `mypy`, `ruff`, etc. directly.
+Each Nox session installs exactly the dependency group it needs from the locked `uv.lock` into its own isolated
+virtual environment, so you get the same tool versions and the same configuration as the CI.
+Nox itself is part of the `dev` dependency group, which `uv sync` installs by default, so there is nothing to install
+globally:
 
 ```
-nox <additional nox arguments>
+uv run nox <additional nox arguments>
 ```
 
-Without any additional arguments, Nox will execute all (default) sessions that are defined in `noxfile.py`.
+### Quick start
+
+Normal development needs only two commands:
+
+```
+uv run nox                  # all static checks and auto-fixers
+uv run nox -s unit_tests    # the unit tests
+```
+
+`uv run nox` runs all static checks (type checking, linting, spell checking, dead-code detection) together with the
+auto-fixers for formatting and imports. Use it for everyday work.
+To run the unit tests, use the `unit_tests` session.
+These are the checks the CI runs on every pull request, so run both before opening a pull request.
+
+### Sessions
+
 In Nox's world, a session is a predefined Python function that executes some code and returns a status.
-Each session is executed in its own and isolated Python environment, which is set up and managed by Nox according to the
-configuration.
-This ensures that the outcome of each session is consistent across different environments.
+Each session runs in its own isolated virtual environment, so executing multiple sessions has no influence on one another.
+Virtual environments are kept in `.nox/` and reused between runs.
 
-To list all available sessions use:
+To list all available sessions (default sessions are marked with `*`):
 
 ```
-nox -l
+uv run nox -l
 ```
 
 To run specific session(s):
 
 ```
-nox -l <SESSION NAME> ...
+uv run nox -s <SESSION NAME> ...
 ```
 
-We configured Nox such that it stops immediately as soon as a session fails.
-Any following session will be skipped.
-To disable this behaviour add `--no-stop-on-first-error` command shown above.
-**This should be done if a specific aspect needs to be checked for which all desired sessions need to run!**
+Without any arguments, Nox executes all default sessions.
 
-Furthermore, Nox allows adding tags to sessions:
+The sessions that fix formatting and imports modify files in place and report a failure if they changed anything,
+so simply rerun `uv run nox`.
 
-```
-@nox.session(tags=["static_check"])
-def type_check(session):
-    session.run_always("uv", "sync", "--group", "type_check")
-    session.run("mypy")
-```
-
-which allows grouping multiple sessions together.
-
-To run sessions by tags use:
+Nox is configured to stop as soon as a session fails; any following session is skipped.
+To run all selected sessions regardless, add `--no-stop-on-first-error`:
 
 ```
-nox -t <TAG> ...
+uv run nox --no-stop-on-first-error
 ```
 
-All sessions are executed sequentially and independent of each other,
-so that executing multiple sessions has no influence on one another.
+## Our Tools
 
-## Our Nox Session
-
-Below is a brief overview of the tools we use with Nox.
+Below is a brief overview of the tools we run with Nox.
 
 ### Static Type Checking: mypy
 
 This project uses [mypy](https://mypy-lang.org/) to ensure type safety.
 Mypy is a static type checker based on type annotations in Python.
 _Static_ means it does not execute any of the code to be checked.
+Mypy runs in strict mode, so all new code in `src/` must be fully typed.
 
 To execute mypy run:
 
 ```
-nox -s type_check
+uv run nox -s type_check
 ```
 
 Its output will look as follows:
@@ -195,9 +200,9 @@ src/opi/output/geometry.py:1: error: Cannot find implementation or library stub 
 Found 30 errors in 3 files (checked 15 source files)
 ```
 
-Before staging changes for a PR, all Mypy errors should be resolved.
+Before staging changes for a PR, all mypy errors should be resolved.
 
-### Linting and formatting: Ruff
+### Linting and Formatting: Ruff
 
 [Ruff](https://docs.astral.sh/ruff/) is the fastest Python linter and code formatter currently out there.
 In this project it is used for:
@@ -205,46 +210,57 @@ In this project it is used for:
 - linting:
 
 ```
-nox -s lint
+uv run nox -s lint
 ```
 
 - sorting imports (replaced: [isort](https://pypi.org/project/isort/)):
 
 ```
-nox -s imports
+uv run nox -s sort_imports
+```
+
+- removing unused imports:
+
+```
+uv run nox -s remove_unused_imports
 ```
 
 - and automatic and strict code formatting (replaced: [Black](https://pypi.org/project/black/)):
 
 ```
-nox -s format_code
+uv run nox -s format_code
 ```
+
+All of these sessions are part of the default `uv run nox` run.
 
 ### Spell Checking: Codespell
 
-We use [Codespell](https://github.com/codespell-project/codespell) for grammar and spell checking.
+We use [Codespell](https://github.com/codespell-project/codespell) for spell checking.
 `codespell` expects American English.
 
 It can be invoked as follows:
 
 ```
-nox -s spell_check
+uv run nox -s spell_check
 ```
 
 Its output looks as follows:
 
 ```
-./examples/exmp003_opt/job.out:1004: contruction ==> construction
-./examples/exmp003_opt/job.out:1480: contruction ==> construction
-./examples/exmp003_opt/job.out:1954: contruction ==> construction
-./examples/exmp003_opt/job.out:2437: contruction ==> construction
 ./src/opi/input/models/calculator.py:264: inout ==> input, in out
-./build/lib/opi/input/models/calculator.py:264: inout ==> input, in out
-6
+1
 ```
 
 To exclude specific words or phrases from spell checking, add them to `.codespellignore`.
 Each word or phrase must end with a newline.
+
+### Dead Code: vulture
+
+[vulture](https://github.com/jendrikseipp/vulture) finds unused code such as functions, classes and variables:
+
+```
+uv run nox -s dead_code
+```
 
 ### API Documentation: AutoAPI
 
@@ -255,8 +271,7 @@ Docstrings follow the [numpydoc style convention](https://numpydoc.readthedocs.i
 
 [Pytest](https://docs.pytest.org/en/stable/) is the de-facto industry standard for unit testing in Python.
 All tests and related files are stored in `tests/`.
-
-`tests/conftest.py` is the configuration file for Pytest.
+Pytest is configured under `[tool.pytest]` in `pyproject.toml`, and `tests/conftest.py` holds shared fixtures and options.
 
 We do use the following plugins to Pytest:
 
@@ -270,13 +285,31 @@ We do use the following plugins to Pytest:
 [Fixtures](https://docs.pytest.org/en/stable/explanation/fixtures.html) are stored in `tests/fixtures`.
 Fixtures should be grouped into modules according to their nature.
 
-To execute pytest run:
+Pytest is always run via Nox, never directly:
 
 ```
-nox -s tests [--] [<pytest arguments>] 
+uv run nox -s unit_tests                   # unit tests only (marker `unit`), as run by the CI
+uv run nox -s tests                        # all tests; the example tests require a local ORCA installation
 ```
 
-Arguments following `--` are passed directly onto Pytest.
+Arguments following `--` are passed directly on to Pytest.
+This allows, e.g., running a single test file, a single test, or selecting tests by marker:
+
+```
+uv run nox -s tests -- tests/unit/path/test_file.py
+uv run nox -s tests -- tests/unit/path/test_file.py -k test_name
+uv run nox -s tests -- -m "orca and not slow"
+```
+
+A few further sessions require a local ORCA installation and are only needed occasionally:
+
+```
+uv run nox -s json_gen                     # regenerate the JSON fixtures in tests/json_files/
+uv run nox -s out_gen                      # regenerate the plain-text fixture tests/fixtures/job_fallback.out
+uv run nox -s notebooks -- how_to_opi      # execute a documentation notebook (see tests/README.md)
+```
+
+See `tests/README.md` for the test layout, markers and fixtures.
 
 ## Style Guide
 
