@@ -37,6 +37,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+    env:
+      # > Exact build tool versions, so that building the same tag twice gives identical files.
+      UV_BUILD_CONSTRAINT: .github/build-constraints.txt
     steps:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
@@ -83,7 +86,7 @@ jobs:
           import sys
 
           from packaging.utils import parse_sdist_filename, parse_wheel_filename
-          from packaging.version import Version
+          from packaging.version import InvalidVersion, Version
 
           dist = pathlib.Path("dist")
           wheels = sorted(dist.glob("*.whl"))
@@ -96,9 +99,17 @@ jobs:
               sys.exit("Wheel and sdist versions differ")
           if version.local:
               sys.exit(f"Version {version} has a local part, which PyPI rejects")
+          if version.release == (0, 0, 0):
+              sys.exit(f"Version {version} is the fallback version: no git tags were found")
 
           if os.environ["IS_RELEASE_TAG"] == "true":
-              expected = Version(os.environ["REF_NAME"].removeprefix("v"))
+              try:
+                  expected = Version(os.environ["REF_NAME"].removeprefix("v"))
+              except InvalidVersion:
+                  sys.exit(
+                      f"Tag {os.environ['REF_NAME']} is not a valid version tag "
+                      "(expected e.g. v3.0.0 or v3.0.0-alpha.1)"
+                  )
               if version != expected:
                   sys.exit(
                       f"Built version {version} does not match tag {os.environ['REF_NAME']} "
@@ -202,7 +213,6 @@ jobs:
           import pathlib
           import sys
           import time
-          import urllib.error
           import urllib.request
 
           version = os.environ["VERSION"]
@@ -215,9 +225,11 @@ jobs:
           # > Give the index a few minutes to show the new release.
           for attempt in range(20):
               try:
-                  with urllib.request.urlopen(url) as response:
+                  with urllib.request.urlopen(url, timeout=30) as response:
                       data = json.load(response)
-              except urllib.error.HTTPError as err:
+              # > OSError covers HTTP errors (e.g. 404 before the release shows up), network
+              # > errors and timeouts.
+              except OSError as err:
                   print(f"Attempt {attempt + 1}: {err}")
               else:
                   remote = {f["filename"]: f["digests"]["sha256"] for f in data["urls"]}
@@ -230,8 +242,10 @@ jobs:
 
           if remote != local:
               sys.exit(
-                  "Files on TestPyPI differ from the files built in this run "
-                  f"(was {version} uploaded before?)\nTestPyPI: {remote}\nbuilt:    {local}"
+                  f"Files on TestPyPI differ from the files built in this run. {version} was "
+                  "uploaded to TestPyPI before from a different build (e.g. the tag was moved); "
+                  "TestPyPI never replaces files, so this version needs a new number.\n"
+                  f"TestPyPI: {remote}\nbuilt:    {local}"
               )
           print(f"TestPyPI holds exactly the built files: {sorted(local)}")
           EOF

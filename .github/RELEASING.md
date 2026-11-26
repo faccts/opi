@@ -49,8 +49,10 @@ The workflow only runs on GitHub (`faccts/opi`), never on a Forgejo mirror.
    ```
 
    To look at TestPyPI before anything goes to PyPI, first run it on the tag with target
-   `testpypi`, then again with target `pypi`; the second run finds the identical files on
-   TestPyPI and continues.
+   `testpypi`, then again with target `pypi`; the second run builds identical files (the
+   build tools are pinned in `.github/build-constraints.txt`), finds them on TestPyPI and
+   continues. Do this only right before the release: once `testpypi` ran on the tag, that
+   version number is used up on TestPyPI (see below). Rehearse on `main` instead.
 5. Optionally create a GitHub release for the tag with the changelog section.
 6. conda-forge: the autotick bot opens a PR on `conda-forge/orca-pi-feedstock` a few hours
    later. Check that the recipe's dependencies still match `pyproject.toml` before merging.
@@ -58,9 +60,16 @@ The workflow only runs on GitHub (`faccts/opi`), never on a Forgejo mirror.
 A version number can be uploaded to PyPI only once, even after deleting it. If a broken
 release slips through, yank it on PyPI and release a new patch version.
 
-If the version does not match the tag, the tag points to the wrong commit: delete it
-(`git push origin :refs/tags/vX.Y.Z`, `git tag -d vX.Y.Z`) and tag again. Nothing has been
-uploaded at that point.
+TestPyPI behaves the same way. Once files of a version are on TestPyPI, only that exact build
+can go on to PyPI through this workflow. So a tag may only be moved as long as no `testpypi`
+or `pypi` run on it got past the build job: if the version does not match the tag, the tag
+points to the wrong commit; delete it (`git push origin :refs/tags/vX.Y.Z`,
+`git tag -d vX.Y.Z`) and tag again, nothing has been uploaded at that point. If a bug turns
+up after the TestPyPI upload, release under a new version number instead.
+
+Do not change `.github/build-constraints.txt` between a `testpypi` and a `pypi` run of the
+same tag; otherwise the rebuilt files differ from those on TestPyPI. Update the pins in a
+normal PR between releases (the file explains how).
 
 GitHub runs the `release.yml` contained in the selected tag or branch, so a tag must point to
 a commit that already contains the workflow.
