@@ -126,16 +126,16 @@ uv run nox <additional nox arguments>
 
 ### Quick start
 
-For everyday development, three commands cover almost everything:
+For everyday development, a single command is all you need:
 
 ```
-uv run nox                  # all static checks plus the auto-fixers (formatting, import sorting, ...)
-uv run nox -s unit_tests    # the CI-safe unit tests (no ORCA needed)
-uv run nox -t pr_check      # the read-only static checks exactly as run by the CI on every pull request
+uv run nox
 ```
 
-Before opening a pull request, run `uv run nox`, then `uv run nox -t pr_check` and `uv run nox -s unit_tests`.
-These are the checks the CI runs, so if they pass locally, they will pass in the CI.
+It runs all static checks (type checking, linting, spell checking, dead-code detection) together with the
+auto-fixers for formatting and imports.
+These include all static checks the CI runs on every pull request, so if `uv run nox` passes locally, they will pass in the CI.
+Run it before opening a pull request.
 
 (sec:dev_running_tests)=
 ### Running the tests
@@ -191,27 +191,8 @@ Sessions are additionally grouped by tags, which can be selected with `-t`:
 uv run nox -t <TAG> ...
 ```
 
-| Session                 | Tool      | Default | Tags                                | Description                                    |
-| ----------------------- | --------- | ------- | ----------------------------------- | ---------------------------------------------- |
-| `type_check`            | mypy      | yes     | `static_check`, `pr_check`          | Strict static type checking of `src/`          |
-| `lint`                  | Ruff      | yes     | `style`, `static_check`, `pr_check` | Linting                                        |
-| `format_code`           | Ruff      | yes     | `style`, `fix`, `static_check`      | Format code (modifies files)                   |
-| `check_format_code`     | Ruff      | yes     | `pr_check`                          | Only check formatting                          |
-| `sort_imports`          | Ruff      | yes     | `style`, `fix`, `static_check`      | Sort imports (modifies files)                  |
-| `check_sort_imports`    | Ruff      | yes     | `pr_check`                          | Only check import sorting                      |
-| `remove_unused_imports` | Ruff      | yes     | `style`, `fix`, `static_check`      | Remove unused imports (modifies files)         |
-| `check_unused_imports`  | Ruff      | no      | `pr_check`                          | Only check for unused imports                  |
-| `spell_check`           | codespell | yes     | `static_check`, `pr_check`          | Spell checking of `src/opi`                    |
-| `dead_code`             | vulture   | yes     | `static_check`, `pr_check`          | Detect unused code                             |
-| `unit_tests`            | Pytest    | no      |                                     | CI-safe unit tests                             |
-| `tests`                 | Pytest    | no      |                                     | All tests (example tests need ORCA)            |
-| `json_gen`              | Pytest    | no      |                                     | Regenerate JSON fixtures (needs ORCA)          |
-| `out_gen`               | Pytest    | no      |                                     | Regenerate the `.out` fixture (needs ORCA)     |
-| `notebooks`             | Jupyter   | no      |                                     | Execute documentation notebooks (needs ORCA)   |
-| `all_notebooks`         | Jupyter   | no      |                                     | Execute all documentation notebooks            |
-
-The `fix` sessions modify files in place and report a failure if they changed anything, so simply rerun them.
-The `check_*` sessions are their read-only counterparts used by the CI.
+The sessions that fix formatting and imports modify files in place and report a failure if they changed anything,
+so simply rerun `uv run nox`.
 
 Nox is configured to stop as soon as a session fails; any following session is skipped.
 To run all selected sessions regardless, add `--no-stop-on-first-error`:
