@@ -4,7 +4,7 @@
 # hatchling version, and a `pypi` run checks its files against those a `testpypi` run uploaded.
 # Do not change the pins between a `testpypi` and a `pypi` run of the same tag.
 #
-# Update with (and bump the uv `version:` in release.yml at the same time):
+# Update with (and bump both uv `version:` pins in release.yml at the same time):
 #   printf 'hatchling\nuv-dynamic-versioning\n' \
 #     | uv pip compile --universal --python-version 3.11 --no-header --no-annotate - \
 #     > .github/build-constraints.txt.new

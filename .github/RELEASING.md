@@ -67,10 +67,14 @@ points to the wrong commit; delete it (`git push origin :refs/tags/vX.Y.Z`,
 `git tag -d vX.Y.Z`) and tag again, nothing has been uploaded at that point. If a bug turns
 up after the TestPyPI upload, release under a new version number instead.
 
-Do not change the pinned build tools between a `testpypi` and a `pypi` run of the same tag:
-`.github/build-constraints.txt` and the uv `version:` in `release.yml` (uv also decides which
-Python build compresses the files). Otherwise the rebuilt files differ from those on TestPyPI.
+Do not change the pinned tools between a `testpypi` and a `pypi` run of the same tag:
+`.github/build-constraints.txt`, the two uv `version:` pins in `release.yml` (uv also decides
+which Python build compresses the files) and the twine version used by `twine check`.
+Otherwise the rebuilt files differ from those on TestPyPI, or a check fails that passed before.
 Update the pins in a normal PR between releases (`build-constraints.txt` explains how).
+
+If the PyPI upload breaks off halfway (e.g. wheel uploaded, sdist not), re-run the failed jobs:
+existing files are skipped, and the run then checks that PyPI holds exactly the built files.
 
 Wait until a run has finished before starting the next one on the same tag or branch. GitHub
 keeps only one waiting run per tag or branch and cancels an older waiting one.
