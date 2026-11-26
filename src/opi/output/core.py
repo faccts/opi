@@ -740,8 +740,9 @@ class Output:
             Determine contents of gbw-json file.
             For details about the configuration refer to the ORCA manual "9.3.2 Configuration file"
         gbw_index: int | None, default = None
-            Non-negative index of gbw file in `self.gbw_json_files` for which json files will be generated. If it is None, all files
-            will be generated. If the index is negative or out of range silently nothing is done.
+            Index of gbw file in `self.gbw_json_files` for which json files will be generated.
+            Negative indices count from the end. If it is None, all files will be generated. If the
+            index is out of range, silently nothing is done.
         suffix: str, default: ".gbw"
             Suffix of the gbw file that will be used for json creation.
         """
