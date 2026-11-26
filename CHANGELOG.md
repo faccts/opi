@@ -73,6 +73,7 @@
 - Added `Output.get_chemical_shift()` and `Output.get_spin_spin_coupling()` which return the calculated NMR shielding tensors and spin-spin coupling constants (#313).
 - Added the missing `siso`, `saniso`, `sdso`, `spso`, `mult`, `irrep` and `state` fields to `ChemicalShift` and `numofnucpairssd_fc` to `SpinSpinCoupling` (#313).
 - Added a tutorial notebook on the calculation of an NMR spectrum (#313).
+- Added a manually started GitHub Actions release workflow that builds a tagged release, uploads it to TestPyPI, verifies it and then uploads the same files to PyPI; see `.github/RELEASING.md` (#XXX).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)
