@@ -1,0 +1,21 @@
+# Exact build tool versions for the release workflow (.github/workflows/release.yml).
+#
+# Pinned so that building the same tag twice gives byte-identical files: the wheel records the
+# hatchling version, and a `pypi` run checks its files against those a `testpypi` run uploaded.
+# Do not change the pins between a `testpypi` and a `pypi` run of the same tag.
+#
+# Update with (and bump both uv `version:` pins in release.yml at the same time):
+#   printf 'hatchling\nuv-dynamic-versioning\n' \
+#     | uv pip compile --universal --python-version 3.11 --no-header --no-annotate - \
+#     > .github/build-constraints.txt.new
+# and copy the pins below this header.
+dunamai==1.26.5
+hatchling==1.33.0
+jinja2==3.1.6
+markupsafe==3.0.4
+packaging==26.4
+pathspec==1.1.1
+pluggy==1.7.0
+tomlkit==0.15.3
+trove-classifiers==2026.9.21.13
+uv-dynamic-versioning==0.14.1
