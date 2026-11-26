@@ -138,36 +138,7 @@ auto-fixers for formatting and imports. Use it for everyday work.
 To run the unit tests, use the `unit_tests` session.
 These are the checks the CI runs on every pull request, so run both before opening a pull request.
 
-(sec:dev_running_tests)=
-### Running the tests
-
-The test suite is run with Pytest, but always via Nox:
-
-```
-uv run nox -s unit_tests                   # unit tests only (marker `unit`), as run by the CI
-uv run nox -s tests                        # all tests; the example tests require a local ORCA installation
-```
-
-Arguments following `--` are passed directly on to Pytest.
-This allows, e.g., running a single test file, a single test, or selecting tests by marker:
-
-```
-uv run nox -s tests -- tests/unit/path/test_file.py
-uv run nox -s tests -- tests/unit/path/test_file.py -k test_name
-uv run nox -s tests -- -m "orca and not slow"
-```
-
-A few further sessions require a local ORCA installation and are only needed occasionally:
-
-```
-uv run nox -s json_gen                     # regenerate the JSON fixtures in tests/json_files/
-uv run nox -s out_gen                      # regenerate the plain-text fixture tests/fixtures/job_fallback.out
-uv run nox -s notebooks -- how_to_opi      # execute a documentation notebook (see tests/README.md)
-```
-
-See `tests/README.md` for the test layout, markers and fixtures.
-
-### Sessions and tags
+### Sessions
 
 In Nox's world, a session is a predefined Python function that executes some code and returns a status.
 Each session runs in its own isolated virtual environment, so executing multiple sessions has no influence on one another.
@@ -186,11 +157,6 @@ uv run nox -s <SESSION NAME> ...
 ```
 
 Without any arguments, Nox executes all default sessions.
-Sessions are additionally grouped by tags, which can be selected with `-t`:
-
-```
-uv run nox -t <TAG> ...
-```
 
 The sessions that fix formatting and imports modify files in place and report a failure if they changed anything,
 so simply rerun `uv run nox`.
@@ -265,7 +231,7 @@ uv run nox -s remove_unused_imports
 uv run nox -s format_code
 ```
 
-All fixing sessions are part of the default `uv run nox` run and can also be run together via `uv run nox -t fix`.
+All of these sessions are part of the default `uv run nox` run.
 
 ### Spell Checking: Codespell
 
@@ -319,12 +285,31 @@ We do use the following plugins to Pytest:
 [Fixtures](https://docs.pytest.org/en/stable/explanation/fixtures.html) are stored in `tests/fixtures`.
 Fixtures should be grouped into modules according to their nature.
 
-Pytest is always run via Nox, see [Running the tests](sec:dev_running_tests) above:
+Pytest is always run via Nox, never directly:
 
 ```
-uv run nox -s unit_tests [-- <pytest arguments>]
-uv run nox -s tests [-- <pytest arguments>]
+uv run nox -s unit_tests                   # unit tests only (marker `unit`), as run by the CI
+uv run nox -s tests                        # all tests; the example tests require a local ORCA installation
 ```
+
+Arguments following `--` are passed directly on to Pytest.
+This allows, e.g., running a single test file, a single test, or selecting tests by marker:
+
+```
+uv run nox -s tests -- tests/unit/path/test_file.py
+uv run nox -s tests -- tests/unit/path/test_file.py -k test_name
+uv run nox -s tests -- -m "orca and not slow"
+```
+
+A few further sessions require a local ORCA installation and are only needed occasionally:
+
+```
+uv run nox -s json_gen                     # regenerate the JSON fixtures in tests/json_files/
+uv run nox -s out_gen                      # regenerate the plain-text fixture tests/fixtures/job_fallback.out
+uv run nox -s notebooks -- how_to_opi      # execute a documentation notebook (see tests/README.md)
+```
+
+See `tests/README.md` for the test layout, markers and fixtures.
 
 ## Style Guide
 
