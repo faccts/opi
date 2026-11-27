@@ -256,6 +256,43 @@ def test_json_is_authoritative(output_opt_with_out: Output, output_no_json: Outp
         assert energy != energy_from_out
 
 
+@pytest.fixture
+def opt_files_not_parsed(json_dir: Path, tmp_path: Path) -> Output:
+    """
+    Unparsed output of the geometry optimization with its property JSON and `.out` file on disk.
+    The `.out` file fixture is extracted from the same calculation as the JSON fixture.
+    """
+    shutil.copy(FALLBACK_OUT, tmp_path / "job.out")
+    shutil.copy(
+        json_dir / "property" / "test_exmp003_opt_job.property.json",
+        tmp_path / "job.property.json",
+    )
+    return Output("job", working_dir=tmp_path, version_check=False)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("getter", ["get_final_energy", "get_structure", "get_gradient"])
+def test_not_parsed_error_if_property_json_exists(opt_files_not_parsed: Output, getter: str):
+    """
+    Test that getters with `.out` file fallback raise if the property JSON exists but
+    `Output.parse()` was not called, as the `.out` file might lack values of the JSON.
+    """
+    with pytest.raises(OpiOutputNotParsedError, match=r"Output\.parse\(\)"):
+        getattr(opt_files_not_parsed, getter)()
+
+
+@pytest.mark.unit
+@pytest.mark.output
+def test_fallback_if_parsing_property_json_failed(opt_files_not_parsed: Output):
+    """Test that getters with `.out` file fallback use it if parsing the property JSON failed."""
+    opt_files_not_parsed.get_file(".property.json").write_text("{")
+    with pytest.raises(ValueError):
+        opt_files_not_parsed.parse(do_create_property_json=False, read_gbw_json=False)
+    assert opt_files_not_parsed.get_final_energy() is not None
+    assert opt_files_not_parsed.get_structure() is not None
+
+
 @pytest.mark.unit
 @pytest.mark.output
 @pytest.mark.parametrize("task", ["opt"])

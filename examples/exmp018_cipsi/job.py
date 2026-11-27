@@ -41,8 +41,8 @@ def run_exmp018(
     calc.write_input()
     calc.run()
     output = calc.get_output()
+    output.parse()
     print("FINAL ENERGY")
-    # > Does not work at the moment
     print(output.get_final_energy())
     return output
 

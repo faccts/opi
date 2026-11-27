@@ -122,27 +122,45 @@ class Output:
 
     Notes
     -----
-    The getters (e.g. `get_final_energy()`) return None if a value is not in the output,
-    e.g. because it was not calculated. Empty containers (e.g. no imaginary frequencies) are
-    returned as such. The getters raise an error if they are used incorrectly:
+    The methods of `Output` read their results from different sources:
 
-    - `OpiOutputNotParsedError`: The JSON files were not parsed, i.e., `Output.parse()` was not
-      called. Getters with an active `.out` file fallback read the `.out` file instead and only
-      raise if that file does not exist either. Getters that read other files (e.g. `get_ir()`
-      or `get_fcidump()`) do not need parsed JSON files.
+    - Status checks (`terminated_normally()`, `scf_converged()` and the other `*_converged()`
+      methods, `error_message()`, `error_messages()`) read only the `.out` file. They never need
+      `Output.parse()` and are meant to be called before it, e.g. to decide whether parsing
+      makes sense.
+    - Getters with a `.out` file fallback (`get_final_energy()`, `get_structure()`,
+      `get_gradient()`, `get_s2()`, `get_charge()`, `get_mult()`) read the property JSON and
+      use the `.out` file only if the JSON is unavailable or lacks the requested value. The JSON
+      is unavailable if the file does not exist or `Output.parse()` failed. A property JSON that
+      exists but was not parsed is not replaced by the `.out` file, as the `.out` file can lack
+      values of the JSON (e.g. depending on the print level). To use the fallback after a failed
+      `Output.parse()`, catch its error and call the getters afterwards.
+    - All other getters read only the parsed JSON files, except for the getters that read other
+      files (e.g. `get_ir()` or `get_fcidump()`), which do not need parsed JSON files.
+
+    When re-running a job in the same directory, remove the files of the previous run with
+    `cleanup_files()` first. Otherwise `Output.parse()` might read a JSON file of the previous
+    run if the new run fails before ORCA writes it.
+
+    The getters return None if a value is not in the output, e.g. because it was not
+    calculated. Empty containers (e.g. no imaginary frequencies) are returned as such. The
+    getters raise an error if they are used incorrectly:
+
+    - `OpiOutputNotParsedError`: The JSON files that the getter needs were not parsed, see above.
+      Getters with a `.out` file fallback raise only if the property JSON exists but was not
+      parsed, or if the `.out` file does not exist either.
     - `OpiOutputIndexError`: The requested geometry or gbw index does not exist. This includes
       gbw indices if no gbw results were found at all. Geometry indices are checked against the
       property JSON, which is authoritative. If it contains no geometries at all (e.g. for
       GFN-FF), the getters without `.out` file fallback return None for any index. Getters with
-      an active `.out` file fallback then check the index against the geometries in the `.out`
-      file, as they do if the property JSON was not parsed.
+      a `.out` file fallback then check the index against the geometries in the `.out` file, as
+      they do if the property JSON is unavailable.
       A gbw index refers to the file in `gbw_json_files`. If that file could not be read, the
       getters return None.
     - `TypeError`: The geometry or gbw index is not an integer.
 
-    Getters with an active `.out` file fallback use it if the property JSON is unavailable or
-    lacks the requested value (e.g. the gradients of an ExtOpt run). The value is then taken from
-    the section of the `.out` file that belongs to the requested geometry, i.e., from its
+    If a getter uses the `.out` file fallback, the value is taken from the section of the `.out`
+    file that belongs to the requested geometry, i.e., from its
     "CARTESIAN COORDINATES (ANGSTROEM)" block to the next one. If the number of these blocks does
     not match the geometries of the property JSON, only the final geometry is assigned to the last
     section, and None is returned for the other geometries. If the `.out` file contains no such
@@ -216,6 +234,8 @@ class Output:
         # > // PARSED JSON TREES
         self.results_properties: PropertyResults | None = None
         self.results_gbw: list[GbwResults | None] | None = None
+        # > Whether parsing the property JSON was attempted, also if it failed
+        self._property_parse_attempted: bool = False
 
         # > // CONFIG DICT
         self.config_dict: dict[str, Any] | None = None
@@ -289,6 +309,7 @@ class Output:
             If `True`, a `ValidationError` is raised when any field cannot be validated.
             If `False`, fields that fail validation are set to `None` and a `UserWarning` is emitted.
         """
+        self._property_parse_attempted = True
         # // Use default name if None was supplied
         if not self.property_json_file:
             self.property_json_file = self.get_file(".property.json")
@@ -1303,7 +1324,8 @@ class Output:
 
         If the chain starts with results (`results_properties` or `results_gbw`) that were not
         parsed, `OpiOutputNotParsedError` is raised instead, as this is a usage error. Getters with
-        an active `.out` file fallback get None instead if the `.out` file exists.
+        an active `.out` file fallback get None instead if the property JSON is unavailable and the
+        `.out` file exists, see `_can_use_outfile_fallback()`.
         Indices chosen by the user (geometry or gbw index) are not validated here, please use
         `_get_geometry_data()` or `_get_gbw_data()` for them.
 
@@ -1338,12 +1360,31 @@ class Output:
             and attrs[0] in self._PARSED_RESULTS_MISSING_ERRORS
             and getattr(self, str(attrs[0])) is None
         ):
-            if fallback and self.get_outfile().is_file():
+            if fallback and self._can_use_outfile_fallback():
                 return None
             raise OpiOutputNotParsedError(
                 self._PARSED_RESULTS_MISSING_ERRORS[str(attrs[0])].format(basename=self.basename)
             )
         return self._walk(self, *attrs)
+
+    def _can_use_outfile_fallback(self) -> bool:
+        """
+        Whether getters with an active `.out` file fallback may use it instead of the unparsed
+        property JSON. This requires the `.out` file to exist and the property JSON to be
+        unavailable, i.e., parsing it failed or the file does not exist. A property JSON that
+        exists, but was never parsed, means that `Output.parse()` was not called.
+
+        Returns
+        -------
+        bool
+            True if the `.out` file fallback may be used.
+        """
+        if not self.get_outfile().is_file():
+            return False
+        if self._property_parse_attempted:
+            return True
+        property_json_file = self.property_json_file or self.get_file(".property.json")
+        return not property_json_file.is_file()
 
     @staticmethod
     def _walk(current: Any, /, *attrs: str | int) -> Any | None:
