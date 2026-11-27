@@ -1324,8 +1324,8 @@ class Output:
 
         If the chain starts with results (`results_properties` or `results_gbw`) that were not
         parsed, `OpiOutputNotParsedError` is raised instead, as this is a usage error. Getters with
-        an active `.out` file fallback get None instead if the property JSON is unavailable and the
-        `.out` file exists, see `_can_use_outfile_fallback()`.
+        a `.out` file fallback get None instead if the property JSON is unavailable and the `.out`
+        file exists, see `_can_use_outfile_fallback()`.
         Indices chosen by the user (geometry or gbw index) are not validated here, please use
         `_get_geometry_data()` or `_get_gbw_data()` for them.
 
@@ -1369,7 +1369,7 @@ class Output:
 
     def _can_use_outfile_fallback(self) -> bool:
         """
-        Whether getters with an active `.out` file fallback may use it instead of the unparsed
+        Whether getters with a `.out` file fallback may use it instead of the unparsed
         property JSON. This requires the `.out` file to exist and the property JSON to be
         unavailable, i.e., parsing it failed or the file does not exist. A property JSON that
         exists, but was never parsed, means that `Output.parse()` was not called.

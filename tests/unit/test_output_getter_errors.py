@@ -272,7 +272,9 @@ def opt_files_not_parsed(json_dir: Path, tmp_path: Path) -> Output:
 
 @pytest.mark.unit
 @pytest.mark.output
-@pytest.mark.parametrize("getter", ["get_final_energy", "get_structure", "get_gradient"])
+@pytest.mark.parametrize(
+    "getter", ["get_final_energy", "get_structure", "get_gradient", "get_charge", "get_mult"]
+)
 def test_not_parsed_error_if_property_json_exists(opt_files_not_parsed: Output, getter: str):
     """
     Test that getters with `.out` file fallback raise if the property JSON exists but
