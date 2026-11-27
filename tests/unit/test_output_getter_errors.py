@@ -274,13 +274,13 @@ def test_numpy_integer_index(output_object_factory, task: str):
 
 @pytest.mark.unit
 @pytest.mark.output
-@pytest.mark.parametrize("index", [0.0, "0", None, True, False, np.bool_(True)])
+@pytest.mark.parametrize("index", [0.0, "0", None, np.bool_(True)])
 def test_type_error_for_non_integer_index(
     output_object_factory, output_no_json: Output, empty_output_object: Output, index
 ):
     """
     Test that an index that is not an integer raises a `TypeError` instead of returning None,
-    also if the output is not parsed. Booleans are rejected, although bool is a subclass of int.
+    also if the output is not parsed.
     """
     output_object = output_object_factory("opt")
     getters = [

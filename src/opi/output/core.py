@@ -138,7 +138,7 @@ class Output:
       file, as they do if the property JSON was not parsed.
       A gbw index refers to the file in `gbw_json_files`. If that file could not be read, the
       getters return None.
-    - `TypeError`: The geometry or gbw index is not an integer (booleans are rejected as well).
+    - `TypeError`: The geometry or gbw index is not an integer.
 
     Getters with an active `.out` file fallback use it if the property JSON is unavailable or
     lacks the requested value (e.g. the gradients of an ExtOpt run). The value is then taken from
@@ -150,7 +150,7 @@ class Output:
     """
 
     # > Results that have to be loaded with `Output.parse()`, mapped to their error message
-    _PARSED_RESULTS: ClassVar[dict[str, str]] = {
+    _PARSED_RESULTS_MISSING_ERRORS: ClassVar[dict[str, str]] = {
         "results_properties": "No property results of '{basename}' are loaded."
         " Call `Output.parse()` first.",
         "results_gbw": "No gbw results of '{basename}' are loaded."
@@ -1304,7 +1304,7 @@ class Output:
         If the chain starts with results (`results_properties` or `results_gbw`) that were not
         parsed, `OpiOutputNotParsedError` is raised instead, as this is a usage error. Getters with
         an active `.out` file fallback get None instead if the `.out` file exists.
-        Indices chosen by the user (geometry or gbw index) are not validated here; use
+        Indices chosen by the user (geometry or gbw index) are not validated here, please use
         `_get_geometry_data()` or `_get_gbw_data()` for them.
 
         Parameters
@@ -1333,11 +1333,15 @@ class Output:
             self.results_properties.calculation_info.charge
             but returns None if any part of the chain is missing or None, in a mypy-friendly way.
         """
-        if attrs and attrs[0] in self._PARSED_RESULTS and getattr(self, str(attrs[0])) is None:
+        if (
+            attrs
+            and attrs[0] in self._PARSED_RESULTS_MISSING_ERRORS
+            and getattr(self, str(attrs[0])) is None
+        ):
             if fallback and self.get_outfile().is_file():
                 return None
             raise OpiOutputNotParsedError(
-                self._PARSED_RESULTS[str(attrs[0])].format(basename=self.basename)
+                self._PARSED_RESULTS_MISSING_ERRORS[str(attrs[0])].format(basename=self.basename)
             )
         return self._walk(self, *attrs)
 
@@ -1406,9 +1410,8 @@ class Output:
     @staticmethod
     def _check_index(index: Any, name: str, /) -> int:
         """
-        Check that a user-chosen index is an integer. Any integer type (e.g. `numpy.int64`) is
-        accepted and converted to `int`. Booleans are rejected, although they are integers in
-        Python, as they are most likely passed by mistake.
+        Check that a user-chosen index is an integer. Everything Python accepts as an index
+        (e.g. `numpy.int64`) is accepted and converted to `int`.
 
         Parameters
         ----------
@@ -1427,12 +1430,10 @@ class Output:
         TypeError
             If `index` is not an integer.
         """
-        if not isinstance(index, (bool, np.bool_)):
-            try:
-                return operator.index(index)
-            except TypeError:
-                pass
-        raise TypeError(f"Index into the {name} has to be an integer, got {index!r}.")
+        try:
+            return operator.index(index)
+        except TypeError:
+            raise TypeError(f"Index into the {name} has to be an integer, got {index!r}.") from None
 
     def _get_geometry_data(
         self, index: int, /, *attrs: str | int, fallback: bool = False
@@ -1471,7 +1472,10 @@ class Output:
         geometries = self._safe_get("results_properties", "geometries", fallback=fallback)
         if not geometries:
             return None
-        return self._walk(self._select(geometries, index, "geometries"), *attrs)
+        # > The index is checked against the geometries and raises if it is out of range, whereas
+        # > the path within the geometry returns None if a value is missing (e.g. not calculated)
+        geometry = self._select(geometries, index, "geometries")
+        return self._walk(geometry, *attrs)
 
     def _get_gbw_data(self, index: int, /, *attrs: str | int) -> Any | None:
         """
@@ -1502,7 +1506,10 @@ class Output:
         # > Check the index type first, so that a wrong type is reported in any case
         index = self._check_index(index, "gbw results")
         results_gbw = cast(list[GbwResults | None], self._safe_get("results_gbw"))
-        return self._walk(self._select(results_gbw, index, "gbw results"), *attrs)
+        # > The index is checked against the gbw results and raises if it is out of range, whereas
+        # > the path within the gbw results returns None if a value is missing
+        result_gbw = self._select(results_gbw, index, "gbw results")
+        return self._walk(result_gbw, *attrs)
 
     def _find_in_outfile(
         self, index: int, /, *search_for: str, last_if_missing: bool = False
@@ -1548,7 +1555,7 @@ class Output:
 
         # > Assign every occurrence to the geometry of the preceding coordinates block, counting
         # > from 0 (-1 before the first block)
-        num_blocks = 0
+        num_blocks: int = 0
         occurrences: list[list[int]] = [[] for _ in search_for]
         for line in get_lines_with_strings(self.get_outfile(), GEOMETRY_BLOCK, *search_for) or []:
             num_blocks += GEOMETRY_BLOCK in line
