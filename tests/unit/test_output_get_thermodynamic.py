@@ -1,5 +1,6 @@
 import pytest
 
+from opi.exceptions import OpiOutputNotParsedError
 from opi.output.core import Output
 
 """
@@ -29,8 +30,9 @@ def test_get_inner_energy_returns_float(output_object_factory, task):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_inner_energy_returns_none(empty_output_object: Output):
-    """Test if `Output.get_inner_energy()` returns None when expected."""
-    assert not empty_output_object.get_inner_energy()
+    """Test if `Output.get_inner_energy()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_inner_energy()
 
 
 @pytest.mark.unit
@@ -48,8 +50,9 @@ def test_get_enthalpy_returns_float(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_enthalpy_returns_none(empty_output_object: Output):
-    """Test if `Output.get_enthalpy()` returns None when expected."""
-    assert not empty_output_object.get_enthalpy()
+    """Test if `Output.get_enthalpy()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_enthalpy()
 
 
 @pytest.mark.unit
@@ -67,8 +70,9 @@ def test_get_entropy_returns_float(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_entropy_returns_none(empty_output_object: Output):
-    """Test if `Output.get_entropy()` returns None when expected."""
-    assert not empty_output_object.get_entropy()
+    """Test if `Output.get_entropy()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_entropy()
 
 
 @pytest.mark.unit
@@ -86,8 +90,9 @@ def test_get_free_energy_returns_float(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_free_energy_returns_none(empty_output_object: Output):
-    """Test if `Output.get_free_energy()` returns None when expected."""
-    assert not empty_output_object.get_free_energy()
+    """Test if `Output.get_free_energy()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_free_energy()
 
 
 @pytest.mark.unit
@@ -105,8 +110,9 @@ def test_get_el_energy_returns_float(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_el_energy_returns_none(empty_output_object: Output):
-    """Test if `Output.get_el_energy()` returns None when expected."""
-    assert not empty_output_object.get_el_energy()
+    """Test if `Output.get_el_energy()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_el_energy()
 
 
 @pytest.mark.unit
@@ -124,8 +130,9 @@ def test_get_free_energy_delta_returns_float(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_free_energy_delta_returns_none(empty_output_object: Output):
-    """Test if `Output.get_free_energy_delta()` returns None when expected."""
-    assert not empty_output_object.get_free_energy_delta()
+    """Test if `Output.get_free_energy_delta()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_free_energy_delta()
 
 
 @pytest.mark.unit

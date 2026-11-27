@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 from opi.core import Calculator
+from opi.exceptions import OpiOutputIndexError
 from opi.input.simple_keywords import ForceField, Task
 from opi.input.structures import Structure
 from opi.output.core import Output
@@ -65,14 +66,16 @@ def run_exmp055(
     print(gradient)
 
     # > The fallback supports iterating over individual optimisation steps.
-    # > get_final_energy returns None once the index exceeds the number of steps.
+    # > The getters raise an OpiOutputIndexError once the index exceeds the number of
+    # > geometries in the .out file.
     step = 0
     print("ENERGIES ALONG OPTIMISATION TRAJECTORY")
     while True:
-        e = output.get_final_energy(index=step)
-        if e is None:
+        try:
+            e = output.get_final_energy(index=step)
+            s = output.get_structure(index=step)
+        except OpiOutputIndexError:
             break
-        s = output.get_structure(index=step)
         print(f"  step {step:3d}  E = {e:.10f}  ({len(s.atoms)} atoms)")
         step += 1
 

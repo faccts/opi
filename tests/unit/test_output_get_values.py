@@ -1,5 +1,6 @@
 import pytest
 
+from opi.exceptions import OpiOutputNotParsedError
 from opi.output.core import Output
 from opi.output.models.json.property.properties.calc_time import CalculationTiming
 
@@ -33,22 +34,25 @@ def test_get_hftype(output_object_factory, task: str, expected_values: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_hftype_nonexistent(empty_output_object):
-    """Test to check if `Output.get_hftype()` returns None when expected."""
-    assert not empty_output_object.get_hftype()
+    """Test to check if `Output.get_hftype()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_hftype()
 
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_get_charge_nonexistent(empty_output_object: Output):
-    """Test to check if `Output.get_charge()` returns None when expected."""
-    assert not empty_output_object.get_charge()
+def test_get_charge_not_parsed(empty_output_object: Output):
+    """Test that `Output.get_charge()` raises if there is neither parsed JSON nor a `.out` file."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_charge()
 
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_get_mult_nonexistent(empty_output_object: Output):
-    """Test to check if `Output.get_mult()` returns None when expected."""
-    assert not empty_output_object.get_mult()
+def test_get_mult_not_parsed(empty_output_object: Output):
+    """Test that `Output.get_mult()` raises if there is neither parsed JSON nor a `.out` file."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_mult()
 
 
 @pytest.mark.unit
@@ -61,8 +65,9 @@ def test_get_charge_fallback(output_no_json):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_charge_no_fallback(output_no_json):
-    """Test that `get_charge(fallback=False)` returns None when no JSON is present."""
-    assert output_no_json.get_charge(fallback=False) is None
+    """Test that `get_charge(fallback=False)` raises `OpiOutputNotParsedError` when no JSON is present."""
+    with pytest.raises(OpiOutputNotParsedError):
+        output_no_json.get_charge(fallback=False)
 
 
 @pytest.mark.unit
@@ -75,8 +80,9 @@ def test_get_mult_fallback(output_no_json):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_mult_no_fallback(output_no_json):
-    """Test that `get_mult(fallback=False)` returns None when no JSON is present."""
-    assert output_no_json.get_mult(fallback=False) is None
+    """Test that `get_mult(fallback=False)` raises `OpiOutputNotParsedError` when no JSON is present."""
+    with pytest.raises(OpiOutputNotParsedError):
+        output_no_json.get_mult(fallback=False)
 
 
 @pytest.mark.unit
@@ -130,16 +136,17 @@ def test_get_nelectrons_spin_resolved(
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_nelectrons_nonexistent(empty_output_object: Output):
-    """Test to check if `Output.get_nelectrons()` returns None when expected."""
-    x, y = empty_output_object.get_nelectrons()
-    assert (not x) and (not y)
+    """Test to check if `Output.get_nelectrons()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_nelectrons()
 
 
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_nbf_nonexistent(empty_output_object: Output):
-    """Test to check if `Output.get_nbf()` returns None when expected."""
-    assert not empty_output_object.get_nbf()
+    """Test to check if `Output.get_nbf()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_nbf()
 
 
 @pytest.mark.unit

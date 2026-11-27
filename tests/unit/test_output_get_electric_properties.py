@@ -1,5 +1,6 @@
 import pytest
 
+from opi.exceptions import OpiOutputIndexError, OpiOutputNotParsedError
 from opi.output.models.json.property.properties.dipole_moment import DipoleMoment
 from opi.output.models.json.property.properties.polarizability import Polarizability
 from opi.output.models.json.property.properties.quadrupole_moment import QuadrupoleMoment
@@ -32,10 +33,11 @@ def test_get_dipole_returns_list_of_dipole_moment(output_object_factory, task: s
     "task, index",
     [("led", 1), ("nmr", 3)],
 )
-def test_get_dipole_returns_none(output_object_factory, task: str, index: int):
-    """Test if `Output.get_dipole()` returns `None` when expected."""
+def test_get_dipole_invalid_index(output_object_factory, task: str, index: int):
+    """Test if `Output.get_dipole()` raises `OpiOutputIndexError` for a geometry index out of range."""
     output_object = output_object_factory(task)
-    assert not output_object.get_dipole(index=index)
+    with pytest.raises(OpiOutputIndexError):
+        output_object.get_dipole(index=index)
 
 
 @pytest.mark.unit
@@ -61,12 +63,22 @@ def test_get_quadrupole_returns_list_of_correct_length(output_object_factory, ta
 @pytest.mark.output
 @pytest.mark.parametrize(
     "task, index",
-    [("opt", 0), ("pop_analysis", 3)],
+    [("opt", 0)],
 )
 def test_get_quadrupole_returns_none(output_object_factory, task: str, index: int):
     """Test if `Output.get_quadrupole()` returns `None` when expected."""
     output_object = output_object_factory(task)
     assert not output_object.get_quadrupole(index=index)
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task, index", [("pop_analysis", 3)])
+def test_get_quadrupole_invalid_index(output_object_factory, task: str, index: int):
+    """Test if `Output.get_quadrupole()` raises `OpiOutputIndexError` for a geometry index out of range."""
+    output_object = output_object_factory(task)
+    with pytest.raises(OpiOutputIndexError):
+        output_object.get_quadrupole(index=index)
 
 
 @pytest.mark.unit
@@ -84,8 +96,9 @@ def test_get_polarizability_returns_list(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_polarizability_returns_none(empty_output_object):
-    """Test if `Output.get_polarizability()` returns None when expected."""
-    assert not empty_output_object.get_polarizability()
+    """Test if `Output.get_polarizability()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_polarizability()
 
 
 @pytest.mark.unit
@@ -130,9 +143,29 @@ def test_get_absorption_spectrum_returns_spectra(output_object_factory, task: st
 
 @pytest.mark.unit
 @pytest.mark.output
-def test_get_absorption_spectrum_returns_none(empty_output_object):
-    """Test if `Output.get_absorption_spectrum()` returns None when expected."""
-    assert not empty_output_object.get_absorption_spectrum()
+def test_get_absorption_spectrum_not_parsed(empty_output_object):
+    """Test if `Output.get_absorption_spectrum()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_absorption_spectrum()
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task, index", [("opt", 0)])
+def test_get_absorption_spectrum_returns_none(output_object_factory, task: str, index: int):
+    """Test if `Output.get_absorption_spectrum()` returns `None` without a spectrum in the output."""
+    output_object = output_object_factory(task)
+    assert output_object.get_absorption_spectrum(index=index) is None
+
+
+@pytest.mark.unit
+@pytest.mark.output
+@pytest.mark.parametrize("task, index", [("uvvis", 1)])
+def test_get_absorption_spectrum_invalid_index(output_object_factory, task: str, index: int):
+    """Test if `Output.get_absorption_spectrum()` raises `OpiOutputIndexError` for a geometry index out of range."""
+    output_object = output_object_factory(task)
+    with pytest.raises(OpiOutputIndexError):
+        output_object.get_absorption_spectrum(index=index)
 
 
 @pytest.mark.unit

@@ -37,6 +37,14 @@ HAS_SCF = "SCF SETTINGS"
 HAS_FREQ = "VIBRATIONAL FREQUENCIES"
 HAS_ABORTING = "aborting"
 
+# > Value strings - Strings that mark values in the output file
+# > Printed for every geometry, which is used to assign the other values to the geometries
+GEOMETRY_BLOCK = "CARTESIAN COORDINATES (ANGSTROEM)"
+GRADIENT_BLOCK = "CARTESIAN GRADIENT"
+FINAL_ENERGY = "FINAL SINGLE POINT ENERGY"
+S2_EXPECTATION_VALUE = "Expectation value of <S**2>"
+S2_IDEAL_VALUE = "Ideal value S*(S+1)"
+
 # > Named error pattern instances
 NO_COORDS_ERROR = ErrorPattern(
     "You must have a [COORDS] ... [END] block in your input",

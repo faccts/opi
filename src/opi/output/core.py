@@ -4,26 +4,36 @@ It's mostly based on the ORCA's two JSONs files.
 """
 
 import json
+import operator
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 from warnings import warn
 
 import numpy as np
 import numpy.typing as npt
 from pydantic import StrictInt, StrictStr
 
+from opi.exceptions import OpiOutputIndexError, OpiOutputNotParsedError
 from opi.execution.core import Runner
 from opi.input.structures import Atom, Coordinates, Structure
 from opi.output.cube import CubeOutput
 from opi.output.fcidump import Fcidump
 from opi.output.gbw_suffix import GbwSuffix
+from opi.output.grepper.patterns import (
+    FINAL_ENERGY,
+    GEOMETRY_BLOCK,
+    GRADIENT_BLOCK,
+    S2_EXPECTATION_VALUE,
+    S2_IDEAL_VALUE,
+)
 from opi.output.grepper.recipes import (
     get_charge_and_mult_from_input,
     get_error_message,
     get_error_messages,
     get_float_from_line,
     get_lines_from_block,
+    get_lines_with_strings,
     has_autoci_converged,
     has_casscf_converged,
     has_cc_converged,
@@ -98,18 +108,74 @@ class Output:
     results_properties: PropertyResults
         Properties parsed from `property.json`.
         Should be preferred over `property_json_data`.
-    results_gbw: GbwResults
-        Data parsed from `<basename>.json`.
+    results_gbw: list[GbwResults | None]
+        Data parsed from the gbw JSON files, one entry per file in `gbw_json_files`. The entry of
+        a file that could not be read is None.
         Should be preferred over `gbw_json_data`.
     property_json_data: dict[str, Any]
         JSON tree read from `<basename>.property.json`.
-    gbw_json_data: dict[str, Any]
-        JSON tree of read from `<basename>.json`.
+    gbw_json_data: list[dict[str, Any] | None]
+        JSON trees read from the gbw JSON files, one entry per file in `gbw_json_files`. The
+        entry of a file that could not be read is None.
     do_redump_jsons: bool, default: False
         Redump JSONs files after parsing. This is mostly meant for debugging.
     config_dict : dict[str, Any] | None, default: None
         Config dict class used in getter functions for creating json files with desired integrals.
+
+    Notes
+    -----
+    The methods of `Output` read their results from different sources:
+
+    - Status checks (`terminated_normally()`, `scf_converged()` and the other `*_converged()`
+      methods, `error_message()`, `error_messages()`) read only the `.out` file. They never need
+      `Output.parse()` and are meant to be called before it, e.g. to decide whether parsing
+      makes sense.
+    - Getters with a `.out` file fallback (`get_final_energy()`, `get_structure()`,
+      `get_gradient()`, `get_s2()`, `get_charge()`, `get_mult()`) read the property JSON and
+      use the `.out` file only if the JSON is unavailable or lacks the requested value. The JSON
+      is unavailable if the file does not exist or `Output.parse()` failed. A property JSON that
+      exists but was not parsed is not replaced by the `.out` file, as the `.out` file can lack
+      values of the JSON (e.g. depending on the print level). To use the fallback after a failed
+      `Output.parse()`, catch its error and call the getters afterwards.
+    - All other getters read only the parsed JSON files, except for the getters that read other
+      files (e.g. `get_ir()` or `get_fcidump()`), which do not need parsed JSON files.
+
+    When re-running a job in the same directory, remove the files of the previous run with
+    `cleanup_files()` first. Otherwise `Output.parse()` might read a JSON file of the previous
+    run if the new run fails before ORCA writes it.
+
+    The getters return None if a value is not in the output, e.g. because it was not
+    calculated. Empty containers (e.g. no imaginary frequencies) are returned as such. The
+    getters raise an error if they are used incorrectly:
+
+    - `OpiOutputNotParsedError`: The JSON files that the getter needs were not parsed, see above.
+      Getters with a `.out` file fallback raise only if the property JSON exists but was not
+      parsed, or if the `.out` file does not exist either.
+    - `OpiOutputIndexError`: The requested geometry or gbw index does not exist. This includes
+      gbw indices if no gbw results were found at all. Geometry indices are checked against the
+      property JSON, which is authoritative. If it contains no geometries at all (e.g. for
+      GFN-FF), the getters without `.out` file fallback return None for any index. Getters with
+      a `.out` file fallback then check the index against the geometries in the `.out` file, as
+      they do if the property JSON is unavailable.
+      A gbw index refers to the file in `gbw_json_files`. If that file could not be read, the
+      getters return None.
+    - `TypeError`: The geometry or gbw index is not an integer.
+
+    If a getter uses the `.out` file fallback, the value is taken from the section of the `.out`
+    file that belongs to the requested geometry, i.e., from its
+    "CARTESIAN COORDINATES (ANGSTROEM)" block to the next one. If the number of these blocks does
+    not match the geometries of the property JSON, only the final geometry is assigned to the last
+    section, and None is returned for the other geometries. If the `.out` file contains no such
+    blocks at all, the values are counted in the order in which they appear.
     """
+
+    # > Results that have to be loaded with `Output.parse()`, mapped to their error message
+    _PARSED_RESULTS_MISSING_ERRORS: ClassVar[dict[str, str]] = {
+        "results_properties": "No property results of '{basename}' are loaded."
+        " Call `Output.parse()` first.",
+        "results_gbw": "No gbw results of '{basename}' are loaded."
+        " Call `Output.parse()` with `read_gbw_json=True` first.",
+    }
 
     def __init__(
         self,
@@ -164,12 +230,14 @@ class Output:
         self.do_redump_jsons: bool = False
 
         # > // RAW JSON TREES
-        self.gbw_json_data: list[dict[str, Any]] | None = None
+        self.gbw_json_data: list[dict[str, Any] | None] | None = None
         self.property_json_data: dict[str, Any] | None = None
 
         # > // PARSED JSON TREES
         self.results_properties: PropertyResults | None = None
-        self.results_gbw: list[GbwResults] | None = None
+        self.results_gbw: list[GbwResults | None] | None = None
+        # > Whether parsing the property JSON was attempted, also if it failed
+        self._property_parse_attempted: bool = False
 
         # > // CONFIG DICT
         self.config_dict: dict[str, Any] | None = None
@@ -243,6 +311,7 @@ class Output:
             If `True`, a `ValidationError` is raised when any field cannot be validated.
             If `False`, fields that fail validation are set to `None` and a `UserWarning` is emitted.
         """
+        self._property_parse_attempted = True
         # // Use default name if None was supplied
         if not self.property_json_file:
             self.property_json_file = self.get_file(".property.json")
@@ -286,8 +355,10 @@ class Output:
 
         # // read the GBW files
         self.gbw_json_data = self._process_json_files(self.gbw_json_files, continue_on_error=True)
+        # > Files that could not be read keep a None placeholder, so that the indices of
+        # > `results_gbw` match the ones of `gbw_json_files`
         self.results_gbw = [
-            GbwResults.model_validate(data, context={"strict": strict})
+            None if data is None else GbwResults.model_validate(data, context={"strict": strict})
             for data in self.gbw_json_data
         ]
 
@@ -389,7 +460,7 @@ class Output:
         files: Sequence[Path],
         *,
         continue_on_error: bool = False,
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, Any] | None]:
         """
         Process multiple JSON files.
 
@@ -398,22 +469,26 @@ class Output:
         files: Sequence[Path]
             Paths to JSON files to be processed.
         continue_on_error: bool
-            Whether to continue processing when an error occurs.
+            Whether to continue processing when an error occurs. A file that cannot be read is
+            then represented by None, so that the result still has one entry per file. A warning
+            is emitted, unless the file does not exist (e.g. no gbw JSON can be created for GFN-FF).
 
         Returns
         ----------
-        list[dict[str, Any]]
-            The list of the JSON files processed.
+        list[dict[str, Any] | None]
+            The JSON trees of the files, in the order of `files`.
         """
-        results: list[dict[str, Any]] = []
+        results: list[dict[str, Any] | None] = []
 
         for path in files:
             try:
-                data = self._process_json_file(path)
-                results.append(data)
-            except (FileNotFoundError, OSError, json.JSONDecodeError):
+                results.append(self._process_json_file(path))
+            except (FileNotFoundError, OSError, json.JSONDecodeError) as error:
                 if not continue_on_error:
                     raise
+                if not isinstance(error, FileNotFoundError):
+                    warn(f"Could not read JSON file {path}: {error}")
+                results.append(None)
         return results
 
     def _redump_jsons(self) -> None:
@@ -421,10 +496,13 @@ class Output:
 
         assert self.gbw_json_files
         assert self.results_gbw
-        for i, gbw_json_file in enumerate(self.gbw_json_files):
+        for gbw_json_file, result_gbw in zip(self.gbw_json_files, self.results_gbw):
+            # > Files that could not be read have no results
+            if result_gbw is None:
+                continue
             redumped_gbw_json_file = gbw_json_file.with_suffix(".interface.json")
             # > Keeping the empty fields, as they show what could not be parsed
-            self.results_gbw[i].to_json_file(redumped_gbw_json_file, exclude_none=False)
+            result_gbw.to_json_file(redumped_gbw_json_file, exclude_none=False)
 
         assert self.property_json_file
         assert self.results_properties
@@ -685,8 +763,9 @@ class Output:
             Determine contents of gbw-json file.
             For details about the configuration refer to the ORCA manual "9.3.2 Configuration file"
         gbw_index: int | None, default = None
-            Non-negative index of gbw file in `self.gbw_json_files` for which json files will be generated. If it is None, all files
-            will be generated. If the index is negative or out of range silently nothing is done.
+            Index of gbw file in `self.gbw_json_files` for which json files will be generated.
+            Negative indices count from the end. If it is None, all files will be generated. If the
+            index is out of range, silently nothing is done.
         suffix: str, default: ".gbw"
             Suffix of the gbw file that will be used for json creation.
         """
@@ -919,7 +998,10 @@ class Output:
         if self.results_gbw is not None:
             for i, result_gbw in enumerate(self.results_gbw):
                 print(f"gbw results [{i}]:")
-                print(result_gbw.graph(depth, max_list_length=max_length))
+                if result_gbw is None:
+                    print("Could not be read!")
+                else:
+                    print(result_gbw.graph(depth, max_list_length=max_length))
         else:
             print("No gbw results are available!")
 
@@ -1233,20 +1315,29 @@ class Output:
 
         return CubeOutput(cube_file)
 
-    def _safe_get(self, *attrs: str | int) -> Any | None:
+    def _safe_get(self, *attrs: str | int, fallback: bool = False) -> Any | None:
         """
         Safely access a nested chain of attributes or list indices on the output object.
 
         This method walks through a sequence of attributes (str) or indices (int),
         returning the nested value if all lookups succeed and none of the intermediate
         objects are None. If any step fails—due to a missing attribute, invalid index,
-        or None encountered in the chain—it returns None instead of raising an exception.
+        or None encountered in the chain—it returns None.
+
+        If the chain starts with results (`results_properties` or `results_gbw`) that were not
+        parsed, `OpiOutputNotParsedError` is raised instead, as this is a usage error. Getters with
+        a `.out` file fallback get None instead if the property JSON is unavailable and the `.out`
+        file exists, see `_can_use_outfile_fallback()`.
+        Indices chosen by the user (geometry or gbw index) are not validated here, please use
+        `_get_geometry_data()` or `_get_gbw_data()` for them.
 
         Parameters
         ----------
         *attrs : str | int
             A sequence of strings (attribute names) and/or integers (list or indexable
             container indices) that define the path to follow.
+        fallback : bool, default: False
+            Whether the getter uses the `.out` file fallback.
 
         Returns
         -------
@@ -1254,14 +1345,67 @@ class Output:
             The resolved value at the end of the access path if all steps succeed;
             otherwise, None. Should be cast into the correct type for usage.
 
+        Raises
+        ------
+        OpiOutputNotParsedError
+            If the requested results were not parsed and the `.out` file fallback cannot be used.
+
         Examples
         --------
-            self._safe_get("results_properties", "geometries", index, "geometry")
+            self._safe_get("results_properties", "calculation_info", "charge")
             is equivalent to:
-            self.results_properties.geometries[index].geometry
+            self.results_properties.calculation_info.charge
             but returns None if any part of the chain is missing or None, in a mypy-friendly way.
         """
-        current = self
+        if (
+            attrs
+            and attrs[0] in self._PARSED_RESULTS_MISSING_ERRORS
+            and getattr(self, str(attrs[0])) is None
+        ):
+            if fallback and self._can_use_outfile_fallback():
+                return None
+            raise OpiOutputNotParsedError(
+                self._PARSED_RESULTS_MISSING_ERRORS[str(attrs[0])].format(basename=self.basename)
+            )
+        return self._walk(self, *attrs)
+
+    def _can_use_outfile_fallback(self) -> bool:
+        """
+        Whether getters with a `.out` file fallback may use it instead of the unparsed
+        property JSON. This requires the `.out` file to exist and the property JSON to be
+        unavailable, i.e., parsing it failed or the file does not exist. A property JSON that
+        exists, but was never parsed, means that `Output.parse()` was not called.
+
+        Returns
+        -------
+        bool
+            True if the `.out` file fallback may be used.
+        """
+        if not self.get_outfile().is_file():
+            return False
+        if self._property_parse_attempted:
+            return True
+        property_json_file = self.property_json_file or self.get_file(".property.json")
+        return not property_json_file.is_file()
+
+    @staticmethod
+    def _walk(current: Any, /, *attrs: str | int) -> Any | None:
+        """
+        Follow a chain of attributes (str) or list indices (int) starting at `current`.
+        Returns None if any step fails or None is encountered in the chain.
+
+        Parameters
+        ----------
+        current : Any
+            Object to start from.
+        *attrs : str | int
+            Path to follow.
+
+        Returns
+        -------
+        Any | None
+            The resolved value or None.
+        """
         for attr in attrs:
             if current is None:
                 return None
@@ -1271,10 +1415,238 @@ class Output:
                 elif isinstance(attr, str):
                     current = getattr(current, attr)
                 else:
-                    raise TypeError
+                    return None
             except (AttributeError, IndexError, TypeError):
                 return None
         return current
+
+    def _select(self, items: Sequence[Any], index: int, name: str, /) -> Any:
+        """
+        Select the item with a user-chosen index from a list.
+
+        Parameters
+        ----------
+        items : Sequence[Any]
+            List to select from.
+        index : int
+            Index of the item, negative indices count from the end.
+        name : str
+            Name of the items for the error message.
+
+        Returns
+        -------
+        Any
+            The selected item.
+
+        Raises
+        ------
+        OpiOutputIndexError
+            If `index` is out of range.
+        """
+        if not -len(items) <= index < len(items):
+            raise OpiOutputIndexError(
+                f"Index {index} is out of range: the output of '{self.basename}' contains"
+                f" {len(items)} {name}."
+            )
+        return items[index]
+
+    @staticmethod
+    def _check_index(index: Any, name: str, /) -> int:
+        """
+        Check that a user-chosen index is an integer. Everything Python accepts as an index
+        (e.g. `numpy.int64`) is accepted and converted to `int`.
+
+        Parameters
+        ----------
+        index : Any
+            Index to check.
+        name : str
+            Name of the indexed list for the error message.
+
+        Returns
+        -------
+        int
+            The index as `int`.
+
+        Raises
+        ------
+        TypeError
+            If `index` is not an integer.
+        """
+        try:
+            return operator.index(index)
+        except TypeError:
+            raise TypeError(f"Index into the {name} has to be an integer, got {index!r}.") from None
+
+    def _get_geometry_data(
+        self, index: int, /, *attrs: str | int, fallback: bool = False
+    ) -> Any | None:
+        """
+        Safely access `self.results_properties.geometries[index].<attrs>`.
+        If the property JSON contains no geometries (e.g. GFN-FF), None is returned without
+        checking the index; getters with `.out` file fallback check it in `_find_in_outfile()`.
+
+        Parameters
+        ----------
+        index : int
+            User-chosen index of the geometry.
+        *attrs : str | int
+            Path to follow within the geometry, see `_safe_get()`.
+        fallback : bool, default: False
+            Whether the getter uses the `.out` file fallback, see `_safe_get()`. The index is
+            then checked by `_find_in_outfile()`, if the property JSON is unavailable.
+
+        Returns
+        -------
+        Any | None
+            The resolved value or None.
+
+        Raises
+        ------
+        TypeError
+            If `index` is not an integer.
+        OpiOutputNotParsedError
+            If the property results were not parsed and the `.out` file fallback cannot be used.
+        OpiOutputIndexError
+            If `index` is out of range.
+        """
+        # > Check the index type first, so that a wrong type is reported in any case
+        index = self._check_index(index, "geometries")
+        geometries = self._safe_get("results_properties", "geometries", fallback=fallback)
+        if not geometries:
+            return None
+        # > The index is checked against the geometries and raises if it is out of range, whereas
+        # > the path within the geometry returns None if a value is missing (e.g. not calculated)
+        geometry = self._select(geometries, index, "geometries")
+        return self._walk(geometry, *attrs)
+
+    def _get_gbw_data(self, index: int, /, *attrs: str | int) -> Any | None:
+        """
+        Safely access `self.results_gbw[index].<attrs>`.
+
+        Parameters
+        ----------
+        index : int
+            User-chosen index of the gbw results, which is the index of the file in
+            `self.gbw_json_files`.
+        *attrs : str | int
+            Path to follow within the gbw results, see `_safe_get()`.
+
+        Returns
+        -------
+        Any | None
+            The resolved value or None, which includes that the gbw JSON file could not be read.
+
+        Raises
+        ------
+        TypeError
+            If `index` is not an integer.
+        OpiOutputNotParsedError
+            If the gbw results were not parsed.
+        OpiOutputIndexError
+            If `index` is out of range, which includes that no gbw results were found.
+        """
+        # > Check the index type first, so that a wrong type is reported in any case
+        index = self._check_index(index, "gbw results")
+        results_gbw = cast(list[GbwResults | None], self._safe_get("results_gbw"))
+        # > The index is checked against the gbw results and raises if it is out of range, whereas
+        # > the path within the gbw results returns None if a value is missing
+        result_gbw = self._select(results_gbw, index, "gbw results")
+        return self._walk(result_gbw, *attrs)
+
+    def _find_in_outfile(
+        self, index: int, /, *search_for: str, last_if_missing: bool = False
+    ) -> list[int | None]:
+        """
+        Find the occurrences of strings in the `.out` file that belong to the geometry with `index`.
+
+        ORCA usually prints a "CARTESIAN COORDINATES (ANGSTROEM)" block for every geometry, so the
+        section of a geometry reaches from its coordinates block to the next one. Values that ORCA
+        prints only for some geometries (e.g. the gradients of an ExtOpt run) are thereby assigned
+        to the correct geometry. If a section contains a string several times, the last occurrence
+        is used. If the number of sections does not match the geometries of the property JSON,
+        only the final geometry is assigned, to the last section. If the `.out` file contains no
+        coordinates blocks at all (e.g. for some xTB jobs), `index` counts the occurrences instead.
+
+        Parameters
+        ----------
+        index : int
+            User-chosen index of the geometry.
+        *search_for : str
+            Strings marking the values in the `.out` file.
+        last_if_missing : bool, default: False
+            Use the last occurrence in the file if the section of the final geometry contains none,
+            e.g. for the energy of an optimization that was aborted.
+
+        Returns
+        -------
+        list[int | None]
+            For each string, its occurrence (counting from 0) or None if the geometry has none.
+
+        Raises
+        ------
+        TypeError
+            If `index` is not an integer.
+        OpiOutputNotParsedError
+            If neither the property results were parsed nor the `.out` file exists.
+        OpiOutputIndexError
+            If `index` is out of range of the geometries in the property JSON or, if it contains
+            none, in the `.out` file.
+        """
+        index = self._check_index(index, "geometries")
+        geometries = self._safe_get("results_properties", "geometries", fallback=True)
+
+        # > Assign every occurrence to the geometry of the preceding coordinates block, counting
+        # > from 0 (-1 before the first block)
+        num_blocks: int = 0
+        occurrences: list[list[int]] = [[] for _ in search_for]
+        for line in get_lines_with_strings(self.get_outfile(), GEOMETRY_BLOCK, *search_for) or []:
+            num_blocks += GEOMETRY_BLOCK in line
+            for found, string in zip(occurrences, search_for):
+                if string in line:
+                    found.append(num_blocks - 1)
+
+        # > Check the index against the geometries of the property JSON or of the `.out` file
+        if geometries:
+            num_geometries = len(geometries)
+            self._select(geometries, index, "geometries")
+        else:
+            num_geometries = num_blocks or max(map(len, occurrences))
+            name = "geometries" if num_blocks else "values"
+            if num_geometries and not -num_geometries <= index < num_geometries:
+                raise OpiOutputIndexError(
+                    f"Index {index} is out of range: the output file of '{self.basename}'"
+                    f" contains {num_geometries} {name}."
+                )
+        if not num_geometries:
+            return [None] * len(search_for)
+        index %= num_geometries
+        is_final = index == num_geometries - 1
+
+        # > Without any geometries, the index counts the occurrences
+        if not num_blocks and not geometries:
+            return [index if index < len(found) else None for found in occurrences]
+
+        # > Geometry of the `.out` file that belongs to the requested one
+        if num_blocks == num_geometries:
+            geometry = index
+        elif is_final:
+            geometry = num_blocks - 1
+        else:
+            return [None] * len(search_for)
+
+        result: list[int | None] = []
+        for found in occurrences:
+            in_geometry = [
+                i for i, found_geometry in enumerate(found) if found_geometry == geometry
+            ]
+            if in_geometry:
+                result.append(in_geometry[-1])
+            elif last_if_missing and is_final and found:
+                result.append(len(found) - 1)
+            else:
+                result.append(None)
+        return result
 
     def get_hftype(self, index: int = 0) -> Hftyp | None:
         """
@@ -1283,13 +1655,24 @@ class Output:
         Parameters
         -------
         index: int, default: 0
-            Index of geometry for which the hftype should be retrieved.
+            Index of the gbw file in `self.gbw_json_files` for which the hftype should be retrieved.
+            Negative indices count from the end. Default 0 refers to the main gbw file.
 
         Returns
         -------
         hftype : Hftyp | None
+            The HFType or None if it is not available.
+
+        Raises
+        ------
+        TypeError
+            If `index` is not an integer.
+        OpiOutputNotParsedError
+            If the gbw results were not parsed.
+        OpiOutputIndexError
+            If `index` is out of range.
         """
-        hftype = self._safe_get("results_gbw", index, "molecule", "hftyp")
+        hftype = self._get_gbw_data(index, "molecule", "hftyp")
         if hftype is not None:
             hftype = cast(str, hftype)
             try:
@@ -1318,7 +1701,9 @@ class Output:
         -------
         charge : StrictInt | None
         """
-        charge = self._safe_get("results_properties", "calculation_info", "charge")
+        charge = self._safe_get(
+            "results_properties", "calculation_info", "charge", fallback=fallback
+        )
 
         if charge is not None:
             return cast(StrictInt, charge)
@@ -1333,7 +1718,9 @@ class Output:
             return int(raw)
 
         charge_mult = get_charge_and_mult_from_input(self.get_outfile())
-        return charge_mult[0] if charge_mult is not None else None
+        if charge_mult is None:
+            return None
+        return charge_mult[0]
 
     def get_mult(self, *, fallback: bool = True) -> StrictPositiveInt | None:
         """
@@ -1353,7 +1740,7 @@ class Output:
         -------
         mult : StrictPositiveInt | None
         """
-        mult = self._safe_get("results_properties", "calculation_info", "mult")
+        mult = self._safe_get("results_properties", "calculation_info", "mult", fallback=fallback)
 
         if mult is not None:
             return cast(StrictPositiveInt, mult)
@@ -1368,7 +1755,9 @@ class Output:
             return int(raw)
 
         charge_mult = get_charge_and_mult_from_input(self.get_outfile())
-        return charge_mult[1] if charge_mult is not None else None
+        if charge_mult is None:
+            return None
+        return charge_mult[1]
 
     def get_nelectrons(
         self, *, spin_resolved: bool = False
@@ -1459,10 +1848,12 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the energy should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
         fallback : bool, default: True
-            If True and the JSON output is unavailable, attempt to parse the energy from the plain-text
-            `.out` file by grepping for "FINAL SINGLE POINT ENERGY".
+            If True and the JSON output is unavailable or lacks the energy, attempt to parse the energy
+            from the plain-text `.out` file by grepping for "FINAL SINGLE POINT ENERGY" in the section of the
+            requested geometry. If a geometry optimization was aborted before the energy of its last geometry
+            was calculated, the last calculated energy is returned for the final geometry.
 
         Returns
         ----------
@@ -1471,20 +1862,20 @@ class Output:
         """
 
         # > Get the final energy
-        final_energy = self._safe_get(
-            "results_properties", "geometries", index, "single_point_data", "finalenergy"
+        final_energy = self._get_geometry_data(
+            index, "single_point_data", "finalenergy", fallback=fallback
         )
 
         if final_energy is not None:
-            final_energy = cast(StrictFiniteFloat, final_energy)
-            return final_energy
+            return cast(StrictFiniteFloat, final_energy)
 
         if not fallback:
             return None
 
-        return get_float_from_line(
-            self.get_outfile(), "FINAL SINGLE POINT ENERGY", index, -1, strict=False
-        )
+        (occurrence,) = self._find_in_outfile(index, FINAL_ENERGY, last_if_missing=True)
+        if occurrence is None:
+            return None
+        return get_float_from_line(self.get_outfile(), FINAL_ENERGY, occurrence, -1, strict=False)
 
     def get_energies(self, *, index: int = -1) -> dict[str, Energy] | None:
         """
@@ -1494,7 +1885,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the energy should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         -------
@@ -1527,7 +1918,7 @@ class Output:
         energy_dict: dict[str, Energy] = {}
 
         # > Get the list of energies to be converted to a dictionary
-        energy_list = self._safe_get("results_properties", "geometries", index, "energy")
+        energy_list = self._get_geometry_data(index, "energy")
 
         if energy_list is not None:
             energy_list = cast(EnergyList, energy_list)
@@ -1556,7 +1947,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the energy components should be returned. The default -1 refers
-            to the final geometry. Silently ignores if the requested index is not available and returns None.
+            to the final geometry. Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         -------
@@ -1619,7 +2010,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the correction should be returned. The default -1 refers to
-            the final geometry. Silently ignores if the requested index is not available and returns None.
+            the final geometry. Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         -------
@@ -1628,7 +2019,7 @@ class Output:
             its atomic decomposition (ADLD), or None if the ORCA output does not contain it for the
             requested index.
         """
-        vdw_correction = self._safe_get("results_properties", "geometries", index, "vdw_correction")
+        vdw_correction = self._get_geometry_data(index, "vdw_correction")
 
         if vdw_correction is not None:
             vdw_correction = cast(VdwCorrection, vdw_correction)
@@ -1644,7 +2035,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the correction should be returned. The default -1 refers to
-            the final geometry. Silently ignores if the requested index is not available and returns None.
+            the final geometry. Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         -------
@@ -1653,7 +2044,7 @@ class Output:
             SRB correction of B97-3c, or None if the ORCA output does not contain it for the requested
             index.
         """
-        gcp_correction = self._safe_get("results_properties", "geometries", index, "gcp_energy")
+        gcp_correction = self._get_geometry_data(index, "gcp_energy")
 
         if gcp_correction is not None:
             gcp_correction = cast(GcpEnergy, gcp_correction)
@@ -1669,7 +2060,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the energies should be returned. The default -1 refers to
-            the final geometry. Silently ignores if the requested index is not available and returns None.
+            the final geometry. Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         -------
@@ -1678,7 +2069,7 @@ class Output:
             reference and correlation energy and the energies of all roots, or None if the ORCA
             output does not contain them for the requested index.
         """
-        rocis_energies = self._safe_get("results_properties", "geometries", index, "rocis_energies")
+        rocis_energies = self._get_geometry_data(index, "rocis_energies")
 
         if rocis_energies is not None:
             rocis_energies = cast(RoCisEnergy, rocis_energies)
@@ -1694,7 +2085,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the energies should be returned. The default -1 refers to
-            the final geometry. Silently ignores if the requested index is not available and returns None.
+            the final geometry. Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         -------
@@ -1702,7 +2093,7 @@ class Output:
             Returns the CIPSI energies, which contain the final energy and the energies of all
             roots, or None if the ORCA output does not contain them for the requested index.
         """
-        cipsi_energies = self._safe_get("results_properties", "geometries", index, "cipsi_energies")
+        cipsi_energies = self._get_geometry_data(index, "cipsi_energies")
 
         if cipsi_energies is not None:
             cipsi_energies = cast(CiPsi, cipsi_energies)
@@ -1722,10 +2113,12 @@ class Output:
             **Attention:** In a normal geometry optimization ORCA does not calculate the gradient for the final
             geometry, so the default index will return None. You can request the gradient for the structure one step
             before the final one with the index -2. For most intents and purposes, the last and second to last
-            geometries, energies and gradients are the same within the given tolerances.
+            geometries, energies and gradients are the same within the given tolerances. This also applies if the
+            gradient is taken from the `.out` file.
         fallback : bool, default: True
-            If True and the JSON output is unavailable, attempt to parse the gradient from the plain-text
-            `.out` file by grepping for "CARTESIAN GRADIENT".
+            If True and the JSON output is unavailable or lacks the gradient, attempt to parse the gradient
+            from the plain-text `.out` file by grepping for "CARTESIAN GRADIENT" in the section of the
+            requested geometry.
 
         Returns
         ----------
@@ -1734,18 +2127,12 @@ class Output:
             or None if it cannot be obtained.
         """
         # > Safely get the gradient
-        gradient = self._safe_get(
-            "results_properties", "geometries", index, "nuclear_gradient", 0, "grad"
-        )
+        gradient = self._get_geometry_data(index, "nuclear_gradient", 0, "grad", fallback=fallback)
 
         # > Cast them into the correct type
         if gradient is not None:
-            gradient = cast(
-                list[list[StrictFiniteFloat]],
-                gradient,
-            )
-            flat = [inner[0] for inner in gradient]
-            return flat
+            gradient = cast(list[list[StrictFiniteFloat]], gradient)
+            return [inner[0] for inner in gradient]
 
         if not fallback:
             return None
@@ -1757,7 +2144,7 @@ class Output:
     ) -> Structure | None:
         """
         Returns structure from ORCA job as Structure object (by default the final structure).
-        Silently returns None of no structure is available.
+        Returns None if no structure is available.
 
         Parameters
         ----------
@@ -1766,8 +2153,8 @@ class Output:
         with_fragments : bool, default: True
             whether the fragment IDs should be added as well to the structure (if available)
         fallback : bool, default: True
-            If True and the JSON output is unavailable, attempt to parse the structure from the plain-text
-            `.out` file by grepping for "CARTESIAN COORDINATES (ANGSTROEM)". This is useful for recovering
+            If True and the JSON output is unavailable or lacks the structure, attempt to parse the structure
+            from the plain-text `.out` file by grepping for "CARTESIAN COORDINATES (ANGSTROEM)". This is useful for recovering
             structures from failed or incomplete geometry optimisations where no JSON was written.
 
         Returns
@@ -1779,7 +2166,7 @@ class Output:
 
         atoms: list[Atom] = []
         # > Get Cartesian coordinates
-        cartesians = self._get_cartesians(index)
+        cartesians = self._get_cartesians(index, fallback=fallback)
 
         if cartesians is None:
             if not fallback:
@@ -1811,7 +2198,7 @@ class Output:
     def get_structure_from_gbw(self, *, index: int = 0) -> Structure | None:
         """
         Returns the structure stored in a gbw file as `Structure` object.
-        Silently returns None if no structure is available.
+        Returns None if no structure is available.
 
         In contrast to `get_structure()`, which reads the geometry from the property JSON, this
         getter uses the gbw JSON. It therefore offers no fragment IDs and no `.out` file fallback,
@@ -1820,15 +2207,15 @@ class Output:
         Parameters
         ----------
         index : int, default: 0
-            Index (>= 0) of the gbw file in `self.results_gbw`. The default 0 refers to the main
-            gbw file.
+            Index of the gbw file in `self.results_gbw`. Negative indices count from the end. The
+            default 0 refers to the main gbw file.
 
         Returns
         ----------
         structure: Structure | None
             Structure generated from the gbw data or None if no structure is available.
         """
-        results_gbw = self._safe_get("results_gbw", index)
+        results_gbw = self._get_gbw_data(index)
         if results_gbw is None:
             return None
 
@@ -1839,7 +2226,7 @@ class Output:
             return None
 
     def _get_cartesians(
-        self, index: int, /
+        self, index: int, /, *, fallback: bool
     ) -> list[tuple[StrictStr, StrictFiniteFloat, StrictFiniteFloat, StrictFiniteFloat]] | None:
         """
         Returns cartesian coordinates from the output object for a specified index.
@@ -1848,6 +2235,8 @@ class Output:
         ----------
         index : int
             index of geometry to return.
+        fallback : bool
+            Whether the caller uses the `.out` file fallback, see `_get_geometry_data()`.
 
         Returns
         ----------
@@ -1855,8 +2244,8 @@ class Output:
             List containing the cartesian coordinates or None.
         """
         # > Safely get the cartesian coordinates
-        cartesians = self._safe_get(
-            "results_properties", "geometries", index, "geometry", "coordinates", "cartesians"
+        cartesians = self._get_geometry_data(
+            index, "geometry", "coordinates", "cartesians", fallback=fallback
         )
         # > Cast them into the correct type
         if cartesians is not None:
@@ -1882,9 +2271,7 @@ class Output:
             List containing the cartesian coordinates or None.
         """
         # > Safely get the fragment IDs
-        fragments = self._safe_get(
-            "results_properties", "geometries", index, "geometry", "fragments"
-        )
+        fragments = self._get_geometry_data(index, "geometry", "fragments")
         # > Cast them into the correct type
         if fragments:
             fragments = cast(
@@ -1895,14 +2282,12 @@ class Output:
         return fragments
 
     def _grep_structure(self, index: int, /) -> Structure | None:
-        """Parse structure from "CARTESIAN COORDINATES (ANGSTROEM)" block in the .out file."""
+        """Parse structure from "CARTESIAN COORDINATES (ANGSTROEM)" block of geometry `index` in the .out file."""
+        (occurrence,) = self._find_in_outfile(index, GEOMETRY_BLOCK)
+        if occurrence is None:
+            return None
         # > Get geometry block in the output file
-        lines = get_lines_from_block(
-            self.get_outfile(),
-            "CARTESIAN COORDINATES (ANGSTROEM)",
-            index=index,
-            offset=2,
-        )
+        lines = get_lines_from_block(self.get_outfile(), GEOMETRY_BLOCK, index=occurrence, offset=2)
 
         # > If we found nothing we return None
         if not lines:
@@ -1929,14 +2314,12 @@ class Output:
         return Structure(atoms, charge=self.get_charge(), multiplicity=self.get_mult())
 
     def _grep_gradient(self, index: int, /) -> list[StrictFiniteFloat] | None:
-        """Parse gradient from "CARTESIAN GRADIENT" block in the .out file (Eh/Bohr)."""
+        """Parse gradient from "CARTESIAN GRADIENT" block of geometry `index` in the .out file (Eh/Bohr)."""
+        (occurrence,) = self._find_in_outfile(index, GRADIENT_BLOCK)
+        if occurrence is None:
+            return None
         # > Get gradient block from the output file
-        lines = get_lines_from_block(
-            self.get_outfile(),
-            "CARTESIAN GRADIENT",
-            index=index,
-            offset=3,
-        )
+        lines = get_lines_from_block(self.get_outfile(), GRADIENT_BLOCK, index=occurrence, offset=3)
 
         # > Return None if no block was found
         if not lines:
@@ -1965,7 +2348,7 @@ class Output:
         Parameters
         -------
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which the mos are returned. Default 0 refers to the main gbw file.
+            Index of gbw file in `self.gbw_json_files` for which the mos are returned. Negative indices count from the end. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -1979,9 +2362,7 @@ class Output:
            - **alpha**   : UHF alpha orbitals
            - **beta**    : UHF beta orbitals
         """
-        molecular_orbitals = self._safe_get(
-            "results_gbw", gbw_index, "molecule", "molecularorbitals", "mos"
-        )
+        molecular_orbitals = self._get_gbw_data(gbw_index, "molecule", "molecularorbitals", "mos")
         if molecular_orbitals is not None:
             mos = {}
             cast(list[MO], molecular_orbitals)
@@ -2029,7 +2410,7 @@ class Output:
         Parameters
         -------
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which the homo is returned. Default 0 refers to the main gbw file.
+            Index of gbw file in `self.gbw_json_files` for which the homo is returned. Negative indices count from the end. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -2094,7 +2475,7 @@ class Output:
         Parameters
         -------
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which the lumo is returned. Default 0 refers to the main gbw file.
+            Index of gbw file in `self.gbw_json_files` for which the lumo is returned. Negative indices count from the end. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -2139,7 +2520,7 @@ class Output:
         Parameters
         -------
         gbw_index: int, default = 0
-            Non-negative index of gbw file in `self.gbw_json_files` for which the gap is returned. Default 0 refers to the main gbw file.
+            Index of gbw file in `self.gbw_json_files` for which the gap is returned. Negative indices count from the end. Default 0 refers to the main gbw file.
 
         Returns
         -------
@@ -2170,7 +2551,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2179,9 +2560,7 @@ class Output:
         """
 
         # > Get the Mulliken population
-        mulliken = self._safe_get(
-            "results_properties", "geometries", index, "mulliken_population_analysis"
-        )
+        mulliken = self._get_geometry_data(index, "mulliken_population_analysis")
 
         if mulliken is not None:
             mulliken = cast(list[MullikenPopulationAnalysis], mulliken)
@@ -2196,7 +2575,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2205,9 +2584,7 @@ class Output:
         """
 
         # > Get the Loewdin population
-        loewdin = self._safe_get(
-            "results_properties", "geometries", index, "loewdin_population_analysis"
-        )
+        loewdin = self._get_geometry_data(index, "loewdin_population_analysis")
 
         if loewdin is not None:
             loewdin = cast(list[LoewdinPopulationAnalysis], loewdin)
@@ -2224,7 +2601,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2233,9 +2610,7 @@ class Output:
         """
 
         # > Get the CHELPG population
-        chelpg = self._safe_get(
-            "results_properties", "geometries", index, "chelpg_population_analysis"
-        )
+        chelpg = self._get_geometry_data(index, "chelpg_population_analysis")
 
         if chelpg is not None:
             chelpg = cast(list[ChelpgPopulationAnalysis], chelpg)
@@ -2250,7 +2625,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2259,9 +2634,7 @@ class Output:
         """
 
         # > Get the Mayer population
-        mayer = self._safe_get(
-            "results_properties", "geometries", index, "mayer_population_analysis"
-        )
+        mayer = self._get_geometry_data(index, "mayer_population_analysis")
 
         if mayer is not None:
             mayer = cast(list[MayerPopulationAnalysis], mayer)
@@ -2276,7 +2649,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2285,9 +2658,7 @@ class Output:
         """
 
         # > Get the Hirshfeld population
-        hirshfeld = self._safe_get(
-            "results_properties", "geometries", index, "hirshfeld_population_analysis"
-        )
+        hirshfeld = self._get_geometry_data(index, "hirshfeld_population_analysis")
 
         if hirshfeld is not None:
             hirshfeld = cast(list[HirshfeldPopulationAnalysis], hirshfeld)
@@ -2302,7 +2673,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the population should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2311,7 +2682,7 @@ class Output:
         """
 
         # > Get the MBIS population
-        mbis = self._safe_get("results_properties", "geometries", index, "mbis_population_analysis")
+        mbis = self._get_geometry_data(index, "mbis_population_analysis")
 
         if mbis is not None:
             mbis = cast(list[MbisPopulationAnalysis], mbis)
@@ -2326,7 +2697,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the dipole moments should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2334,7 +2705,7 @@ class Output:
             Returns the dipole moment(s) or None if there is none in the output for the requested index.
         """
 
-        dipole = self._safe_get("results_properties", "geometries", index, "dipole_moment")
+        dipole = self._get_geometry_data(index, "dipole_moment")
 
         if dipole is not None:
             dipole = cast(list[DipoleMoment], dipole)
@@ -2349,7 +2720,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the quadrupole moments should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2357,7 +2728,7 @@ class Output:
             Returns the quadrupole moment(s) or None if there is none in the output for the requested index.
         """
 
-        quadrupole = self._safe_get("results_properties", "geometries", index, "quadrupole_moment")
+        quadrupole = self._get_geometry_data(index, "quadrupole_moment")
 
         if quadrupole is not None:
             quadrupole = cast(list[QuadrupoleMoment], quadrupole)
@@ -2372,7 +2743,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the polarizabilies should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2380,7 +2751,7 @@ class Output:
             Returns the polarizabilities or None if there is none in the output for the requested index.
         """
 
-        pol = self._safe_get("results_properties", "geometries", index, "polarizability")
+        pol = self._get_geometry_data(index, "polarizability")
 
         if pol is not None:
             pol = cast(list[Polarizability], pol)
@@ -2398,7 +2769,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the spectrum should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
 
         Returns
         ----------
@@ -2406,9 +2777,7 @@ class Output:
             Returns the spectra or None if there is none in the output for the requested index.
         """
 
-        absorption_spectrum = self._safe_get(
-            "results_properties", "geometries", index, "absorption_spectrum"
-        )
+        absorption_spectrum = self._get_geometry_data(index, "absorption_spectrum")
 
         if absorption_spectrum is not None:
             absorption_spectrum = cast(list[AbsorptionSpectrum], absorption_spectrum)
@@ -2493,18 +2862,27 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which S² should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None.
-            For RHF/ROHF the index is not relevant since the ideal values are returned.
+            Raises an `OpiOutputIndexError` if the requested index is not available.
+            For RHF/ROHF the index is not relevant since the ideal values are returned. For UHF the value
+            is grepped from the section of the output file that belongs to the requested geometry.
 
         Returns
         ----------
         tuple[StrictFiniteFloat, StrictFiniteFloat] | tuple[None, None]
             Return the expectation value and the ideal value or None if nothing is found.
         """
+        # > Find the values first, which checks the index and raises if neither the property JSON
+        # > nor the `.out` file is available
+        expec_occurrence, ideal_occurrence = self._find_in_outfile(
+            index, S2_EXPECTATION_VALUE, S2_IDEAL_VALUE
+        )
         expec_s2: StrictFiniteFloat | None = None
         ideal_s2: StrictFiniteFloat | None = None
-        # > Get HFType
-        hftype = self.get_hftype()
+        # > Get HFType, without gbw results S² can still be grepped from the output file
+        try:
+            hftype = self.get_hftype()
+        except (OpiOutputNotParsedError, OpiOutputIndexError):
+            hftype = None
         match hftype:
             # > RHF/RKS just returns the ideal value zero
             case Hftyp.RHF:
@@ -2520,12 +2898,13 @@ class Output:
             case Hftyp.UHF | _:
                 # > Grep from output file
                 outfile = self.get_outfile()
-                # // String for searching the S² expectation value.
-                expec_string = "Expectation value of <S**2>"
-                # // String for searching the ideal S² value.
-                ideal_string = "Ideal value S*(S+1)"
-                expec_s2 = get_float_from_line(outfile, expec_string, index, strict=False)
-                ideal_s2 = get_float_from_line(outfile, ideal_string, index, strict=False)
+                if expec_occurrence is not None and ideal_occurrence is not None:
+                    expec_s2 = get_float_from_line(
+                        outfile, S2_EXPECTATION_VALUE, expec_occurrence, strict=False
+                    )
+                    ideal_s2 = get_float_from_line(
+                        outfile, S2_IDEAL_VALUE, ideal_occurrence, strict=False
+                    )
 
         if expec_s2 is not None and ideal_s2 is not None:
             return expec_s2, ideal_s2
@@ -2540,7 +2919,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2549,9 +2928,7 @@ class Output:
             Returns the zero-point energy in a.u., or None if nothing is found.
         """
         # > "thermochemistry_energies" contains a list, but there should always be only one index
-        zpe = self._safe_get(
-            "results_properties", "geometries", index, "thermochemistry_energies", 0, "zpe"
-        )
+        zpe = self._get_geometry_data(index, "thermochemistry_energies", 0, "zpe")
 
         if zpe is not None:
             zpe = cast(StrictPositiveFloat, zpe)
@@ -2566,7 +2943,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2575,9 +2952,7 @@ class Output:
             Returns the inner energy (U) in a.u., or None if nothing is found.
         """
         # > "thermochemistry_energies" contains a list, but there should always be only one index
-        inner_energy = self._safe_get(
-            "results_properties", "geometries", index, "thermochemistry_energies", 0, "innerenergyu"
-        )
+        inner_energy = self._get_geometry_data(index, "thermochemistry_energies", 0, "innerenergyu")
 
         if inner_energy is not None:
             inner_energy = cast(StrictFiniteFloat, inner_energy)
@@ -2592,7 +2967,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2601,9 +2976,7 @@ class Output:
             Returns the enthalpy (H) in a.u., or None if nothing is found.
         """
         # > "thermochemistry_energies" contains a list, but there should always be only one index
-        enthalpy = self._safe_get(
-            "results_properties", "geometries", index, "thermochemistry_energies", 0, "enthalpyh"
-        )
+        enthalpy = self._get_geometry_data(index, "thermochemistry_energies", 0, "enthalpyh")
 
         if enthalpy is not None:
             enthalpy = cast(StrictFiniteFloat, enthalpy)
@@ -2618,7 +2991,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2627,9 +3000,7 @@ class Output:
             Returns the entropy (S) in a.u., or None if nothing is found.
         """
         # > "thermochemistry_energies" contains a list, but there should always be only one index
-        entropy = self._safe_get(
-            "results_properties", "geometries", index, "thermochemistry_energies", 0, "entropys"
-        )
+        entropy = self._get_geometry_data(index, "thermochemistry_energies", 0, "entropys")
 
         if entropy is not None:
             entropy = cast(StrictFiniteFloat, entropy)
@@ -2644,7 +3015,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2653,9 +3024,7 @@ class Output:
             Returns the free energy (G) in a.u., or None if nothing is found.
         """
         # > "thermochemistry_energies" contains a list, but there should always be only one index
-        free_energy = self._safe_get(
-            "results_properties", "geometries", index, "thermochemistry_energies", 0, "freeenergyg"
-        )
+        free_energy = self._get_geometry_data(index, "thermochemistry_energies", 0, "freeenergyg")
 
         if free_energy is not None:
             free_energy = cast(StrictFiniteFloat, free_energy)
@@ -2670,7 +3039,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2679,9 +3048,7 @@ class Output:
             Returns electronic energy in a.u., or None if nothing is found.
         """
         # > "thermochemistry_energies" contains a list, but there should always be only one index
-        el_energy = self._safe_get(
-            "results_properties", "geometries", index, "thermochemistry_energies", 0, "elenergy"
-        )
+        el_energy = self._get_geometry_data(index, "thermochemistry_energies", 0, "elenergy")
 
         if el_energy is not None:
             el_energy = cast(StrictFiniteFloat, el_energy)
@@ -2697,7 +3064,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the zpe should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             thermochemical properties are only available for the final geometry.
 
         Returns
@@ -2723,7 +3090,7 @@ class Output:
         ----------
         index : int, default: -1
             Index of the geometry for which the frequencies should be returned. The default -1 refers to the final geometry.
-            Silently ignores if the requested index is not available and returns None. Note that in typical ORCA jobs
+            Raises an `OpiOutputIndexError` if the requested index is not available. Note that in typical ORCA jobs
             frequencies are only available for the final geometry.
         threshold : float | None, default: None
             Frequencies more negative than ``-threshold`` (in cm⁻¹) are returned.
@@ -2736,9 +3103,7 @@ class Output:
             data is found.
         """
         # > "thermochemistry_energies" contains a list, but there should always be only one index
-        freq_list = self._safe_get(
-            "results_properties", "geometries", index, "thermochemistry_energies", 0, "freq"
-        )
+        freq_list = self._get_geometry_data(index, "thermochemistry_energies", 0, "freq")
 
         if freq_list is None:
             return None
@@ -2825,23 +3190,31 @@ class Output:
     def recreate_gbw_results(self, config_dict: dict[str, Any], gbw_index: int = 0, /) -> None:
         """
         Function for recreating a specific gbw-JSON file with a config dict. Silently does nothing if `gbw_index` is
-        not valid.
+        out of range.
 
         Parameters
         ----------
         gbw_index: int, default = 0
-            Index (>= 0) of the gbw file in `self.gbw_json_files` for which the json file should be created.
-            Negative indices are not allowed. Default 0 refers to the main gbw file.
+            Index of the gbw file in `self.gbw_json_files` for which the json file should be created.
+            Negative indices count from the end. Default 0 refers to the main gbw file.
 
+        Raises
+        ------
+        TypeError
+            If `gbw_index` is not an integer.
         """
+        gbw_index = self._check_index(gbw_index, "gbw results")
+        # > Normalize negative indices, so that they refer to the same file in all lists below
+        if not -self.num_gbw_json_files <= gbw_index < self.num_gbw_json_files:
+            return
+        gbw_index %= self.num_gbw_json_files
         self.create_gbw_json(force=True, config=config_dict, gbw_index=gbw_index)
-        if self.gbw_json_data is not None and self.gbw_json_files is not None:
-            if 0 <= gbw_index < self.num_gbw_json_data and 0 <= gbw_index < self.num_gbw_json_files:
-                self.gbw_json_data[gbw_index] = self._process_json_file(
-                    self.gbw_json_files[gbw_index]
-                )
-                if self.results_gbw is not None and 0 <= gbw_index < self.num_results_gbw:
-                    self.results_gbw[gbw_index] = GbwResults(**self.gbw_json_data[gbw_index])
+        # > Reload the parsed data, which has one entry per gbw JSON file
+        if self.gbw_json_data is None or self.results_gbw is None:
+            return
+        gbw_json_data = self._process_json_file(self.gbw_json_files[gbw_index])
+        self.gbw_json_data[gbw_index] = gbw_json_data
+        self.results_gbw[gbw_index] = GbwResults.model_validate(gbw_json_data)
 
     def get_int_overlap(
         self, recreate_json: bool = False, gbw_index: int = 0
@@ -2855,8 +3228,8 @@ class Output:
             If True, recreate the gbw json file and request the overlap integrals to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
-                Negative indices are not allowed. Default 0 refers to the main gbw file.
+                Index of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices count from the end. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -2871,7 +3244,7 @@ class Output:
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get overlap from gbw json files
-        overlap_list = self._safe_get("results_gbw", gbw_index, "molecule", "s_matrix")
+        overlap_list = self._get_gbw_data(gbw_index, "molecule", "s_matrix")
 
         if overlap_list is not None:
             overlap = np.array(overlap_list)
@@ -2891,8 +3264,8 @@ class Output:
             If True, recreate the gbw json file and request the hcore integrals to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
-                Negative indices are not allowed. Default 0 refers to the main gbw file.
+                Index of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices count from the end. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -2907,7 +3280,7 @@ class Output:
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get hcore from gbw json files
-        hcore_list = self._safe_get("results_gbw", gbw_index, "molecule", "h_matrix")
+        hcore_list = self._get_gbw_data(gbw_index, "molecule", "h_matrix")
 
         if hcore_list is not None:
             return np.array(hcore_list)
@@ -2926,8 +3299,8 @@ class Output:
             If True, recreate the gbw json file and request the kinetic energy integrals to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
-                Negative indices are not allowed. Default 0 refers to the main gbw file.
+                Index of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices count from the end. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -2942,7 +3315,7 @@ class Output:
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get kinetic integrals from gbw json files
-        kinetic_list = self._safe_get("results_gbw", gbw_index, "molecule", "t_matrix")
+        kinetic_list = self._get_gbw_data(gbw_index, "molecule", "t_matrix")
 
         if kinetic_list is not None:
             return np.array(kinetic_list)
@@ -2961,8 +3334,8 @@ class Output:
             If True, recreate the gbw json file and request the nuclear attraction integrals to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
-                Negative indices are not allowed. Default 0 refers to the main gbw file.
+                Index of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices count from the end. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -2977,7 +3350,7 @@ class Output:
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get nuclear attraction integrals from gbw json files
-        nuclear_list = self._safe_get("results_gbw", gbw_index, "molecule", "v_matrix")
+        nuclear_list = self._get_gbw_data(gbw_index, "molecule", "v_matrix")
 
         if nuclear_list is not None:
             return np.array(nuclear_list)
@@ -2996,8 +3369,8 @@ class Output:
             If True, recreate the gbw json file and request the hmo integrals to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
-                Negative indices are not allowed. Default 0 refers to the main gbw file.
+                Index of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices count from the end. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -3012,7 +3385,7 @@ class Output:
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
         # > get hmo from gbw json files
-        hmo_list = self._safe_get("results_gbw", gbw_index, "molecule", "hmo")
+        hmo_list = self._get_gbw_data(gbw_index, "molecule", "hmo")
 
         if hmo_list is not None:
             return np.array(hmo_list)
@@ -3031,8 +3404,8 @@ class Output:
             If True, recreate the gbw json file and request the fock correction integrals to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
-                Negative indices are not allowed. Default 0 refers to the main gbw file.
+                Index of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices count from the end. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -3046,7 +3419,7 @@ class Output:
                 self.config_dict["FockMatrix"].append("F")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        fock_list = self._safe_get("results_gbw", gbw_index, "molecule", "f_matrix")
+        fock_list = self._get_gbw_data(gbw_index, "molecule", "f_matrix")
 
         if fock_list is not None:
             return np.array(fock_list[0])
@@ -3065,8 +3438,8 @@ class Output:
             If True, recreate the gbw json file and request J to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
-                Negative indices are not allowed. Default 0 refers to the main gbw file.
+                Index of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices count from the end. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -3080,7 +3453,7 @@ class Output:
                 self.config_dict["FockMatrix"].append("J")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        j_list = self._safe_get("results_gbw", gbw_index, "molecule", "j_matrix")
+        j_list = self._get_gbw_data(gbw_index, "molecule", "j_matrix")
 
         if j_list is not None:
             return np.array(j_list[0])
@@ -3099,8 +3472,8 @@ class Output:
             If True, recreate the gbw json file and request K to be included.
             The request for these integrals will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-                Index (>= 0) of the gbw file in `self.gbw_json_files` for which integrals are requested.
-                Negative indices are not allowed. Default 0 refers to the main gbw file.
+                Index of the gbw file in `self.gbw_json_files` for which integrals are requested.
+                Negative indices count from the end. Default 0 refers to the main gbw file.
         """
 
         if recreate_json:
@@ -3114,7 +3487,7 @@ class Output:
                 self.config_dict["FockMatrix"].append("K")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        k_list = self._safe_get("results_gbw", gbw_index, "molecule", "k_matrix")
+        k_list = self._get_gbw_data(gbw_index, "molecule", "k_matrix")
 
         if k_list is not None:
             return np.array(k_list[0])
@@ -3133,8 +3506,8 @@ class Output:
             If True, recreate the gbw json file and request scfp to be included.
             The request for the density will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-                Index (>= 0) of the gbw file in `self.gbw_json_files` for which densities are requested.
-                Negative indices are not allowed. Default 0 refers to the main gbw file.
+                Index of the gbw file in `self.gbw_json_files` for which densities are requested.
+                Negative indices count from the end. Default 0 refers to the main gbw file.
         """
         if recreate_json:
             if self.config_dict is None:
@@ -3147,7 +3520,7 @@ class Output:
                 self.config_dict["Densities"].append("scfp")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        scfp_list = self._safe_get("results_gbw", gbw_index, "molecule", "densities", "scfp")
+        scfp_list = self._get_gbw_data(gbw_index, "molecule", "densities", "scfp")
 
         if scfp_list is not None:
             return np.array(scfp_list, dtype=np.float64)
@@ -3166,8 +3539,8 @@ class Output:
             If True, recreate the gbw json file and request scfr to be included.
             The request for the density will be added to the `config_dict` attribute.
         gbw_index: int, default = 0
-                Index (>= 0) of the gbw file in `self.gbw_json_files` for which densities are requested.
-                Negative indices are not allowed. Default 0 refers to the main gbw file.
+                Index of the gbw file in `self.gbw_json_files` for which densities are requested.
+                Negative indices count from the end. Default 0 refers to the main gbw file.
         """
         if recreate_json:
             if self.config_dict is None:
@@ -3180,7 +3553,7 @@ class Output:
                 self.config_dict["Densities"].append("scfr")
             self.recreate_gbw_results(self.config_dict, gbw_index)
 
-        scfr_list = self._safe_get("results_gbw", gbw_index, "molecule", "densities", "scfr")
+        scfr_list = self._get_gbw_data(gbw_index, "molecule", "densities", "scfr")
 
         if scfr_list is not None:
             return np.array(scfr_list, dtype=np.float64)

@@ -1,5 +1,6 @@
 import pytest
 
+from opi.exceptions import OpiOutputNotParsedError
 from opi.output.mo_data import MOData
 from opi.output.models.json.gbw.properties.mo import MO
 
@@ -35,8 +36,9 @@ def test_get_mos_returns_mo(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_mos_returns_none(empty_output_object):
-    """Test if `Output.get_mos()` returns `None` when expected."""
-    assert not empty_output_object.get_mos()
+    """Test if `Output.get_mos()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_mos()
 
 
 @pytest.mark.unit
@@ -51,8 +53,9 @@ def test_get_homo(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_homo_returns_none(empty_output_object):
-    """Test if `Output.get_homo()` returns `None` when expected."""
-    assert not empty_output_object.get_homo()
+    """Test if `Output.get_homo()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_homo()
 
 
 @pytest.mark.unit
@@ -67,5 +70,6 @@ def test_get_lumo(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_lumo_returns_none(empty_output_object):
-    """Test if `Output.get_lumo()` returns `None` when expected."""
-    assert not empty_output_object.get_lumo()
+    """Test if `Output.get_lumo()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_lumo()

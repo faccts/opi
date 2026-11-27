@@ -1,5 +1,6 @@
 import pytest
 
+from opi.exceptions import OpiOutputNotParsedError
 from opi.output.core import Output
 from opi.output.models.json.property.properties.hirshfeld_population_analysis import (
     HirshfeldPopulationAnalysis,
@@ -39,8 +40,9 @@ def test_get_mulliken(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_mulliken_returns_none(empty_output_object: Output):
-    """Test to check if `Output.get_mulliken()` returns `None` when expected."""
-    assert not empty_output_object.get_mulliken()
+    """Test to check if `Output.get_mulliken()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_mulliken()
 
 
 @pytest.mark.unit
@@ -56,8 +58,9 @@ def test_get_loewdin(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_loewdin_returns_none(empty_output_object: Output):
-    """Test if `Output.get_loewdin()` returns `None` when expected."""
-    assert not empty_output_object.get_loewdin()
+    """Test if `Output.get_loewdin()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_loewdin()
 
 
 @pytest.mark.unit
@@ -73,8 +76,9 @@ def test_get_chelpg(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_chelpg_returns_none(empty_output_object: Output):
-    """Test if `Output.get_chelpg()` returns `None` when expected."""
-    assert not empty_output_object.get_loewdin()
+    """Test if `Output.get_chelpg()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_chelpg()
 
 
 @pytest.mark.unit
@@ -90,8 +94,9 @@ def test_get_mayer(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_mayer_returns_none(empty_output_object: Output):
-    """Test if `Output.get_mayer()` returns `None` when expected."""
-    assert not empty_output_object.get_mayer()
+    """Test if `Output.get_mayer()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_mayer()
 
 
 @pytest.mark.unit
@@ -107,8 +112,9 @@ def test_get_hirshfeld(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_hirshfeld_returns_none(empty_output_object: Output):
-    """Test if `Output.get_hirshfeld()` returns `None` when expected."""
-    assert not empty_output_object.get_hirshfeld()
+    """Test if `Output.get_hirshfeld()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_hirshfeld()
 
 
 @pytest.mark.unit
@@ -132,5 +138,6 @@ def test_get_mbis_returns_list(output_object_factory, task: str):
 @pytest.mark.unit
 @pytest.mark.output
 def test_get_mbis_returns_none(empty_output_object):
-    """Test if `Output.get_mbis()` returns `None` when expected."""
-    assert not empty_output_object.get_mbis()
+    """Test if `Output.get_mbis()` raises `OpiOutputNotParsedError` without parsed output."""
+    with pytest.raises(OpiOutputNotParsedError):
+        empty_output_object.get_mbis()
