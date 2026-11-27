@@ -8,7 +8,7 @@ from opi.input.structures import Structure
 @pytest.mark.orca
 @pytest.mark.json_files
 def test_exmp012_nmr(example_input_file, tmp_path, json_files_exporter) -> None:
-    """Ensure NMR example runs successfully and produces a final energy."""
+    """Ensure NMR example runs successfully and produces shieldings and couplings."""
     # Get input file from example folder
     input_file = example_input_file(run_exmp012)
     structure = Structure.from_xyz(input_file)
@@ -18,6 +18,9 @@ def test_exmp012_nmr(example_input_file, tmp_path, json_files_exporter) -> None:
 
     # Assert negative final energy
     assert output.get_final_energy() < 0
+    # Assert that shieldings and couplings were parsed
+    assert output.get_chemical_shift()
+    assert output.get_spin_spin_coupling()
 
     # optional export of json files
     json_files_exporter.export_jsons_from(tmp_path)

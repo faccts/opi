@@ -71,6 +71,9 @@
 - Added the unit conversion constants `EV_TO_CM`, `EV_TO_NM` and `CM_TO_MHZ` to `opi.utils.units` (#309).
 - Added a tutorial notebook on the calculation of a UV/Vis spectrum (#309).
 - `BlockScf.rotate` now accepts a list of several rotations. (#317)
+- Added `Output.get_chemical_shift()` and `Output.get_spin_spin_coupling()` which return the calculated NMR shielding tensors and spin-spin coupling constants (#313).
+- Added the missing `siso`, `saniso`, `sdso`, `spso`, `mult`, `irrep` and `state` fields to `ChemicalShift` and `numofnucpairssd_fc` to `SpinSpinCoupling` (#313).
+- Added a tutorial notebook on the calculation of an NMR spectrum (#313).
 
 ### Changed
 - Refactored methods from Runner into BaseRunner (#193)

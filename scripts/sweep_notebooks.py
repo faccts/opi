@@ -53,6 +53,7 @@ WHITELIST = (
     "led",
     "ml_properties",
     "moplot",
+    "nmr_spectrum",
     "redox",
     "uvvis_spectrum",
     "wb97m2",
